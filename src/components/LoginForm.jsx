@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+<<<<<<< HEAD
 import {
   LockKeyhole,
   UserRound,
@@ -203,8 +204,48 @@ export default function LoginForm() {
                 color="#727d8f"
               />
 
+=======
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+
+export default function LoginForm() {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <div className="allianza-auth-page">
+      <div className="auth-visual-panel" aria-label="Login image panel" />
+
+      <div className="auth-login-panel">
+        <div className="login-box">
+          <h2>Welcome Back</h2>
+          <p className="login-subtext">
+            Login in to your account to continue
+            <br />
+            with your loan application.
+          </p>
+
+          <form className="login-form">
+            <label className="field-label" htmlFor="username">
+              Username / Email
+            </label>
+            <div className="input-with-icon">
+              <Mail size={18} />
+>>>>>>> fa76eb3 (s)
               <input
+                id="username"
+                type="email"
+                placeholder="Enter your username or email"
+              />
+            </div>
+
+            <label className="field-label" htmlFor="password">
+              Password
+            </label>
+            <div className="input-with-icon password-input">
+              <Lock size={18} />
+              <input
+                id="password"
                 type={showPassword ? "text" : "password"}
+<<<<<<< HEAD
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
@@ -220,10 +261,14 @@ export default function LoginForm() {
                   color: "#202938",
                   boxSizing: "border-box",
                 }}
+=======
+                placeholder="Enter your password"
+>>>>>>> fa76eb3 (s)
               />
 
               <button
                 type="button"
+<<<<<<< HEAD
                 onClick={() =>
                   setShowPassword(!showPassword)
                 }
@@ -291,9 +336,38 @@ export default function LoginForm() {
               }}
             >
               Forgot Password?
+=======
+                className="toggle-password"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                onClick={() => setShowPassword((value) => !value)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <div className="login-actions">
+              <label className="remember-me">
+                <input type="checkbox" defaultChecked />
+                <span>Remember me</span>
+              </label>
+              <button type="button" className="forgot-password">
+                Forgot Password?
+              </button>
+            </div>
+
+            <button type="submit" className="login-submit-btn">
+              Login
+>>>>>>> fa76eb3 (s)
             </button>
+          </form>
+
+          <div className="divider-row">
+            <span />
+            <small>OR</small>
+            <span />
           </div>
 
+<<<<<<< HEAD
           {error && (
             <p
               role="alert"
@@ -379,6 +453,12 @@ export default function LoginForm() {
             Contact Us
           </button>
         </form>
+=======
+          <button type="button" className="contact-btn">
+            Contact Us
+          </button>
+        </div>
+>>>>>>> fa76eb3 (s)
       </div>
     </div>
   );
