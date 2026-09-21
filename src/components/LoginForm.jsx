@@ -8,9 +8,30 @@ import {
   EyeOff,
 } from "lucide-react";
 import loginImage from "../public/asset/login page12.png";
+import { login } from "../services/login";
 
 export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await login({ email, password });
+      window.localStorage.setItem("authData", JSON.stringify(response.data));
+      window.location.assign("/dashboard");
+    } catch (requestError) {
+      setError(requestError.message || "Unable to sign in");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div
@@ -62,7 +83,8 @@ export default function LoginForm() {
           overflow: "auto",
         }}
       >
-        <div
+        <form
+          onSubmit={handleSubmit}
           className="login-form-content"
           style={{
             width: "min(468px, calc(100% - 80px))",
@@ -132,7 +154,10 @@ export default function LoginForm() {
 
               <input
                 type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
                 placeholder="Enter your username or email"
+                required
                 style={{
                   width: "100%",
                   height: "100%",
@@ -180,7 +205,10 @@ export default function LoginForm() {
 
               <input
                 type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
+                required
                 style={{
                   width: "100%",
                   height: "100%",
@@ -266,11 +294,23 @@ export default function LoginForm() {
             </button>
           </div>
 
+          {error && (
+            <p
+              role="alert"
+              style={{
+                margin: "-10px 0 20px",
+                color: "#c62828",
+                fontSize: "14px",
+              }}
+            >
+              {error}
+            </p>
+          )}
+
           {/* LOGIN BUTTON */}
           <button
-            onClick={() =>
-              window.location.assign("/dashboard")
-            }
+            type="submit"
+            disabled={isSubmitting}
             style={{
               width: "100%",
               height: "63px",
@@ -280,10 +320,11 @@ export default function LoginForm() {
               color: "#ffffff",
               fontSize: "16px",
               fontWeight: "600",
-              cursor: "pointer",
+              cursor: isSubmitting ? "wait" : "pointer",
+              opacity: isSubmitting ? 0.7 : 1,
             }}
           >
-            Login
+            {isSubmitting ? "Logging in..." : "Login"}
           </button>
 
           {/* OR */}
@@ -337,7 +378,7 @@ export default function LoginForm() {
           >
             Contact Us
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
