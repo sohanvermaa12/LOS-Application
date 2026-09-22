@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import loginImage from "../public/asset/login page12.png";
 import { login } from "../services/login";
+import ForgotPasswordRequest from "./ForgotPasswordRequest";
 
 export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +17,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -105,7 +107,7 @@ export default function LoginForm() {
                 lineHeight: "1.2",
               }}
             >
-              Welcome Back
+              {showForgotPassword ? "Forgot Password?" : "Welcome Back"}
             </h2>
 
             <p
@@ -116,12 +118,16 @@ export default function LoginForm() {
                 lineHeight: "1.5",
               }}
             >
-              Login to your account to continue
-              <br />
-              with your loan application.
+              {showForgotPassword
+                ? "Enter your email address and we will send you a password reset link."
+                : "Login to your account to continue with your loan application."}
             </p>
           </div>
 
+          {showForgotPassword ? (
+            <ForgotPasswordRequest onBack={() => setShowForgotPassword(false)} />
+          ) : (
+            <>
           {/* USERNAME / EMAIL */}
           <label
             style={{
@@ -282,6 +288,7 @@ export default function LoginForm() {
 
             <button
               type="button"
+              onClick={() => setShowForgotPassword(true)}
               style={{
                 border: "none",
                 background: "transparent",
@@ -326,6 +333,8 @@ export default function LoginForm() {
           >
             {isSubmitting ? "Logging in..." : "Login"}
           </button>
+            </>
+          )}
 
           {/* OR */}
           <div
@@ -380,6 +389,7 @@ export default function LoginForm() {
           </button>
         </form>
       </div>
+
     </div>
   );
 }
