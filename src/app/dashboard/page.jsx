@@ -60,7 +60,7 @@ export default function DashboardPage() {
               <h2>Application pipeline</h2>
               <p>Volume by current application status</p>
             </div>
-            <Link className="text-button" href="/applications">View all <ArrowUpRight size={15} /></Link>
+            <Link className="text-button" href="/lead_managenet">View all <ArrowUpRight size={15} /></Link>
           </div>
           <div className="pipeline">
             <PipelineBar label="Approved" value="96" percent={39} color="green" />
@@ -95,7 +95,7 @@ export default function DashboardPage() {
             <h2>Recent applications</h2>
             <p>Latest activity across your portfolio</p>
           </div>
-          <Link className="text-button" href="/applications">View all <ArrowUpRight size={15} /></Link>
+          <Link className="text-button" href="/lead_managenet">View all <ArrowUpRight size={15} /></Link>
         </div>
         <ApplicationTable compact />
       </Card>

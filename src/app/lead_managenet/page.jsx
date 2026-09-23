@@ -14,13 +14,13 @@ const leads = [
   { id: 'LD000119', name: 'Sneha Kulkarni', mobile: '9098765432', email: 'sneha.kulkarni@gmail.com', source: 'Sales Team', date: '24-09-2026', status: 'Qualified', statusKey: 'qualified', branch: 'Salt Lake', product: 'Personal Loan', amount: '9,50,000', remarks: 'Documents uploaded and pending review.' },
 ];
 
-export default function ApplicationsPage() {
+export default function LeadManagementPage() {
   const [showNewLead, setShowNewLead] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
 
   return (
     <>
-      <AppShell title="Lead Generation">
+      <AppShell title="Lead Management">
         <div className="lead-page">
           <div className="lead-toolbar">
           <div className="lead-filter">
