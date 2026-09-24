@@ -9,7 +9,7 @@ const items = [
   { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/product_managemet', label: 'Product Management', icon: ClipboardList },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
-  { href: '/audit_blogs', label: 'Audit logs', icon: FileText },
+  { href: '/audit_logs', label: 'Audit logs', icon: FileText },
   { href: '/settings', label: 'Setting', icon: Settings2 }
 ];
 
