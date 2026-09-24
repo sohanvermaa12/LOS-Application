@@ -8,6 +8,7 @@ const items = [
   { href: '/user_management', label: 'User Management', icon: UsersRound },
   { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/product_managemet', label: 'Product Management', icon: ClipboardList },
+  { href: '/loan_application', label: 'Loan Application', icon: ClipboardList },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
   { href: '/audit_logs', label: 'Audit logs', icon: FileText },
   { href: '/settings', label: 'Setting', icon: Settings2 }
