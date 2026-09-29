@@ -36,7 +36,7 @@ export default function UserProfile() {
         <ProfileField icon={IdCard} label="Employee ID">{profile.employeeId}</ProfileField>
         <ProfileField icon={Mail} label="Email"><a href={`mailto:${profile.email}`}>{profile.email}</a></ProfileField>
         <ProfileField icon={Phone} label="Phone"><a href={`tel:${profile.phone}`}>{profile.phone}</a></ProfileField>
-        <ProfileField icon={Clock3} label="Last login">2026-09-21 05:26:34</ProfileField>
+        <ProfileField icon={Clock3} label="Last login">{profile.lastLogin.replace('T', ' ')}</ProfileField>
       </div>
     </Card>
     <Card className="profile-details-card">
