@@ -48,97 +48,97 @@ export default function LeadManagementPage() {
       <AppShell title="Lead Management">
         <div className="lead-page">
           <div className="lead-toolbar">
-            <div className="lead-filter">
-              <label>Source</label>
-              <div className="select-wrap">
-                <select defaultValue="All">
-                  <option>All</option>
-                  <option>Website</option>
-                  <option>Mobile App</option>
-                  <option>Branch Office</option>
-                </select>
-              </div>
+          <div className="lead-filter">
+            <label>Source</label>
+            <div className="select-wrap">
+              <select defaultValue="All">
+                <option>All</option>
+                <option>Website</option>
+                <option>Mobile App</option>
+                <option>Branch Office</option>
+              </select>
             </div>
-
-            <div className="lead-filter">
-              <label>From Date</label>
-              <div className="date-field">
-                <input type="date" defaultValue="2026-09-26" />
-                <CalendarDays size={15} />
-              </div>
-            </div>
-
-            <div className="lead-filter">
-              <label>To Date</label>
-              <div className="date-field">
-                <input type="date" defaultValue="2026-09-26" />
-                <CalendarDays size={15} />
-              </div>
-            </div>
-
-            <div className="lead-filter status-filter">
-              <label>Status</label>
-              <div className="select-wrap">
-                <select defaultValue="All">
-                  <option>All</option>
-                  <option>New</option>
-                  <option>In Progress</option>
-                  <option>Contacted</option>
-                  <option>Qualified</option>
-                </select>
-              </div>
-            </div>
-
-            <button className="primary-button search-button">
-              <Search size={15} />
-              Search
-            </button>
           </div>
 
-          <div className="lead-header-row">
-            <button className="new-lead-button" onClick={() => setShowNewLead(true)}>
-              <Plus size={16} />
-              New Lead
-            </button>
+          <div className="lead-filter">
+            <label>From Date</label>
+            <div className="date-field">
+              <input type="date" defaultValue="2026-09-26" />
+              <CalendarDays size={15} />
+            </div>
           </div>
 
-          <div className="lead-table-panel">
-            <table className="lead-table">
-              <thead>
-                <tr>
-                  <th>Lead ID</th>
-                  <th>Name of the Customer</th>
-                  <th>Mobile Number</th>
-                  <th>Loan Product Type</th>
-                  <th>Loan Amount</th>
-                  <th>Lead Acquisition Channel</th>
-                  <th>Lead Date</th>
-                  <th>Status</th>
-                  <th>Action</th>
+          <div className="lead-filter">
+            <label>To Date</label>
+            <div className="date-field">
+              <input type="date" defaultValue="2026-09-26" />
+              <CalendarDays size={15} />
+            </div>
+          </div>
+
+          <div className="lead-filter status-filter">
+            <label>Status</label>
+            <div className="select-wrap">
+              <select defaultValue="All">
+                <option>All</option>
+                <option>New</option>
+                <option>In Progress</option>
+                <option>Contacted</option>
+                <option>Qualified</option>
+              </select>
+            </div>
+          </div>
+
+          <button className="primary-button search-button">
+            <Search size={15} />
+            Search
+          </button>
+        </div>
+
+        <div className="lead-header-row">
+          <button className="new-lead-button" onClick={() => setShowNewLead(true)}>
+            <Plus size={16} />
+            New Lead
+          </button>
+        </div>
+
+        <div className="lead-table-panel">
+          <table className="lead-table">
+            <thead>
+              <tr>
+                <th>Lead ID</th>
+                <th>Name of the Customer</th>
+                <th>Mobile Number</th>
+                <th>Loan Product Type</th>
+                <th>Loan Amount</th>
+                <th>Lead Acquisition Channel</th>
+                <th>Lead Date</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map((lead) => (
+                <tr key={lead.id}>
+                  <td>{lead.id}</td>
+                  <td>{lead.name}</td>
+                  <td>{lead.mobile}</td>
+                  <td>{lead.product}</td>
+                  <td>{lead.amount ? `₹ ${lead.amount}` : '—'}</td>
+                  <td>{lead.source}</td>
+                  <td>{lead.date}</td>
+                  <td>
+                    <span className={`lead-status status-${lead.statusKey}`}>{lead.status}</span>
+                  </td>
+                  <td className="actions-cell">
+                    <button className="link-btn" onClick={() => setSelectedLead(lead)}>[View]</button>
+                    <button className="link-btn">[Edit]</button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {leads.map((lead) => (
-                  <tr key={lead.id}>
-                    <td>{lead.id}</td>
-                    <td>{lead.name}</td>
-                    <td>{lead.mobile}</td>
-                    <td>{lead.product}</td>
-                    <td>{lead.amount ? `₹ ${lead.amount}` : '—'}</td>
-                    <td>{lead.source}</td>
-                    <td>{lead.date}</td>
-                    <td>
-                      <span className={`lead-status status-${lead.statusKey}`}>{lead.status}</span>
-                    </td>
-                    <td className="actions-cell">
-                      <button className="link-btn" onClick={() => setSelectedLead(lead)}>[View]</button>
-                      <button className="link-btn">[Edit]</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
           <div className="lead-pagination">
             <span>Showing 1 to {leads.length} of {leads.length} records</span>

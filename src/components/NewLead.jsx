@@ -55,8 +55,11 @@ const initialForm = {
   bankName: '',
   primaryBankAccount: '',
   acquisitionChannel: '',
+  referralDate: '',
   partnerId: '',
   partnerName: '',
+  employeeId: '',
+  employeeName: '',
 };
 
 const steps = [
@@ -81,7 +84,7 @@ const steps = [
     { name: 'collateral', label: 'Down Payment / Collateral', type: 'number', min: 0, step: 1 },
   ] },
   { title: 'Income Profile', fields: [
-    { name: 'employmentType', label: 'Employment Type', type: 'select', options: ['Salaried', 'Self-employed', 'Business owner', 'Other'], required: true },
+    { name: 'employmentType', label: 'Employment Type', type: 'select', options: ['Salaried', 'Self-Employed', 'Corporate Employee', 'Business Owner', 'Other'], required: true },
     { name: 'annualIncome', label: 'Annual Income', type: 'number', min: 1, step: 1, required: true },
     { name: 'designation', label: 'Designation' },
     { name: 'employerName', label: 'Employer / Business Name', wide: true },
@@ -99,6 +102,7 @@ const steps = [
 export default function NewLead({ open, onClose, onCreate }) {
   const [form, setForm] = useState(initialForm);
   const [activeStep, setActiveStep] = useState(0);
+  const [otpMessage, setOtpMessage] = useState('');
 
   if (!open) return null;
 
@@ -119,22 +123,32 @@ export default function NewLead({ open, onClose, onCreate }) {
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+    const normalizedValue = name === 'mobileNumber' || name === 'aadhaarCard' || name === 'otpNumber'
+      ? value.replace(/\D/g, '').slice(0, name === 'mobileNumber' ? 10 : name === 'aadhaarCard' ? 12 : 6)
+      : name === 'panCard' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10) : value;
+
+    setForm((current) => ({
+      ...current,
+      [name]: normalizedValue,
+      ...(name === 'mobileNumber' ? { otpSent: false, otpNumber: '' } : {}),
+    }));
+    if (name === 'mobileNumber') setOtpMessage('');
   };
 
   const resetAndClose = () => {
     setForm(initialForm);
     setActiveStep(0);
+    setOtpMessage('');
     onClose();
   };
 
   const validateStep = () => {
-    const fields = Array.from(document.querySelectorAll('.lead-step-panel input[required], .lead-step-panel select[required]'));
-    const invalidField = fields.find((field) => field.disabled || !field.value || !field.value.toString().trim());
+    const fields = Array.from(document.querySelectorAll('.lead-step-panel input, .lead-step-panel select'));
+    const invalidField = fields.find((field) => field.willValidate && !field.checkValidity());
 
     if (invalidField) {
       invalidField.focus();
-      invalidField.reportValidity ? invalidField.reportValidity() : window.alert('Please complete all mandatory fields before continuing.');
+      invalidField.reportValidity();
       return false;
     }
 
@@ -146,13 +160,21 @@ export default function NewLead({ open, onClose, onCreate }) {
   };
 
   const handleSendOtp = () => {
-    if (!form.mobileNumber || form.mobileNumber.length < 10) {
-      window.alert('Please enter a valid 10-digit mobile number before sending OTP.');
+    if (!/^[6-9]\d{9}$/.test(form.mobileNumber)) {
+      setOtpMessage('Enter a valid 10-digit Indian mobile number first.');
       return;
     }
 
-    setForm((current) => ({ ...current, otpSent: true }));
-    window.alert('OTP sent to the registered mobile number.');
+    setOtpMessage('SMS delivery is not configured. Connect an OTP service to send a verification code.');
+  };
+
+  const handleVerifyOtp = () => {
+    if (!/^[0-9]{6}$/.test(form.otpNumber)) {
+      setOtpMessage('Enter the 6-digit OTP to check its format.');
+      return;
+    }
+
+    setOtpMessage('OTP format is valid. Connect a mobile verification service to authenticate this code.');
   };
 
   const renderField = (field) => (
@@ -183,7 +205,7 @@ export default function NewLead({ open, onClose, onCreate }) {
   );
 
   const renderPersonalDetails = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '18px 20px' }}>
+    <div className="lead-personal-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '18px 20px' }}>
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignSelf: 'end' }}>
         <span>Name of the Customer <em>*</em></span>
         <input
@@ -220,10 +242,10 @@ export default function NewLead({ open, onClose, onCreate }) {
         <input name="customerType" value={computedCustomerType} readOnly style={{ minHeight: '42px', background: '#f6f8fa' }} />
       </label>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '12px' }}>
+      <div className="lead-mobile-field" style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '12px' }}>
         <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span>Mobile Number</span>
-          <input name="mobileNumber" value={form.mobileNumber} onChange={handleChange} type="tel" inputMode="numeric" maxLength={10} pattern="[6-9][0-9]{9}" style={{ minHeight: '42px' }} />
+          <input name="mobileNumber" value={form.mobileNumber} onChange={handleChange} type="tel" inputMode="numeric" autoComplete="tel-national" maxLength={10} pattern="[6-9][0-9]{9}" title="Enter a 10-digit Indian mobile number starting with 6, 7, 8, or 9." required style={{ minHeight: '42px' }} />
         </label>
         <button
           type="button"
@@ -234,15 +256,19 @@ export default function NewLead({ open, onClose, onCreate }) {
         </button>
       </div>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <span>OTP Number</span>
-        <input name="otpNumber" value={form.otpNumber} onChange={handleChange} inputMode="numeric" maxLength={6} style={{ minHeight: '42px' }} />
-      </label>
+      <div className="lead-otp-field">
+        <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <span>OTP Number</span>
+          <input name="otpNumber" value={form.otpNumber} onChange={handleChange} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} title="Enter the 6-digit OTP." style={{ minHeight: '42px' }} />
+        </label>
+        <button type="button" className="lead-otp-verify" onClick={handleVerifyOtp}>Verify OTP</button>
+        {otpMessage ? <p className="lead-otp-message" role="status">{otpMessage}</p> : null}
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '12px' }}>
         <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span>PAN Card</span>
-          <input name="panCard" value={form.panCard} onChange={handleChange} maxLength={10} style={{ minHeight: '42px' }} />
+          <input name="panCard" value={form.panCard} onChange={handleChange} autoComplete="off" maxLength={10} pattern="[A-Z]{5}[0-9]{4}[A-Z]" title="Enter PAN in the format ABCDE1234F." style={{ minHeight: '42px' }} />
         </label>
         <button type="button" style={{ minWidth: '90px', minHeight: '42px', border: '1px solid #bfd4e8', background: '#e6edf6', color: '#223f5b', borderRadius: '6px', fontWeight: 700, padding: '0 14px' }}>
           Validate
@@ -252,7 +278,7 @@ export default function NewLead({ open, onClose, onCreate }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '12px' }}>
         <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span>Aadhaar Card</span>
-          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" maxLength={12} style={{ minHeight: '42px' }} />
+          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} title="Enter the 12-digit Aadhaar number without spaces." style={{ minHeight: '42px' }} />
         </label>
         <button type="button" style={{ minWidth: '90px', minHeight: '42px', border: '1px solid #bfd4e8', background: '#e6edf6', color: '#223f5b', borderRadius: '6px', fontWeight: 700, padding: '0 14px' }}>
           Validate
@@ -331,6 +357,11 @@ export default function NewLead({ open, onClose, onCreate }) {
         </select>
       </label>
 
+      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <span>Down Payment / Collateral</span>
+        <input name="collateral" type="number" min="0" value={form.collateral} onChange={handleChange} style={{ minHeight: '42px' }} />
+      </label>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '12px' }}>
         <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span>Tenure</span>
@@ -349,11 +380,6 @@ export default function NewLead({ open, onClose, onCreate }) {
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>No. of Instalments</span>
         <input name="instalments" value={computedInstalments} readOnly style={{ minHeight: '42px', background: '#f6f8fa' }} />
-      </label>
-
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <span>Down Payment / Collateral</span>
-        <input name="collateral" type="number" min="0" value={form.collateral} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
     </div>
@@ -379,9 +405,8 @@ export default function NewLead({ open, onClose, onCreate }) {
       </label>
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <span>Designation</span>
-        
-        <input name="designation" value={form.designation} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <span>Designation{form.employmentType === 'Self-Employed' ? ' (not applicable)' : ''}</span>
+        <input name="designation" value={form.designation} onChange={handleChange} disabled={form.employmentType === 'Self-Employed'} style={{ minHeight: '42px', background: form.employmentType === 'Self-Employed' ? '#f1f4f7' : '#fff' }} />
       </label>
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -403,8 +428,8 @@ export default function NewLead({ open, onClose, onCreate }) {
   );
 
   const renderReferralDetails = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '18px 20px' }}>
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div className="lead-referral-grid">
+      <label className="lead-field lead-referral-channel">
         <span>Lead Acquisition Channel <em>*</em></span>
         <select name="acquisitionChannel" value={form.acquisitionChannel} onChange={handleChange} required style={{ minHeight: '42px' }}>
           <option value="">Select channel</option>
@@ -419,14 +444,29 @@ export default function NewLead({ open, onClose, onCreate }) {
         </select>
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <span>Sourcing Agent / Partner ID</span>
-        <input name="partnerId" value={form.partnerId} onChange={handleChange} disabled={form.acquisitionChannel !== 'Bank Generated'} style={{ minHeight: '42px', opacity: form.acquisitionChannel === 'Bank Generated' ? 1 : 0.5 }} />
+      <label className="lead-field lead-referral-date">
+        <span>Date</span>
+        <input type="date" name="referralDate" value={form.referralDate} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px', gridColumn: '1 / -1' }}>
+      <label className="lead-field lead-referral-partner-id">
+        <span>Sourcing Agent / Partner ID</span>
+        <input name="partnerId" value={form.partnerId} onChange={handleChange} disabled={!['Bank Generated', 'Partner / Agent'].includes(form.acquisitionChannel)} style={{ minHeight: '42px' }} />
+      </label>
+
+      <label className="lead-field lead-referral-partner-name">
         <span>Agent / Partner Name</span>
-        <input name="partnerName" value={form.partnerName} onChange={handleChange} disabled={form.acquisitionChannel !== 'Bank Generated'} style={{ minHeight: '42px', opacity: form.acquisitionChannel === 'Bank Generated' ? 1 : 0.5 }} />
+        <input name="partnerName" value={form.partnerName} onChange={handleChange} disabled={!['Bank Generated', 'Partner / Agent'].includes(form.acquisitionChannel)} style={{ minHeight: '42px' }} />
+      </label>
+
+      <label className="lead-field lead-referral-employee-id">
+        <span>Emp ID</span>
+        <input name="employeeId" value={form.employeeId} onChange={handleChange} style={{ minHeight: '42px' }} />
+      </label>
+
+      <label className="lead-field lead-referral-employee-name">
+        <span>Emp Name</span>
+        <input name="employeeName" value={form.employeeName} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
     </div>
@@ -505,9 +545,9 @@ export default function NewLead({ open, onClose, onCreate }) {
             </nav>
 
             <section className="lead-step-panel" aria-labelledby="lead-step-title">
-              <div className="lead-step-heading">
-                <span>Step {activeStep + 1} of {steps.length}</span>
-                <h3 id="lead-step-title">{steps[activeStep].title}</h3>
+              <div className={`lead-step-heading${activeStep === steps.length - 1 ? ' lead-referral-heading' : ''}`}>
+                {activeStep === steps.length - 1 ? null : <span>Step {activeStep + 1} of {steps.length}</span>}
+                <h3 id="lead-step-title">{activeStep === steps.length - 1 ? 'Lead Management' : steps[activeStep].title}</h3>
               </div>
               {activeStep === 0 ? (
                 renderPersonalDetails()
