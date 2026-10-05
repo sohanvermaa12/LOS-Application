@@ -380,6 +380,7 @@ export default function NewLead({ open, onClose, onCreate }) {
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Designation</span>
+        
         <input name="designation" value={form.designation} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
