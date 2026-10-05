@@ -17,7 +17,12 @@ const items = [
 
 export default function Sidebar({ open, onClose }) {
   return <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
-    <div className="brand-block"><div className="brand-mark"><span>LOS</span></div><div><strong>LOS</strong><small>LEAD MANAGEMENT</small></div><button className="icon-button mobile-close" onClick={onClose} aria-label="Close menu">×</button></div>
+    <div className="brand-block">
+      <Link href="/bank_profile" onClick={onClose} aria-label="Open bank profile" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="brand-mark"><span>AX</span></div>
+      </Link>
+      <button className="icon-button mobile-close" onClick={onClose} aria-label="Close menu">×</button>
+    </div>
     <nav className="main-nav">{items.map(({ href, label, icon: Icon }) => <Link className="nav-item" href={href} key={`${href}-${label}`} onClick={onClose}><Icon size={18} strokeWidth={1.8} /><span>{label}</span></Link>)}</nav>
     <div className="sidebar-footer"><div className="mini-avatar">VM</div><div className="user-meta"><strong>Vikram Aditya Mehta</strong><span>SUPER_ADMIN</span></div></div>
   </aside>;
