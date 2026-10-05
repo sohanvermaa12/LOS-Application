@@ -1,8 +1,7 @@
 'use client';
 
-import { Bell, LogOut, Menu } from 'lucide-react';
+import { Bell, LogOut, Menu, CircleUserRound } from 'lucide-react';
 import Link from 'next/link';
-import { CircleUserRound } from 'lucide-react';
 import { logout } from '../services/login';
 
 export default function Header({ title, onMenu }) {
