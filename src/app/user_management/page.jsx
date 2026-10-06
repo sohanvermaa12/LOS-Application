@@ -1,2231 +1,699 @@
 "use client";
 
 import {
-  ArrowUpRight,
-  Check,
-  Edit3,
-  Eye,
-  EyeOff,
-  Filter,
-  Plus,
-  Search,
-  ShieldCheck,
-  UserRound,
-  UserX,
-  X,
-  Building2,
-  Clock3,
-  LockKeyhole,
-  CalendarDays,
+  Building2, CalendarDays, Check, Clock3, Edit3, Eye, EyeOff, LockKeyhole,
+  Plus, Search, ShieldCheck, UserRound, Users, X, Eye as ViewIcon,
 } from "lucide-react";
-
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import AppShell from "../../components/AppShell";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 
+const EMPTY_FORM = {
+  employeeId: "", userName: "", password: "", confirmPassword: "",
+  twoFAEnabled: "Y", status: "Active",
+  firstName: "", middleName: "", lastName: "", dateOfBirth: "", email: "", mobile: "", gender: "",
+  designation: "", role: "",
+  multiBranchAccess: "N", loginBranch: "", loginOnHolidays: "N",
+  loginTime: "09:00", logoutTime: "18:00", inactiveSessionTimeout: "900", badLogins: "0",
+  lastLoginDate: "", lastLoginTime: "",
+};
+
+const ROLES = {
+  Maker: "Create and process loan applications.",
+  Checker: "Review, verify and approve applications.",
+  Viewer: "View permitted application information.",
+};
+const BRANCHES = ["Head Office", "Pune Main Branch", "Mumbai Branch", "Nashik Branch", "Nagpur Branch"];
+
+const validatePassword = (p) => {
+  if (p.length < 8) return "Password must contain at least 8 characters.";
+  if (!/[A-Z]/.test(p)) return "Password must contain at least one uppercase letter.";
+  if (!/[a-z]/.test(p)) return "Password must contain at least one lowercase letter.";
+  if (!/[0-9]/.test(p)) return "Password must contain at least one number.";
+  if (!/[!@#$%^&*]/.test(p)) return "Password must contain at least one special character.";
+  return "";
+};
+
+const passwordScore = (p) =>
+  [p.length >= 8, /[A-Z]/.test(p), /[a-z]/.test(p), /[0-9]/.test(p), /[!@#$%^&*]/.test(p)].filter(Boolean).length;
+
+/* ---------- small building blocks ---------- */
+
+function Field({ label, required, hint, children }) {
+  return (
+    <div className="um-field">
+      <label className="um-label">
+        {label}
+        {required && <span className="um-req"> *</span>}
+      </label>
+      {children}
+      {hint && <div className="um-hint">{hint}</div>}
+    </div>
+  );
+}
+
+function Segmented({ value, onChange, options = [["Y", "Yes"], ["N", "No"]] }) {
+  return (
+    <div className="um-seg" role="radiogroup">
+      {options.map(([v, text]) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={value === v}
+          className={value === v ? "um-seg-on" : ""}
+          onClick={() => onChange(v)}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Section({ icon: Icon, title, subtitle, children }) {
+  return (
+    <section className="um-section">
+      <header className="um-section-head">
+        <span className="um-section-icon"><Icon size={17} /></span>
+        <div>
+          <h4>{title}</h4>
+          <p>{subtitle}</p>
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function PasswordInput({ show, onToggle, ...props }) {
+  return (
+    <div className="um-pw">
+      <input className="form-input um-input" type={show ? "text" : "password"} required {...props} />
+      <button type="button" onClick={onToggle} aria-label={show ? "Hide password" : "Show password"}>
+        {show ? <EyeOff size={17} /> : <Eye size={17} />}
+      </button>
+    </div>
+  );
+}
+
+/* ---------- page ---------- */
+
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
   const [showCreateUser, setShowCreateUser] = useState(false);
-
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  const [passwordError, setPasswordError] = useState("");
+  const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
-  const [form, setForm] = useState({
-    employeeId: "",
-    userName: "",
-    password: "",
-    confirmPassword: "",
-
-    twoFAEnabled: "Y",
-    status: "Active",
-
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    dateOfBirth: "",
-    email: "",
-    mobile: "",
-    gender: "",
-
-    designation: "",
-    role: "",
-
-    multiBranchAccess: "N",
-    loginBranch: "",
-
-    loginOnHolidays: "N",
-
-    loginTime: "09:00",
-    logoutTime: "18:00",
-
-    inactiveSessionTimeout: "900",
-    badLogins: "0",
-
-    lastLoginDate: "",
-    lastLoginTime: "",
-  });
-
-  // =========================================================
-  // HANDLE FORM CHANGE
-  // =========================================================
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (
-      name === "password" ||
-      name === "confirmPassword"
-    ) {
-      setPasswordError("");
-    }
+  const set = (name, value) => {
+    setForm((prev) => ({ ...prev, [name]: value }));
+    setFormError("");
   };
+  const handleChange = (e) => set(e.target.name, e.target.value);
 
-  // =========================================================
-  // RESET FORM
-  // =========================================================
-
-  const resetForm = () => {
-    setForm({
-      employeeId: "",
-      userName: "",
-      password: "",
-      confirmPassword: "",
-
-      twoFAEnabled: "Y",
-      status: "Active",
-
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      dateOfBirth: "",
-      email: "",
-      mobile: "",
-      gender: "",
-
-      designation: "",
-      role: "",
-
-      multiBranchAccess: "N",
-      loginBranch: "",
-
-      loginOnHolidays: "N",
-
-      loginTime: "09:00",
-      logoutTime: "18:00",
-
-      inactiveSessionTimeout: "900",
-      badLogins: "0",
-
-      lastLoginDate: "",
-      lastLoginTime: "",
-    });
-
-    setPasswordError("");
+  const closeModal = () => {
+    setShowCreateUser(false);
+    setForm(EMPTY_FORM);
+    setFormError("");
     setShowPassword(false);
     setShowConfirmPassword(false);
   };
 
-  // =========================================================
-  // CLOSE MODAL
-  // =========================================================
-
-  const closeModal = () => {
-    setShowCreateUser(false);
-    resetForm();
-  };
-
-  // =========================================================
-  // PASSWORD POLICY
-  // =========================================================
-
-  const validatePassword = (password) => {
-    if (password.length < 8) {
-      return "Password must contain at least 8 characters.";
-    }
-
-    if (!/[A-Z]/.test(password)) {
-      return "Password must contain at least one uppercase letter.";
-    }
-
-    if (!/[a-z]/.test(password)) {
-      return "Password must contain at least one lowercase letter.";
-    }
-
-    if (!/[0-9]/.test(password)) {
-      return "Password must contain at least one number.";
-    }
-
-    if (!/[!@#$%^&*]/.test(password)) {
-      return "Password must contain at least one special character.";
-    }
-
-    return "";
-  };
-
-  // =========================================================
-  // CREATE USER
-  // =========================================================
-
   const handleCreateUser = (e) => {
     e.preventDefault();
 
-    const passwordValidation = validatePassword(form.password);
+    if (!form.employeeId.trim()) return setFormError("Employee ID is required.");
+    if (!form.userName.trim()) return setFormError("User Name is required.");
 
-    if (passwordValidation) {
-      setPasswordError(passwordValidation);
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setPasswordError(
-        "Password and Confirm Password do not match."
-      );
-      return;
-    }
-
-    if (!form.role) {
-      setPasswordError("Please select a user role.");
-      return;
-    }
-
-    if (
-      form.multiBranchAccess === "N" &&
-      !form.loginBranch
-    ) {
-      setPasswordError(
-        "Please select Login Branch when Multi Branch Access is No."
-      );
-      return;
-    }
-
-    if (!form.employeeId.trim()) {
-      setPasswordError("Employee ID is required.");
-      return;
-    }
-
-    if (!form.userName.trim()) {
-      setPasswordError("User Name is required.");
-      return;
-    }
-
-    const fullName = [
-      form.firstName,
-      form.middleName,
-      form.lastName,
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    const initials = fullName
-      .trim()
-      .split(" ")
-      .filter(Boolean)
-      .map((word) => word[0])
-      .join("")
-      .substring(0, 2)
-      .toUpperCase();
+    const pwError = validatePassword(form.password);
+    if (pwError) return setFormError(pwError);
+    if (form.password !== form.confirmPassword)
+      return setFormError("Password and Confirm Password do not match.");
+    if (!form.role) return setFormError("Please select a user role.");
+    if (form.multiBranchAccess === "N" && !form.loginBranch)
+      return setFormError("Please select a Login Branch when Multi Branch Access is No.");
 
     /*
       BACKEND API INTEGRATION WILL BE ADDED LATER.
-
-      Example future payload:
-
-      {
-        employeeId,
-        userName,
-        password,
-        twoFAEnabled,
-        status,
-        firstName,
-        middleName,
-        lastName,
-        dateOfBirth,
-        email,
-        mobile,
-        gender,
-        designation,
-        role,
-        multiBranchAccess,
-        loginBranch,
-        loginOnHolidays,
-        loginTime,
-        logoutTime,
-        inactiveSessionTimeout,
-        badLogins
-      }
-
-      Password should NEVER be stored directly by frontend.
-      Backend should hash the password.
+      Password must NEVER be stored by the frontend — the backend should hash it.
     */
 
-    const newUser = {
-      id: `USR-${String(users.length + 1).padStart(5, "0")}`,
+    const fullName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(" ");
+    const initials = fullName.split(" ").filter(Boolean).map((w) => w[0]).join("").substring(0, 2).toUpperCase();
 
-      employeeId: form.employeeId,
-      userName: form.userName,
-
-      fullName,
-
-      email: form.email,
-      mobile: form.mobile,
-
-      designation: form.designation,
-      role: form.role,
-
-      status: form.status,
-
-      loginBranch:
-        form.multiBranchAccess === "Y"
-          ? "Multiple Branches"
-          : form.loginBranch,
-
-      twoFAEnabled: form.twoFAEnabled,
-
-      lastLogin:
-        form.lastLoginDate && form.lastLoginTime
-          ? `${form.lastLoginDate} ${form.lastLoginTime}`
-          : "Never",
-
-      initials,
-    };
-
-    setUsers((prev) => [...prev, newUser]);
-
+    setUsers((prev) => [
+      ...prev,
+      {
+        id: `USR-${String(prev.length + 1).padStart(5, "0")}`,
+        employeeId: form.employeeId,
+        userName: form.userName,
+        fullName,
+        email: form.email,
+        mobile: form.mobile,
+        designation: form.designation,
+        role: form.role,
+        status: form.status,
+        loginBranch: form.multiBranchAccess === "Y" ? "Multiple Branches" : form.loginBranch,
+        twoFAEnabled: form.twoFAEnabled,
+        lastLogin: form.lastLoginDate && form.lastLoginTime ? `${form.lastLoginDate} ${form.lastLoginTime}` : "Never",
+        initials,
+      },
+    ]);
     closeModal();
   };
 
-  // =========================================================
-  // ROLE DESCRIPTION
-  // =========================================================
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return users.filter((u) => {
+      const matches =
+        !q ||
+        [u.employeeId, u.fullName, u.userName, u.email, u.mobile].some((v) => (v || "").toLowerCase().includes(q));
+      return (
+        matches &&
+        (!roleFilter || u.role === roleFilter) &&
+        (!branchFilter || u.loginBranch === branchFilter) &&
+        (!statusFilter || u.status === statusFilter)
+      );
+    });
+  }, [users, query, roleFilter, branchFilter, statusFilter]);
 
-  const roleDescriptions = {
-    Maker: "Create and process loan applications.",
-    Checker: "Review, verify and approve applications.",
-    Viewer: "View permitted application information.",
-  };
+  const count = (role) => users.filter((u) => u.role === role).length;
+  const score = passwordScore(form.password);
+  const strength = ["", "Weak", "Weak", "Fair", "Good", "Strong"][score];
 
-  // =========================================================
-  // COMMON STYLES
-  // =========================================================
-
-  const sectionStyle = {
-    marginBottom: "32px",
-  };
-
-  const sectionTitleStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    fontSize: "14px",
-    fontWeight: 700,
-    color: "#172033",
-    marginBottom: "18px",
-    paddingBottom: "12px",
-    borderBottom: "1px solid #e5e7eb",
-  };
-
-  const sectionIconStyle = {
-    width: "34px",
-    height: "34px",
-    borderRadius: "9px",
-    background: "#eff6ff",
-    color: "#2563eb",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
-
-  const grid2 = {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: "20px",
-  };
-
-  const grid3 = {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-    gap: "20px",
-  };
-
-  const fieldStyle = {
-    minWidth: 0,
-  };
-
-  // =========================================================
-  // UI
-  // =========================================================
+  const stats = [
+    { label: "Total users", value: users.length, icon: Users, tone: "blue" },
+    { label: "Makers", value: count("Maker"), icon: Edit3, tone: "teal" },
+    { label: "Checkers", value: count("Checker"), icon: ShieldCheck, tone: "violet" },
+    { label: "Viewers", value: count("Viewer"), icon: ViewIcon, tone: "amber" },
+  ];
 
   return (
     <AppShell title="User Management">
+      <style>{CSS}</style>
 
       <PageHeader
         eyebrow="ADMINISTRATION"
         title="User Management"
         description="Manage application users, authentication controls and role-based access."
         action={
-          <button
-            className="primary-button"
-            onClick={() => setShowCreateUser(true)}
-          >
-            <Plus size={17} />
-            Add User
+          <button className="primary-button" onClick={() => setShowCreateUser(true)}>
+            <Plus size={17} /> Add User
           </button>
         }
       />
 
-      {/* =====================================================
-          SEARCH & FILTERS
-      ===================================================== */}
+      {/* Summary */}
+      <section className="um-stats">
+        {stats.map(({ label, value, icon: Icon, tone }) => (
+          <Card key={label}>
+            <div className="um-stat">
+              <span className={`um-stat-icon um-${tone}`}><Icon size={20} /></span>
+              <div>
+                <div className="um-stat-value">{value}</div>
+                <div className="um-stat-label">{label}</div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </section>
 
-      <div className="workspace-toolbar">
-
-        <div className="search-field">
+      {/* Toolbar */}
+      <div className="um-toolbar">
+        <div className="um-search">
           <Search size={17} />
-
           <input
             type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by employee ID, name, username, email or mobile"
           />
         </div>
-
-        <button className="filter-select">
-          <Filter size={15} />
-          Role
-        </button>
-
-        <button className="filter-select">
-          <Filter size={15} />
-          Branch
-        </button>
-
-        <button className="filter-select">
-          <Filter size={15} />
-          Status
-        </button>
-
+        <select className="um-filter" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Filter by role">
+          <option value="">All roles</option>
+          {Object.keys(ROLES).map((r) => <option key={r}>{r}</option>)}
+        </select>
+        <select className="um-filter" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="Filter by branch">
+          <option value="">All branches</option>
+          {[...BRANCHES, "Multiple Branches"].map((b) => <option key={b}>{b}</option>)}
+        </select>
+        <select className="um-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option>Active</option>
+          <option>Inactive</option>
+        </select>
       </div>
 
-      {/* =====================================================
-          SUMMARY CARDS
-      ===================================================== */}
-
-      <section
-        className="customer-grid"
-        style={{ marginBottom: "24px" }}
-      >
-
-        <Card>
-          <div className="customer-card-top">
-            <div className="customer-avatar">
-              <UserRound size={19} />
-            </div>
-          </div>
-
-          <h3>{users.length}</h3>
-          <p>Total Users</p>
-        </Card>
-
-        <Card>
-          <div className="customer-card-top">
-            <div className="customer-avatar">
-              <ShieldCheck size={19} />
-            </div>
-          </div>
-
-          <h3>
-            {
-              users.filter(
-                (user) => user.role === "Maker"
-              ).length
-            }
-          </h3>
-
-          <p>Maker Users</p>
-        </Card>
-
-        <Card>
-          <div className="customer-card-top">
-            <div className="customer-avatar">
-              <ShieldCheck size={19} />
-            </div>
-          </div>
-
-          <h3>
-            {
-              users.filter(
-                (user) => user.role === "Checker"
-              ).length
-            }
-          </h3>
-
-          <p>Checker Users</p>
-        </Card>
-
-        <Card>
-          <div className="customer-card-top">
-            <div className="customer-avatar">
-              <UserX size={19} />
-            </div>
-          </div>
-
-          <h3>
-            {
-              users.filter(
-                (user) => user.role === "Viewer"
-              ).length
-            }
-          </h3>
-
-          <p>Viewer Users</p>
-        </Card>
-
-      </section>
-
-      {/* =====================================================
-          USER LIST
-      ===================================================== */}
-
+      {/* List */}
       <Card>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-
+        <div className="um-list-head">
           <div>
-            <h3 style={{ margin: 0 }}>
-              Application Users
-            </h3>
-
-            <p style={{ margin: "5px 0 0" }}>
-              Users configured for the LOS application.
+            <h3>Application users</h3>
+            <p>
+              {users.length
+                ? `Showing ${filtered.length} of ${users.length} users configured for the LOS application.`
+                : "Users configured for the LOS application."}
             </p>
           </div>
-
-          <button
-            className="outline-button"
-            onClick={() => setShowCreateUser(true)}
-          >
-            <Plus size={15} />
-            Add User
+          <button className="outline-button" onClick={() => setShowCreateUser(true)}>
+            <Plus size={15} /> Add User
           </button>
-
         </div>
 
-        {users.length === 0 ? (
-
-          <div
-            style={{
-              minHeight: "320px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-            }}
-          >
-
-            <div>
-
-              <div
-                style={{
-                  width: "58px",
-                  height: "58px",
-                  margin: "0 auto 16px",
-                  borderRadius: "14px",
-                  background: "#f1f5f9",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <UserRound size={25} />
-              </div>
-
-              <h3 style={{ marginBottom: "6px" }}>
-                No users created
-              </h3>
-
-              <p style={{ marginBottom: "20px" }}>
-                Create a user and assign a Maker,
-                Checker or Viewer role.
-              </p>
-
-              <button
-                className="primary-button"
-                onClick={() => setShowCreateUser(true)}
-              >
-                <Plus size={17} />
-                Create User
+        {filtered.length === 0 ? (
+          <div className="um-empty">
+            <span className="um-empty-icon"><UserRound size={26} /></span>
+            <h3>{users.length === 0 ? "No users created yet" : "No users match your filters"}</h3>
+            <p>
+              {users.length === 0
+                ? "Create a user and assign a Maker, Checker or Viewer role."
+                : "Try a different search term or clear the filters."}
+            </p>
+            {users.length === 0 && (
+              <button className="primary-button" onClick={() => setShowCreateUser(true)}>
+                <Plus size={17} /> Create User
               </button>
-
-            </div>
-
+            )}
           </div>
-
         ) : (
-
-          <div style={{ overflowX: "auto" }}>
-
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: "1200px",
-              }}
-            >
-
+          <div className="um-table-wrap">
+            <table className="um-table">
               <thead>
-
                 <tr>
-
-                  <th className="table-header">
-                    Employee / User
-                  </th>
-
-                  <th className="table-header">
-                    Role
-                  </th>
-
-                  <th className="table-header">
-                    Designation
-                  </th>
-
-                  <th className="table-header">
-                    Branch
-                  </th>
-
-                  <th className="table-header">
-                    Contact
-                  </th>
-
-                  <th className="table-header">
-                    2FA
-                  </th>
-
-                  <th className="table-header">
-                    Status
-                  </th>
-
-                  <th className="table-header">
-                    Last Login
-                  </th>
-
-                  <th className="table-header">
-                    Action
-                  </th>
-
+                  {["Employee / User", "Role", "Designation", "Branch", "Contact", "2FA", "Status", "Last login", ""].map((h) => (
+                    <th key={h}>{h}</th>
+                  ))}
                 </tr>
-
               </thead>
-
               <tbody>
-
-                {users.map((user) => (
-
-                  <tr key={user.id}>
-
-                    <td className="table-cell">
-
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "12px",
-                        }}
-                      >
-
-                        <div className="customer-avatar">
-                          {user.initials}
-                        </div>
-
+                {filtered.map((u) => (
+                  <tr key={u.id}>
+                    <td data-label="User">
+                      <div className="um-person">
+                        <span className="um-avatar">{u.initials}</span>
                         <div>
-
-                          <strong>
-                            {user.fullName}
-                          </strong>
-
-                          <div
-                            style={{
-                              fontSize: "12px",
-                              opacity: 0.6,
-                              marginTop: "3px",
-                            }}
-                          >
-                            {user.employeeId}
-                            {" • "}
-                            {user.userName}
-                          </div>
-
+                          <strong>{u.fullName}</strong>
+                          <small>{u.employeeId} • {u.userName}</small>
                         </div>
-
                       </div>
-
                     </td>
-
-                    <td className="table-cell">
-
-                      <span className="role-badge">
-                        {user.role}
+                    <td data-label="Role"><span className={`um-badge um-role-${u.role}`}>{u.role}</span></td>
+                    <td data-label="Designation">{u.designation || "-"}</td>
+                    <td data-label="Branch">{u.loginBranch || "-"}</td>
+                    <td data-label="Contact">
+                      <div>{u.email || "-"}</div>
+                      <small>{u.mobile}</small>
+                    </td>
+                    <td data-label="2FA">
+                      <span className={`um-dot ${u.twoFAEnabled === "Y" ? "on" : "off"}`}>
+                        {u.twoFAEnabled === "Y" ? "Enabled" : "Disabled"}
                       </span>
-
                     </td>
-
-                    <td className="table-cell">
-                      {user.designation || "-"}
+                    <td data-label="Status">
+                      <span className={`um-pill ${u.status === "Active" ? "ok" : "warn"}`}>{u.status}</span>
                     </td>
-
-                    <td className="table-cell">
-                      {user.loginBranch || "-"}
+                    <td data-label="Last login">{u.lastLogin}</td>
+                    <td className="um-actions">
+                      <button className="outline-button" title="Edit user" aria-label="Edit user"><Edit3 size={14} /></button>
+                      <button className="outline-button" title="View user" aria-label="View user"><ViewIcon size={14} /> View</button>
                     </td>
-
-                    <td className="table-cell">
-
-                      <div>
-                        {user.email}
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          opacity: 0.6,
-                          marginTop: "3px",
-                        }}
-                      >
-                        {user.mobile}
-                      </div>
-
-                    </td>
-
-                    <td className="table-cell">
-                      {user.twoFAEnabled === "Y"
-                        ? "Enabled"
-                        : "Disabled"}
-                    </td>
-
-                    <td className="table-cell">
-
-                      <span
-                        className={`status ${
-                          user.status === "Active"
-                            ? "status-green"
-                            : "status-amber"
-                        }`}
-                      >
-                        {user.status}
-                      </span>
-
-                    </td>
-
-                    <td className="table-cell">
-                      {user.lastLogin}
-                    </td>
-
-                    <td className="table-cell">
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "7px",
-                        }}
-                      >
-
-                        <button
-                          className="outline-button"
-                          title="Edit User"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-
-                        <button className="outline-button">
-                          View
-                          <ArrowUpRight size={14} />
-                        </button>
-
-                      </div>
-
-                    </td>
-
                   </tr>
-
                 ))}
-
               </tbody>
-
             </table>
-
           </div>
-
         )}
-
       </Card>
 
-      {/* =====================================================
-          CREATE USER MODAL
-      ===================================================== */}
-
+      {/* Create user modal */}
       {showCreateUser && (
-
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 2000,
-            background: "rgba(15, 23, 42, 0.62)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-          }}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              closeModal();
-            }
-          }}
-        >
-
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "1120px",
-              maxHeight: "94vh",
-              overflowY: "auto",
-              background: "#ffffff",
-              borderRadius: "18px",
-              boxShadow:
-                "0 30px 90px rgba(15, 23, 42, 0.35)",
-            }}
-          >
-
-            {/* =================================================
-                HEADER
-            ================================================= */}
-
-            <div
-              style={{
-                padding: "24px 32px",
-                borderBottom: "1px solid #e5e7eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                position: "sticky",
-                top: 0,
-                background: "#ffffff",
-                zIndex: 5,
-              }}
-            >
-
-              <div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}
-                >
-
-                  <div
-                    style={{
-                      width: "42px",
-                      height: "42px",
-                      borderRadius: "11px",
-                      background: "#eff6ff",
-                      color: "#2563eb",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <UserRound size={21} />
-                  </div>
-
-                  <div>
-
-                    <h2
-                      style={{
-                        margin: 0,
-                        fontSize: "22px",
-                        fontWeight: 750,
-                        color: "#172033",
-                      }}
-                    >
-                      Create New User
-                    </h2>
-
-                    <p
-                      style={{
-                        margin: "4px 0 0",
-                        color: "#64748b",
-                        fontSize: "13px",
-                      }}
-                    >
-                      Create and configure an application
-                      user account.
-                    </p>
-
-                  </div>
-
+        <div className="um-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
+          <div className="um-modal" role="dialog" aria-modal="true" aria-labelledby="um-title">
+            <div className="um-modal-head">
+              <div className="um-modal-title">
+                <span className="um-section-icon um-lg"><UserRound size={21} /></span>
+                <div>
+                  <h2 id="um-title">Create new user</h2>
+                  <p>Create and configure an application user account.</p>
                 </div>
-
               </div>
-
-              <button
-                type="button"
-                onClick={closeModal}
-                style={{
-                  border: "none",
-                  background: "#f8fafc",
-                  width: "38px",
-                  height: "38px",
-                  borderRadius: "9px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <X size={19} />
-              </button>
-
+              <button type="button" className="um-close" onClick={closeModal} aria-label="Close"><X size={19} /></button>
             </div>
 
-            {/* =================================================
-                FORM
-            ================================================= */}
-
-            <form onSubmit={handleCreateUser}>
-
-              <div
-                style={{
-                  padding: "30px 32px 20px",
-                }}
-              >
-
-                {/* =================================================
-                    SECTION 1 - EMPLOYEE & LOGIN
-                ================================================= */}
-
-                <div style={sectionStyle}>
-
-                  <div style={sectionTitleStyle}>
-
-                    <div style={sectionIconStyle}>
-                      <LockKeyhole size={17} />
-                    </div>
-
-                    <div>
-                      <div>
-                        Employee & Login Information
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 400,
-                          color: "#94a3b8",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Employee identity and authentication
-                        credentials
-                      </div>
-                    </div>
-
-                  </div>
-
-                  <div style={grid3}>
-
-                    <div style={fieldStyle}>
-
-                      <label className="form-label">
-                        Employee ID <span>*</span>
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="text"
-                        name="employeeId"
-                        value={form.employeeId}
-                        onChange={handleChange}
-                        placeholder="Enter Employee ID"
-                        required
-                      />
-
-                    </div>
-
-                    <div style={fieldStyle}>
-
-                      <label className="form-label">
-                        User Name <span>*</span>
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="text"
-                        name="userName"
-                        value={form.userName}
-                        onChange={handleChange}
-                        placeholder="Enter login username"
-                        required
-                      />
-
-                    </div>
-
-                    <div style={fieldStyle}>
-
-                      <label className="form-label">
-                        Status <span>*</span>
-                      </label>
-
-                      <select
-                        className="form-input"
-                        name="status"
-                        value={form.status}
-                        onChange={handleChange}
-                      >
-                        <option value="Active">
-                          Active
-                        </option>
-
-                        <option value="Inactive">
-                          Inactive
-                        </option>
+            <form onSubmit={handleCreateUser} className="um-form">
+              <div className="um-body">
+                <Section icon={LockKeyhole} title="Employee & login" subtitle="Employee identity and authentication credentials">
+                  <div className="um-grid g3">
+                    <Field label="Employee ID" required>
+                      <input className="form-input um-input" name="employeeId" value={form.employeeId} onChange={handleChange} placeholder="Enter Employee ID" required />
+                    </Field>
+                    <Field label="User name" required>
+                      <input className="form-input um-input" name="userName" value={form.userName} onChange={handleChange} placeholder="Enter login username" required />
+                    </Field>
+                    <Field label="Status" required>
+                      <select className="form-input um-input" name="status" value={form.status} onChange={handleChange}>
+                        <option>Active</option>
+                        <option>Inactive</option>
                       </select>
-
-                    </div>
-
+                    </Field>
                   </div>
 
-                  <div
-                    style={{
-                      ...grid2,
-                      marginTop: "20px",
-                    }}
-                  >
-
-                    {/* PASSWORD */}
-
-                    <div>
-
-                      <label className="form-label">
-                        Password <span>*</span>
-                      </label>
-
-                      <div
-                        style={{
-                          position: "relative",
-                        }}
-                      >
-
-                        <input
-                          className="form-input"
-                          type={
-                            showPassword
-                              ? "text"
-                              : "password"
-                          }
-                          name="password"
-                          value={form.password}
-                          onChange={handleChange}
-                          placeholder="Create initial password"
-                          required
-                          style={{
-                            paddingRight: "45px",
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setShowPassword(
-                              (prev) => !prev
-                            )
-                          }
-                          style={{
-                            position: "absolute",
-                            right: "12px",
-                            top: "50%",
-                            transform:
-                              "translateY(-50%)",
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            color: "#64748b",
-                          }}
-                        >
-                          {showPassword ? (
-                            <EyeOff size={17} />
-                          ) : (
-                            <Eye size={17} />
-                          )}
-                        </button>
-
-                      </div>
-
-                      <div
-                        style={{
-                          marginTop: "7px",
-                          fontSize: "11px",
-                          color: "#64748b",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        Minimum 8 characters with uppercase,
-                        lowercase, number and special character.
-                      </div>
-
-                    </div>
-
-                    {/* CONFIRM PASSWORD */}
-
-                    <div>
-
-                      <label className="form-label">
-                        Confirm Password <span>*</span>
-                      </label>
-
-                      <div
-                        style={{
-                          position: "relative",
-                        }}
-                      >
-
-                        <input
-                          className="form-input"
-                          type={
-                            showConfirmPassword
-                              ? "text"
-                              : "password"
-                          }
-                          name="confirmPassword"
-                          value={form.confirmPassword}
-                          onChange={handleChange}
-                          placeholder="Re-enter password"
-                          required
-                          style={{
-                            paddingRight: "45px",
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setShowConfirmPassword(
-                              (prev) => !prev
-                            )
-                          }
-                          style={{
-                            position: "absolute",
-                            right: "12px",
-                            top: "50%",
-                            transform:
-                              "translateY(-50%)",
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            color: "#64748b",
-                          }}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff size={17} />
-                          ) : (
-                            <Eye size={17} />
-                          )}
-                        </button>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  {/* 2FA */}
-
-                  <div
-                    style={{
-                      marginTop: "20px",
-                    }}
-                  >
-
-                    <label className="form-label">
-                      2FA Enabled <span>*</span>
-                    </label>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                        marginTop: "8px",
-                      }}
-                    >
-
-                      {["Y", "N"].map((value) => {
-
-                        const selected =
-                          form.twoFAEnabled === value;
-
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                twoFAEnabled: value,
-                              }))
-                            }
-                            style={{
-                              minWidth: "90px",
-                              padding: "10px 18px",
-                              borderRadius: "8px",
-                              border: selected
-                                ? "1px solid #2563eb"
-                                : "1px solid #d1d5db",
-                              background: selected
-                                ? "#eff6ff"
-                                : "#ffffff",
-                              color: selected
-                                ? "#1d4ed8"
-                                : "#475569",
-                              fontWeight: 650,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {value === "Y"
-                              ? "Yes"
-                              : "No"}
-                          </button>
-                        );
-                      })}
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                {/* =================================================
-                    SECTION 2 - PERSONAL INFORMATION
-                ================================================= */}
-
-                <div style={sectionStyle}>
-
-                  <div style={sectionTitleStyle}>
-
-                    <div style={sectionIconStyle}>
-                      <UserRound size={17} />
-                    </div>
-
-                    <div>
-                      <div>
-                        Personal Information
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 400,
-                          color: "#94a3b8",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Employee personal and contact details
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* NAME */}
-
-                  <div style={grid3}>
-
-                    <div style={fieldStyle}>
-
-                      <label className="form-label">
-                        First Name <span>*</span>
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="text"
-                        name="firstName"
-                        value={form.firstName}
-                        onChange={handleChange}
-                        placeholder="First name"
-                        required
+                  <div className="um-grid g2 um-gap">
+                    <Field label="Password" required hint="Minimum 8 characters with uppercase, lowercase, number and special character.">
+                      <PasswordInput
+                        name="password" value={form.password} onChange={handleChange}
+                        placeholder="Create initial password"
+                        show={showPassword} onToggle={() => setShowPassword((s) => !s)}
                       />
-
-                    </div>
-
-                    <div style={fieldStyle}>
-
-                      <label className="form-label">
-                        Middle Name
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="text"
-                        name="middleName"
-                        value={form.middleName}
-                        onChange={handleChange}
-                        placeholder="Middle name"
-                      />
-
-                    </div>
-
-                    <div style={fieldStyle}>
-
-                      <label className="form-label">
-                        Last Name <span>*</span>
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="text"
-                        name="lastName"
-                        value={form.lastName}
-                        onChange={handleChange}
-                        placeholder="Last name"
-                        required
-                      />
-
-                    </div>
-
-                  </div>
-
-                  <div
-                    style={{
-                      ...grid3,
-                      marginTop: "20px",
-                    }}
-                  >
-
-                    <div>
-
-                      <label className="form-label">
-                        Date of Birth
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="date"
-                        name="dateOfBirth"
-                        value={form.dateOfBirth}
-                        onChange={handleChange}
-                      />
-
-                    </div>
-
-                    <div>
-
-                      <label className="form-label">
-                        Gender
-                      </label>
-
-                      <select
-                        className="form-input"
-                        name="gender"
-                        value={form.gender}
-                        onChange={handleChange}
-                      >
-
-                        <option value="">
-                          Select Gender
-                        </option>
-
-                        <option value="Male">
-                          Male
-                        </option>
-
-                        <option value="Female">
-                          Female
-                        </option>
-
-                        <option value="Other">
-                          Other
-                        </option>
-
-                      </select>
-
-                    </div>
-
-                    <div>
-
-                      <label className="form-label">
-                        Mobile No.
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="tel"
-                        name="mobile"
-                        value={form.mobile}
-                        onChange={handleChange}
-                        placeholder="Enter mobile number"
-                      />
-
-                    </div>
-
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: "20px",
-                    }}
-                  >
-
-                    <label className="form-label">
-                      Email ID
-                    </label>
-
-                    <input
-                      className="form-input"
-                      type="email"
-                      name="email"
-                      value={form.email}
-                      onChange={handleChange}
-                      placeholder="employee@bank.com"
-                    />
-
-                  </div>
-
-                </div>
-
-                {/* =================================================
-                    SECTION 3 - ROLE & ACCESS
-                ================================================= */}
-
-                <div style={sectionStyle}>
-
-                  <div style={sectionTitleStyle}>
-
-                    <div style={sectionIconStyle}>
-                      <ShieldCheck size={17} />
-                    </div>
-
-                    <div>
-
-                      <div>
-                        Role & Access Configuration
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 400,
-                          color: "#94a3b8",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Application role and functional access
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  <div style={grid2}>
-
-                    <div>
-
-                      <label className="form-label">
-                        Designation
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="text"
-                        name="designation"
-                        value={form.designation}
-                        onChange={handleChange}
-                        placeholder="e.g. Credit Officer"
-                      />
-
-                    </div>
-
-                    <div>
-
-                      <label className="form-label">
-                        Role <span>*</span>
-                      </label>
-
-                      <select
-                        className="form-input"
-                        name="role"
-                        value={form.role}
-                        onChange={handleChange}
-                        required
-                      >
-
-                        <option value="">
-                          Select Role
-                        </option>
-
-                        <option value="Maker">
-                          Maker
-                        </option>
-
-                        <option value="Checker">
-                          Checker
-                        </option>
-
-                        <option value="Viewer">
-                          Viewer
-                        </option>
-
-                      </select>
-
-                    </div>
-
-                  </div>
-
-                  {/* ROLE CARDS */}
-
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(3, minmax(0, 1fr))",
-                      gap: "14px",
-                      marginTop: "20px",
-                    }}
-                  >
-
-                    {[
-                      "Maker",
-                      "Checker",
-                      "Viewer",
-                    ].map((role) => {
-
-                      const selected =
-                        form.role === role;
-
-                      return (
-
-                        <button
-                          type="button"
-                          key={role}
-                          onClick={() =>
-                            setForm((prev) => ({
-                              ...prev,
-                              role,
-                            }))
-                          }
-                          style={{
-                            position: "relative",
-                            textAlign: "left",
-                            padding: "18px",
-                            borderRadius: "11px",
-                            border: selected
-                              ? "2px solid #2563eb"
-                              : "1px solid #dbe2ea",
-                            background: selected
-                              ? "#eff6ff"
-                              : "#ffffff",
-                            cursor: "pointer",
-                          }}
-                        >
-
-                          {selected && (
-
-                            <div
-                              style={{
-                                position: "absolute",
-                                right: "12px",
-                                top: "12px",
-                                width: "21px",
-                                height: "21px",
-                                borderRadius: "50%",
-                                background: "#2563eb",
-                                color: "#fff",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <Check size={12} />
-                            </div>
-
-                          )}
-
-                          <ShieldCheck
-                            size={20}
-                            style={{
-                              marginBottom: "10px",
-                              color: selected
-                                ? "#2563eb"
-                                : "#64748b",
-                            }}
-                          />
-
-                          <div
-                            style={{
-                              fontWeight: 700,
-                              fontSize: "14px",
-                              color: "#172033",
-                            }}
-                          >
-                            {role}
+                      {form.password && (
+                        <div className="um-meter" aria-live="polite">
+                          <div className="um-meter-bars">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <i key={i} className={i <= score ? `lvl-${score}` : ""} />
+                            ))}
                           </div>
-
-                          <div
-                            style={{
-                              fontSize: "11px",
-                              color: "#64748b",
-                              marginTop: "6px",
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {roleDescriptions[role]}
-                          </div>
-
-                        </button>
-
-                      );
-                    })}
-
-                  </div>
-
-                </div>
-
-                {/* =================================================
-                    SECTION 4 - BRANCH & LOGIN CONTROL
-                ================================================= */}
-
-                <div style={sectionStyle}>
-
-                  <div style={sectionTitleStyle}>
-
-                    <div style={sectionIconStyle}>
-                      <Building2 size={17} />
-                    </div>
-
-                    <div>
-
-                      <div>
-                        Branch & Login Controls
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 400,
-                          color: "#94a3b8",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Configure branch and working-day access
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  <div style={grid2}>
-
-                    {/* MULTI BRANCH */}
-
-                    <div>
-
-                      <label className="form-label">
-                        Multi Branch Access <span>*</span>
-                      </label>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "10px",
-                          marginTop: "8px",
-                        }}
-                      >
-
-                        {["Y", "N"].map((value) => {
-
-                          const selected =
-                            form.multiBranchAccess === value;
-
-                          return (
-
-                            <button
-                              type="button"
-                              key={value}
-                              onClick={() =>
-                                setForm((prev) => ({
-                                  ...prev,
-                                  multiBranchAccess: value,
-                                  loginBranch:
-                                    value === "Y"
-                                      ? ""
-                                      : prev.loginBranch,
-                                }))
-                              }
-                              style={{
-                                minWidth: "90px",
-                                padding: "10px 18px",
-                                borderRadius: "8px",
-                                border: selected
-                                  ? "1px solid #2563eb"
-                                  : "1px solid #d1d5db",
-                                background: selected
-                                  ? "#eff6ff"
-                                  : "#ffffff",
-                                color: selected
-                                  ? "#1d4ed8"
-                                  : "#475569",
-                                fontWeight: 650,
-                                cursor: "pointer",
-                              }}
-                            >
-                              {value === "Y"
-                                ? "Yes"
-                                : "No"}
-                            </button>
-
-                          );
-
-                        })}
-
-                      </div>
-
-                    </div>
-
-                    {/* LOGIN BRANCH */}
-
-                    <div>
-
-                      <label className="form-label">
-
-                        Login Branch
-
-                        {form.multiBranchAccess ===
-                          "N" && (
-                          <span> *</span>
-                        )}
-
-                      </label>
-
-                      <select
-                        className="form-input"
-                        name="loginBranch"
-                        value={form.loginBranch}
-                        onChange={handleChange}
-                        disabled={
-                          form.multiBranchAccess ===
-                          "Y"
-                        }
-                        required={
-                          form.multiBranchAccess ===
-                          "N"
-                        }
-                        style={{
-                          opacity:
-                            form.multiBranchAccess ===
-                            "Y"
-                              ? 0.6
-                              : 1,
-                        }}
-                      >
-
-                        <option value="">
-                          Select Login Branch
-                        </option>
-
-                        <option value="Head Office">
-                          Head Office
-                        </option>
-
-                        <option value="Pune Main Branch">
-                          Pune Main Branch
-                        </option>
-
-                        <option value="Mumbai Branch">
-                          Mumbai Branch
-                        </option>
-
-                        <option value="Nashik Branch">
-                          Nashik Branch
-                        </option>
-
-                        <option value="Nagpur Branch">
-                          Nagpur Branch
-                        </option>
-
-                      </select>
-
-                      {form.multiBranchAccess ===
-                        "Y" && (
-                        <div
-                          style={{
-                            fontSize: "11px",
-                            color: "#64748b",
-                            marginTop: "6px",
-                          }}
-                        >
-                          User can access multiple
-                          authorized branches.
+                          <span>{strength}</span>
                         </div>
                       )}
-
-                    </div>
-
-                  </div>
-
-                  {/* HOLIDAY */}
-
-                  <div
-                    style={{
-                      marginTop: "20px",
-                    }}
-                  >
-
-                    <label className="form-label">
-                      Login on Holidays <span>*</span>
-                    </label>
-
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "10px",
-                        marginTop: "8px",
-                      }}
-                    >
-
-                      {["Y", "N"].map((value) => {
-
-                        const selected =
-                          form.loginOnHolidays ===
-                          value;
-
-                        return (
-
-                          <button
-                            type="button"
-                            key={value}
-                            onClick={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                loginOnHolidays: value,
-                              }))
-                            }
-                            style={{
-                              minWidth: "90px",
-                              padding: "10px 18px",
-                              borderRadius: "8px",
-                              border: selected
-                                ? "1px solid #2563eb"
-                                : "1px solid #d1d5db",
-                              background: selected
-                                ? "#eff6ff"
-                                : "#ffffff",
-                              color: selected
-                                ? "#1d4ed8"
-                                : "#475569",
-                              fontWeight: 650,
-                              cursor: "pointer",
-                            }}
-                          >
-                            {value === "Y"
-                              ? "Yes"
-                              : "No"}
-                          </button>
-
-                        );
-
-                      })}
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                {/* =================================================
-                    SECTION 5 - LOGIN TIME & SESSION
-                ================================================= */}
-
-                <div style={sectionStyle}>
-
-                  <div style={sectionTitleStyle}>
-
-                    <div style={sectionIconStyle}>
-                      <Clock3 size={17} />
-                    </div>
-
-                    <div>
-
-                      <div>
-                        Login & Session Controls
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 400,
-                          color: "#94a3b8",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Define allowed login window and session
-                        security parameters
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  <div style={grid3}>
-
-                    <div>
-
-                      <label className="form-label">
-                        Login Time
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="time"
-                        name="loginTime"
-                        value={form.loginTime}
-                        onChange={handleChange}
+                    </Field>
+                    <Field label="Confirm password" required>
+                      <PasswordInput
+                        name="confirmPassword" value={form.confirmPassword} onChange={handleChange}
+                        placeholder="Re-enter password"
+                        show={showConfirmPassword} onToggle={() => setShowConfirmPassword((s) => !s)}
                       />
-
-                    </div>
-
-                    <div>
-
-                      <label className="form-label">
-                        Logout Time
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="time"
-                        name="logoutTime"
-                        value={form.logoutTime}
-                        onChange={handleChange}
-                      />
-
-                    </div>
-
-                    <div>
-
-                      <label className="form-label">
-                        Inactive Session Timeout
-                        <span> *</span>
-                      </label>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: "8px",
-                        }}
-                      >
-
-                        <input
-                          className="form-input"
-                          type="number"
-                          min="60"
-                          name="inactiveSessionTimeout"
-                          value={
-                            form.inactiveSessionTimeout
-                          }
-                          onChange={handleChange}
-                          placeholder="900"
-                        />
-
-                        <div
-                          style={{
-                            minWidth: "60px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            background: "#f8fafc",
-                            border: "1px solid #dbe2ea",
-                            borderRadius: "8px",
-                            fontSize: "12px",
-                            color: "#64748b",
-                          }}
-                        >
-                          Sec
+                      {form.confirmPassword && (
+                        <div className={`um-match ${form.password === form.confirmPassword ? "ok" : "bad"}`}>
+                          {form.password === form.confirmPassword ? "Passwords match" : "Passwords do not match"}
                         </div>
-
-                      </div>
-
-                    </div>
-
+                      )}
+                    </Field>
                   </div>
 
-                  <div
-                    style={{
-                      marginTop: "20px",
-                    }}
-                  >
-
-                    <label className="form-label">
-                      No. of Bad Logins
-                    </label>
-
-                    <input
-                      className="form-input"
-                      type="number"
-                      min="0"
-                      name="badLogins"
-                      value={form.badLogins}
-                      onChange={handleChange}
-                      placeholder="0"
-                      style={{
-                        maxWidth: "350px",
-                      }}
-                    />
-
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        color: "#64748b",
-                        marginTop: "6px",
-                      }}
-                    >
-                      Current failed login attempt count.
-                      Backend should enforce the lockout
-                      policy.
-                    </div>
-
+                  <div className="um-gap">
+                    <Field label="Two-factor authentication" required>
+                      <Segmented value={form.twoFAEnabled} onChange={(v) => set("twoFAEnabled", v)} options={[["Y", "Enabled"], ["N", "Disabled"]]} />
+                    </Field>
                   </div>
+                </Section>
 
-                </div>
-
-                {/* =================================================
-                    SECTION 6 - AUDIT INFORMATION
-                ================================================= */}
-
-                <div style={sectionStyle}>
-
-                  <div style={sectionTitleStyle}>
-
-                    <div style={sectionIconStyle}>
-                      <CalendarDays size={17} />
-                    </div>
-
-                    <div>
-
-                      <div>
-                        Login Audit Information
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          fontWeight: 400,
-                          color: "#94a3b8",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Previous login information maintained
-                        for audit purposes
-                      </div>
-
-                    </div>
-
+                <Section icon={UserRound} title="Personal information" subtitle="Employee personal and contact details">
+                  <div className="um-grid g3">
+                    <Field label="First name" required>
+                      <input className="form-input um-input" name="firstName" value={form.firstName} onChange={handleChange} placeholder="First name" required />
+                    </Field>
+                    <Field label="Middle name">
+                      <input className="form-input um-input" name="middleName" value={form.middleName} onChange={handleChange} placeholder="Middle name" />
+                    </Field>
+                    <Field label="Last name" required>
+                      <input className="form-input um-input" name="lastName" value={form.lastName} onChange={handleChange} placeholder="Last name" required />
+                    </Field>
                   </div>
+                  <div className="um-grid g3 um-gap">
+                    <Field label="Date of birth">
+                      <input className="form-input um-input" type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} />
+                    </Field>
+                    <Field label="Gender">
+                      <select className="form-input um-input" name="gender" value={form.gender} onChange={handleChange}>
+                        <option value="">Select gender</option>
+                        <option>Male</option>
+                        <option>Female</option>
+                        <option>Other</option>
+                      </select>
+                    </Field>
+                    <Field label="Mobile no.">
+                      <input className="form-input um-input" type="tel" name="mobile" value={form.mobile} onChange={handleChange} placeholder="Enter mobile number" />
+                    </Field>
+                  </div>
+                  <div className="um-gap">
+                    <Field label="Email ID">
+                      <input className="form-input um-input" type="email" name="email" value={form.email} onChange={handleChange} placeholder="employee@bank.com" />
+                    </Field>
+                  </div>
+                </Section>
 
-                  <div style={grid2}>
+                <Section icon={ShieldCheck} title="Role & access" subtitle="Application role and functional access">
+                  <div className="um-grid g2">
+                    <Field label="Designation">
+                      <input className="form-input um-input" name="designation" value={form.designation} onChange={handleChange} placeholder="e.g. Credit Officer" />
+                    </Field>
+                    <Field label="Role" required>
+                      <select className="form-input um-input" name="role" value={form.role} onChange={handleChange} required>
+                        <option value="">Select role</option>
+                        {Object.keys(ROLES).map((r) => <option key={r}>{r}</option>)}
+                      </select>
+                    </Field>
+                  </div>
+                  <div className="um-roles um-gap">
+                    {Object.entries(ROLES).map(([role, desc]) => {
+                      const on = form.role === role;
+                      return (
+                        <button type="button" key={role} className={`um-role ${on ? "on" : ""}`} onClick={() => set("role", role)} aria-pressed={on}>
+                          {on && <span className="um-tick"><Check size={12} /></span>}
+                          <ShieldCheck size={20} />
+                          <strong>{role}</strong>
+                          <span>{desc}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Section>
 
-                    <div>
-
-                      <label className="form-label">
-                        Last Login Date
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="date"
-                        name="lastLoginDate"
-                        value={form.lastLoginDate}
-                        onChange={handleChange}
+                <Section icon={Building2} title="Branch & login access" subtitle="Configure branch and working-day access">
+                  <div className="um-grid g2">
+                    <Field label="Multi branch access" required hint={form.multiBranchAccess === "Y" ? "User can access multiple authorized branches." : undefined}>
+                      <Segmented
+                        value={form.multiBranchAccess}
+                        onChange={(v) => setForm((p) => ({ ...p, multiBranchAccess: v, loginBranch: v === "Y" ? "" : p.loginBranch }))}
                       />
-
-                    </div>
-
-                    <div>
-
-                      <label className="form-label">
-                        Last Login Time
-                      </label>
-
-                      <input
-                        className="form-input"
-                        type="time"
-                        name="lastLoginTime"
-                        value={form.lastLoginTime}
-                        onChange={handleChange}
-                      />
-
-                    </div>
-
+                    </Field>
+                    <Field label="Login branch" required={form.multiBranchAccess === "N"}>
+                      <select
+                        className="form-input um-input" name="loginBranch" value={form.loginBranch}
+                        onChange={handleChange} disabled={form.multiBranchAccess === "Y"}
+                        required={form.multiBranchAccess === "N"}
+                      >
+                        <option value="">Select login branch</option>
+                        {BRANCHES.map((b) => <option key={b}>{b}</option>)}
+                      </select>
+                    </Field>
                   </div>
+                  <div className="um-gap">
+                    <Field label="Login on holidays" required>
+                      <Segmented value={form.loginOnHolidays} onChange={(v) => set("loginOnHolidays", v)} />
+                    </Field>
+                  </div>
+                </Section>
 
-                  <div
-                    style={{
-                      marginTop: "18px",
-                      padding: "14px 16px",
-                      borderRadius: "10px",
-                      background: "#f8fafc",
-                      border: "1px solid #e5e7eb",
-                      display: "flex",
-                      gap: "10px",
-                    }}
-                  >
+                <Section icon={Clock3} title="Login & session" subtitle="Allowed login window and session security">
+                  <div className="um-grid g3">
+                    <Field label="Login time">
+                      <input className="form-input um-input" type="time" name="loginTime" value={form.loginTime} onChange={handleChange} />
+                    </Field>
+                    <Field label="Logout time">
+                      <input className="form-input um-input" type="time" name="logoutTime" value={form.logoutTime} onChange={handleChange} />
+                    </Field>
+                    <Field label="Inactive session timeout (sec)" required>
+                      <input className="form-input um-input" type="number" min="60" name="inactiveSessionTimeout" value={form.inactiveSessionTimeout} onChange={handleChange} placeholder="900" />
+                    </Field>
+                  </div>
+                  <div className="um-gap um-narrow">
+                    <Field label="No. of bad logins" hint="Current failed login attempt count. Backend should enforce the lockout policy.">
+                      <input className="form-input um-input" type="number" min="0" name="badLogins" value={form.badLogins} onChange={handleChange} placeholder="0" />
+                    </Field>
+                  </div>
+                </Section>
 
-                    <ShieldCheck
-                      size={18}
-                      style={{
-                        flexShrink: 0,
-                        color: "#2563eb",
-                      }}
-                    />
-
+                <Section icon={CalendarDays} title="Login audit" subtitle="Previous login information kept for audit purposes">
+                  <div className="um-grid g2">
+                    <Field label="Last login date">
+                      <input className="form-input um-input" type="date" name="lastLoginDate" value={form.lastLoginDate} onChange={handleChange} />
+                    </Field>
+                    <Field label="Last login time">
+                      <input className="form-input um-input" type="time" name="lastLoginTime" value={form.lastLoginTime} onChange={handleChange} />
+                    </Field>
+                  </div>
+                  <div className="um-note">
+                    <ShieldCheck size={18} />
                     <div>
-
-                      <div
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          color: "#172033",
-                        }}
-                      >
-                        Backend Security Integration
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: "11px",
-                          color: "#64748b",
-                          marginTop: "4px",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        User creation APIs, password hashing,
-                        2FA configuration, branch authorization,
-                        session timeout enforcement and audit
-                        logging will be integrated with the Java
+                      <strong>Backend security integration</strong>
+                      <p>
+                        User creation APIs, password hashing, 2FA configuration, branch authorization,
+                        session timeout enforcement and audit logging will be integrated with the Java
                         backend once the APIs are provided.
-                      </div>
-
+                      </p>
                     </div>
-
                   </div>
+                </Section>
 
-                </div>
-
-                {/* ERROR */}
-
-                {passwordError && (
-
-                  <div
-                    style={{
-                      marginTop: "5px",
-                      marginBottom: "20px",
-                      padding: "12px 14px",
-                      borderRadius: "9px",
-                      background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      color: "#b91c1c",
-                      fontSize: "12px",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {passwordError}
-                  </div>
-
-                )}
-
+                {formError && <div className="um-error" role="alert">{formError}</div>}
               </div>
 
-              {/* =================================================
-                  FOOTER
-              ================================================= */}
-
-              <div
-                style={{
-                  padding: "18px 32px",
-                  borderTop: "1px solid #e5e7eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                  position: "sticky",
-                  bottom: 0,
-                  background: "#ffffff",
-                  zIndex: 5,
-                }}
-              >
-
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "#64748b",
-                  }}
-                >
-                  Fields marked with * are mandatory.
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    gap: "10px",
-                  }}
-                >
-
-                  <button
-                    type="button"
-                    className="outline-button"
-                    onClick={closeModal}
-                  >
-                    Cancel
+              <div className="um-foot">
+                <span className="um-hint">Fields marked * are mandatory.</span>
+                <div className="um-foot-btns">
+                  <button type="button" className="outline-button" onClick={closeModal}>Cancel</button>
+                  <button type="submit" className="primary-button" disabled={!form.role} style={{ opacity: form.role ? 1 : 0.5, cursor: form.role ? "pointer" : "not-allowed" }}>
+                    <Plus size={16} /> Create User
                   </button>
-
-                  <button
-                    type="submit"
-                    className="primary-button"
-                    disabled={!form.role}
-                    style={{
-                      opacity: !form.role ? 0.5 : 1,
-                      cursor: !form.role
-                        ? "not-allowed"
-                        : "pointer",
-                    }}
-                  >
-                    <Plus size={16} />
-                    Create User
-                  </button>
-
                 </div>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
-
       )}
-
     </AppShell>
   );
 }
+
+/* ---------- styles (scoped with the um- prefix) ---------- */
+
+const CSS = `
+.um-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:20px}
+.um-stat{display:flex;align-items:center;gap:14px}
+.um-stat-icon{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;flex-shrink:0}
+.um-blue{background:#e8f0ff;color:#2457d6}.um-teal{background:#dcf5ef;color:#0b8a72}
+.um-violet{background:#eee8ff;color:#6a43d6}.um-amber{background:#fff1d6;color:#b86e00}
+.um-stat-value{font-size:28px;font-weight:750;line-height:1;color:#142036;letter-spacing:-.02em}
+.um-stat-label{margin-top:6px;font-size:13px;color:#64748b}
+
+.um-toolbar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.um-search{flex:1 1 320px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #dbe2ea;border-radius:11px;padding:0 14px;color:#64748b;transition:border-color .15s,box-shadow .15s}
+.um-search:focus-within{border-color:#2457d6;box-shadow:0 0 0 4px rgba(36,87,214,.12)}
+.um-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;height:44px;font-size:14px;color:#142036}
+.um-filter{height:46px;padding:0 34px 0 14px;border:1px solid #dbe2ea;border-radius:11px;background:#fff;color:#334155;font-size:14px;cursor:pointer}
+.um-filter:focus-visible{outline:2px solid #2457d6;outline-offset:2px}
+
+.um-list-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.um-list-head h3{margin:0;font-size:18px;color:#142036}
+.um-list-head p{margin:4px 0 0;font-size:13px;color:#64748b}
+
+.um-empty{min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;border:1.5px dashed #d5dde8;border-radius:14px;background:#fafcff}
+.um-empty-icon{width:60px;height:60px;border-radius:16px;background:#e8f0ff;color:#2457d6;display:grid;place-items:center;margin-bottom:16px}
+.um-empty h3{margin:0 0 6px;color:#142036}.um-empty p{margin:0 0 20px;color:#64748b;max-width:360px}
+
+.um-table-wrap{overflow-x:auto}
+.um-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1000px}
+.um-table th{text-align:left;font-size:12px;font-weight:650;color:#64748b;padding:12px 14px;background:#f6f8fb;border-bottom:1px solid #e5e9f0;white-space:nowrap}
+.um-table th:first-child{border-radius:10px 0 0 10px}.um-table th:last-child{border-radius:0 10px 10px 0}
+.um-table td{padding:14px;border-bottom:1px solid #eef1f5;font-size:14px;color:#26334a;vertical-align:middle}
+.um-table tbody tr{transition:background .12s}.um-table tbody tr:hover{background:#f8faff}
+.um-table small,.um-person small{display:block;margin-top:3px;font-size:12px;color:#7b8798}
+.um-person{display:flex;align-items:center;gap:12px}.um-person strong{color:#142036}
+.um-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2457d6,#0b8a72);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;flex-shrink:0}
+.um-badge{display:inline-block;padding:4px 11px;border-radius:8px;font-size:12px;font-weight:650}
+.um-role-Maker{background:#dcf5ef;color:#0b6b59}.um-role-Checker{background:#eee8ff;color:#5632b5}.um-role-Viewer{background:#fff1d6;color:#8f5600}
+.um-pill{display:inline-block;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:650}
+.um-pill.ok{background:#dcf5e6;color:#0f7a3f}.um-pill.warn{background:#fff1d6;color:#8f5600}
+.um-dot{display:inline-flex;align-items:center;gap:7px;font-size:13px}
+.um-dot:before{content:"";width:8px;height:8px;border-radius:50%}
+.um-dot.on:before{background:#16a35a}.um-dot.off:before{background:#a3adbb}
+.um-actions{display:flex;gap:7px;border-bottom:1px solid #eef1f5}
+
+/* modal */
+.um-overlay{position:fixed;inset:0;z-index:2000;background:rgba(15,23,42,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;animation:um-fade .18s ease-out}
+.um-modal{width:100%;max-width:1060px;max-height:94vh;display:flex;flex-direction:column;background:#fff;border-radius:20px;box-shadow:0 30px 90px rgba(15,23,42,.35);overflow:hidden;animation:um-pop .22s ease-out}
+.um-modal-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:20px 28px;border-bottom:1px solid #e5e9f0}
+.um-modal-title{display:flex;align-items:center;gap:14px;min-width:0}
+.um-modal-title h2{margin:0;font-size:21px;font-weight:750;color:#142036}
+.um-modal-title p{margin:3px 0 0;font-size:13px;color:#64748b}
+.um-close{border:0;background:#f1f4f8;width:38px;height:38px;border-radius:10px;cursor:pointer;display:grid;place-items:center;flex-shrink:0;color:#334155}
+.um-close:hover{background:#e5e9f0}
+.um-form{display:flex;flex-direction:column;min-height:0;flex:1}
+.um-body{padding:26px 28px 8px;overflow-y:auto;flex:1}
+.um-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 28px;border-top:1px solid #e5e9f0;background:#fff}
+.um-foot-btns{display:flex;gap:10px}
+
+.um-section{margin-bottom:28px;padding:20px;border:1px solid #e8ecf2;border-radius:16px;background:#fcfdff}
+.um-section-head{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #e8ecf2}
+.um-section-head h4{margin:0;font-size:15px;font-weight:700;color:#142036}
+.um-section-head p{margin:2px 0 0;font-size:12px;color:#8592a5}
+.um-section-icon{width:36px;height:36px;border-radius:10px;background:#e8f0ff;color:#2457d6;display:grid;place-items:center;flex-shrink:0}
+.um-section-icon.um-lg{width:44px;height:44px;border-radius:12px}
+
+.um-grid{display:grid;gap:18px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.um-gap{margin-top:18px}.um-narrow{max-width:360px}
+.um-field{min-width:0}
+.um-label{display:block;margin-bottom:7px;font-size:13px;font-weight:600;color:#334155}
+.um-req{color:#dc2626}
+.um-hint{margin-top:6px;font-size:11.5px;line-height:1.5;color:#7b8798}
+.um-input{width:100%;box-sizing:border-box;height:44px;padding:0 13px;border:1px solid #d5dde8;border-radius:10px;background:#fff;font-size:14px;color:#142036;transition:border-color .15s,box-shadow .15s}
+.um-input:focus{outline:0;border-color:#2457d6;box-shadow:0 0 0 4px rgba(36,87,214,.12)}
+.um-input:disabled{background:#f1f4f8;color:#8592a5;cursor:not-allowed}
+
+.um-pw{position:relative}.um-pw .um-input{padding-right:46px}
+.um-pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;width:34px;height:34px;border-radius:8px;cursor:pointer;color:#64748b}
+.um-pw button:hover{background:#f1f4f8}
+.um-meter{display:flex;align-items:center;gap:10px;margin-top:9px;font-size:12px;color:#64748b}
+.um-meter-bars{display:flex;gap:4px;flex:1}
+.um-meter-bars i{flex:1;height:5px;border-radius:3px;background:#e5e9f0}
+.um-meter-bars i.lvl-1,.um-meter-bars i.lvl-2{background:#ef4444}.um-meter-bars i.lvl-3{background:#f59e0b}
+.um-meter-bars i.lvl-4{background:#84cc16}.um-meter-bars i.lvl-5{background:#16a34a}
+.um-match{margin-top:9px;font-size:12px;font-weight:600}.um-match.ok{color:#15803d}.um-match.bad{color:#dc2626}
+
+.um-seg{display:inline-flex;padding:4px;gap:4px;background:#eef1f6;border-radius:11px}
+.um-seg button{min-width:92px;padding:9px 16px;border:0;border-radius:8px;background:transparent;color:#52607a;font-weight:650;font-size:13.5px;cursor:pointer;transition:background .15s,color .15s}
+.um-seg button.um-seg-on{background:#fff;color:#2457d6;box-shadow:0 1px 3px rgba(15,23,42,.15)}
+
+.um-roles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.um-role{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:18px;border-radius:14px;border:1.5px solid #dbe2ea;background:#fff;cursor:pointer;color:#64748b;transition:border-color .15s,background .15s}
+.um-role:hover{border-color:#9db6ef}
+.um-role.on{border-color:#2457d6;background:#eff4ff;color:#2457d6}
+.um-role strong{font-size:14.5px;color:#142036}.um-role span{font-size:12px;line-height:1.5;color:#64748b}
+.um-tick{position:absolute;right:12px;top:12px;width:21px;height:21px;border-radius:50%;background:#2457d6;color:#fff!important;display:grid;place-items:center}
+
+.um-note{display:flex;gap:12px;margin-top:18px;padding:14px 16px;border-radius:12px;background:#eff4ff;border:1px solid #d6e2fb;color:#2457d6}
+.um-note svg{flex-shrink:0;margin-top:2px}.um-note strong{font-size:13px;color:#142036}
+.um-note p{margin:4px 0 0;font-size:12px;line-height:1.55;color:#52607a}
+.um-error{margin-bottom:20px;padding:12px 14px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;font-weight:500}
+
+@keyframes um-fade{from{opacity:0}to{opacity:1}}
+@keyframes um-pop{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.um-overlay,.um-modal{animation:none}}
+
+/* tablet */
+@media (max-width:1024px){
+  .um-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g3{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* mobile: table becomes stacked cards, modal becomes full screen */
+@media (max-width:720px){
+  .um-stats{gap:12px}
+  .um-stat-value{font-size:24px}
+  .um-toolbar .um-filter{flex:1 1 calc(33% - 10px);min-width:0}
+  .um-list-head .outline-button{width:100%;justify-content:center}
+
+  .um-table{min-width:0;display:block}
+  .um-table thead{display:none}
+  .um-table tbody{display:grid;gap:14px}
+  .um-table tr{display:block;border:1px solid #e5e9f0;border-radius:14px;padding:6px 14px;background:#fff}
+  .um-table td{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:11px 0;border-bottom:1px dashed #e8ecf2;text-align:right}
+  .um-table td:before{content:attr(data-label);font-size:12px;font-weight:600;color:#7b8798;text-align:left;flex-shrink:0}
+  .um-table td:first-child{text-align:left}.um-table td:first-child:before{display:none}
+  .um-table td.um-actions{border-bottom:0;justify-content:flex-end}.um-table td.um-actions:before{display:none}
+
+  .um-overlay{padding:0;align-items:flex-end}
+  .um-modal{max-height:100dvh;height:100dvh;border-radius:0}
+  .um-modal-head,.um-foot{padding:14px 16px}
+  .um-body{padding:16px 14px 4px}
+  .um-modal-title p{display:none}
+  .um-section{padding:14px;margin-bottom:18px}
+  .g2,.g3,.um-roles{grid-template-columns:1fr}
+  .um-narrow{max-width:none}
+  .um-seg{display:flex}.um-seg button{flex:1;min-width:0}
+  .um-foot{flex-direction:column-reverse;align-items:stretch}
+  .um-foot .um-hint{text-align:center}
+  .um-foot-btns{display:grid;grid-template-columns:1fr 1fr}
+  .um-foot-btns button{justify-content:center}
+}
+@media (max-width:420px){.um-stats{grid-template-columns:1fr 1fr}.um-toolbar .um-filter{flex:1 1 100%}}
+`;
