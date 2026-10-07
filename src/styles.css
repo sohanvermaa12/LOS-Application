@@ -12,7 +12,7 @@
 @media(max-width:720px){.login-page{height:auto!important;min-height:100vh;flex-direction:column;overflow:auto!important}.login-image-panel{width:calc(100% - 40px)!important;height:42vh!important;min-height:260px;margin:20px!important;flex-shrink:0}.login-form-panel{width:100%!important;height:auto!important;min-height:0;padding:32px 20px 40px;align-items:flex-start!important;overflow:visible!important}.login-form-content{width:100%!important;max-width:468px}.login-form-content>div:first-child{margin-bottom:30px!important}.login-form-content h2{font-size:27px!important}.login-form-content label{margin-bottom:28px!important}.login-form-content>div:nth-last-child(2){margin-bottom:28px!important}.lead-toolbar{grid-template-columns:1fr}.lead-table-panel{overflow-x:auto}.lead-table{min-width:760px}.lead-pagination{flex-direction:column;align-items:flex-start;gap:10px}.lead-modal{width:min(92vw,560px)}.lead-modal-header,.lead-form{padding-left:16px;padding-right:16px}.lead-modal-footer{justify-content:stretch}.lead-cancel-btn,.lead-save-btn{flex:1}}
 
 .loan-application-shell{padding:22px 24px 32px}
-.loan-application-card{background:#edf3f5;border:1px solid #dfe9eb;border-radius:12px;padding:18px 26px 28px;box-shadow:0 6px 18px rgba(17,36,44,.04)}
+.loan-application-card{background:#fff;border:1px solid #dfe9eb;border-radius:12px;padding:18px 26px 28px;box-shadow:0 6px 18px rgba(17,36,44,.04)}
 .loan-application-header{margin:8px 0 16px}
 .lead-modal{display:flex;flex-direction:column;width:min(96vw,1200px);max-height:92vh;overflow:hidden}
 .lead-modal-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -63,12 +63,45 @@
 .three-col{grid-template-columns:repeat(3,minmax(0,1fr))}
 .mt-20{margin-top:20px}
 .field-block{display:flex;flex-direction:column;gap:8px;font-size:13px;font-weight:600;color:#2c4751}
+.field-error{color:#c62828;font-size:12px;font-weight:500;line-height:1.4}
 .field-block input,
 .field-block select{width:100%;height:48px;border:1px solid #d7e1e4;border-radius:8px;padding:0 14px;background:#f8fbfc;color:#1d3b48;outline:none;transition:border-color .2s, box-shadow .2s}
 .field-block input:focus,
 .field-block select:focus{border-color:#7ea2d9;box-shadow:0 0 0 4px rgba(80,130,216,.08)}
 .field-block input::placeholder{color:#8fa2a8}
 .field-block.select-wrap{position:relative}
+.state-select{position:relative}
+.state-select-trigger{width:100%;height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border:1px solid #d7e1e4;border-radius:8px;background:#f8fbfc;color:#1d3b48;text-align:left;font-weight:400;transition:border-color .2s, box-shadow .2s}
+.state-select-trigger:focus{outline:none;border-color:#7ea2d9;box-shadow:0 0 0 4px rgba(80,130,216,.08)}
+.state-select-placeholder{color:#8fa2a8}
+.state-select-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;padding:8px;border:1px solid #d7e1e4;border-radius:8px;background:#fff;box-shadow:0 8px 24px rgba(29,59,72,.14)}
+.state-search{display:flex;align-items:center;gap:8px;padding:0 10px;border:1px solid #d7e1e4;border-radius:6px;color:#71858b}
+.field-block .state-search input{height:38px;padding:0;border:0;background:transparent;box-shadow:none}
+.field-block .state-search input:focus{border:0;box-shadow:none}
+.state-select-menu ul{max-height:220px;overflow-y:auto;margin:8px 0 0;padding:0;list-style:none}
+.state-select-menu li button{width:100%;padding:9px 10px;border-radius:5px;color:#2c4751;text-align:left}
+.state-select-menu li button:hover,.state-select-menu li button:focus{outline:none;background:#eef5f7}
+.state-no-results{padding:10px;color:#71858b;font-size:13px;font-weight:400}
+.dob-picker{position:relative}
+.dob-picker-trigger{width:100%;height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;border:1px solid #d7e1e4;border-radius:8px;background:#f8fbfc;color:#1d3b48;text-align:left;font-weight:400;transition:border-color .2s, box-shadow .2s}
+.dob-picker-trigger:focus{outline:none;border-color:#1f66d6;box-shadow:0 0 0 4px rgba(31,102,214,.1)}
+.dob-picker-trigger svg{color:#1f66d6}
+.dob-picker-placeholder{color:#8fa2a8}
+.dob-calendar-popover{position:absolute;top:calc(100% + 6px);left:0;z-index:30;width:min(350px,calc(100vw - 48px));padding:10px;border:1px solid #d8e5f5;border-radius:12px;background:#fff;box-shadow:0 12px 32px rgba(25,58,98,.2)}
+.react-calendar.loan-birth-calendar{width:100%;border:0;border-radius:8px;background:#fff;color:#193a62;font-family:inherit}
+.loan-birth-calendar .react-calendar__navigation{height:44px;margin-bottom:8px;border-radius:8px;background:#1f66d6}
+.loan-birth-calendar .react-calendar__navigation button{min-width:38px;border:0;border-radius:6px;background:transparent;color:#fff;font-size:15px;font-weight:700}
+.loan-birth-calendar .react-calendar__navigation button:enabled:hover,.loan-birth-calendar .react-calendar__navigation button:enabled:focus{background:#174fae}
+.loan-birth-calendar .react-calendar__navigation button:disabled{background:transparent;color:#b8c9e5}
+.loan-birth-calendar .react-calendar__month-view__weekdays{margin-bottom:4px;color:#6680a2;font-size:11px;font-weight:700;text-transform:uppercase}
+.loan-birth-calendar .react-calendar__month-view__weekdays__weekday{padding:8px 4px}
+.loan-birth-calendar .react-calendar__month-view__weekdays__weekday abbr{text-decoration:none}
+.loan-birth-calendar .react-calendar__tile{height:40px;border-radius:8px;background:transparent;color:#29445f;font-size:13px}
+.loan-birth-calendar .react-calendar__tile:enabled:hover,.loan-birth-calendar .react-calendar__tile:enabled:focus{background:#e7f0ff;color:#174fae}
+.loan-birth-calendar .react-calendar__tile--now{background:#edf4ff;color:#1f66d6;font-weight:700}
+.loan-birth-calendar .react-calendar__tile--active,.loan-birth-calendar .react-calendar__tile--active:enabled:hover,.loan-birth-calendar .react-calendar__tile--active:enabled:focus{background:#1f66d6;color:#fff}
+.loan-birth-calendar .react-calendar__tile:disabled{background:transparent;color:#c4ccd6}
+.loan-birth-calendar .react-calendar__year-view__months__month,.loan-birth-calendar .react-calendar__decade-view__years__year,.loan-birth-calendar .react-calendar__century-view__decades__decade{height:54px}
 .field-block.compact{padding-top:2px}
 .radio-group{display:flex;flex-wrap:wrap;align-items:center;gap:18px;padding-top:4px}
 .radio-option{display:inline-flex;align-items:center;gap:9px;color:#2c4751;font-weight:500;cursor:pointer}
@@ -77,7 +110,7 @@
 .input-prefix{display:flex;align-items:center;border:1px solid #d7e1e4;border-radius:8px;background:#f8fbfc;overflow:hidden}
 .input-prefix span{padding:0 12px;color:#35535d;font-weight:600;background:#eef5f7;border-right:1px solid #d7e1e4;height:100%;display:flex;align-items:center}
 .input-prefix input{border:none;background:transparent;box-shadow:none}
-.loan-form-section-inner{margin-top:18px;border:1px solid #dfe9eb;border-radius:10px;padding:20px 18px 6px;background:#f2f8f8}
+.loan-form-section-inner{margin-top:18px;border:1px solid #dfe9eb;border-radius:10px;padding:20px 18px 6px;background:#fff}
 .inline-choice .field-block{gap:10px}
 .marital-row .radio-group{gap:14px}
 .loan-product-card{display:flex;align-items:flex-start;gap:14px;border:1px solid #dfe9eb;border-radius:12px;padding:16px 18px;background:#f6fafb;cursor:pointer;transition:border-color .2s, box-shadow .2s}
