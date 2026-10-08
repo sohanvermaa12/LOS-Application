@@ -11,6 +11,63 @@
 
 @media(max-width:720px){.login-page{height:auto!important;min-height:100vh;flex-direction:column;overflow:auto!important}.login-image-panel{width:calc(100% - 40px)!important;height:42vh!important;min-height:260px;margin:20px!important;flex-shrink:0}.login-form-panel{width:100%!important;height:auto!important;min-height:0;padding:32px 20px 40px;align-items:flex-start!important;overflow:visible!important}.login-form-content{width:100%!important;max-width:468px}.login-form-content>div:first-child{margin-bottom:30px!important}.login-form-content h2{font-size:27px!important}.login-form-content label{margin-bottom:28px!important}.login-form-content>div:nth-last-child(2){margin-bottom:28px!important}.lead-toolbar{grid-template-columns:1fr}.lead-table-panel{overflow-x:auto}.lead-table{min-width:760px}.lead-pagination{flex-direction:column;align-items:flex-start;gap:10px}.lead-modal{width:min(92vw,560px)}.lead-modal-header,.lead-form{padding-left:16px;padding-right:16px}.lead-modal-footer{justify-content:stretch}.lead-cancel-btn,.lead-save-btn{flex:1}}
 
+.loan-wizard-shell{padding:20px 18px 28px}
+.loan-wizard-card{background:#fff;border:1px solid #dfe9eb;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(18,42,54,.06)}
+.loan-topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px;border-bottom:1px solid #dfe9eb;background:#f8fafb}
+.bank-brand{display:flex;align-items:center;gap:12px;font-weight:700;color:#1d3b4d}
+.bank-logo-pill{display:inline-flex;align-items:center;justify-content:center;min-width:92px;height:30px;border:1px solid #d9e6ee;border-radius:6px;background:#eef5f7;color:#2d5161;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.application-meta{display:flex;align-items:center;gap:18px;flex-wrap:wrap;color:#4f6470;font-size:12px;font-weight:600}
+.loan-wizard-layout{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:620px}
+.loan-step-nav{display:flex;flex-direction:column;gap:10px;padding:16px 14px;border-right:1px solid #dfe9eb;background:#fcfdfd}
+.loan-step-item{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border:1px solid transparent;border-radius:8px;background:transparent;color:#4f6872;font-weight:700;text-align:left;transition:all .18s ease}
+.loan-step-item:hover{border-color:#dbeaf0;background:#f4faf9}
+.loan-step-item.active{border-color:#b5d8d1;background:#edf8f6;color:#1d5f66;box-shadow:0 0 0 2px rgba(29,95,102,.04)}
+.loan-step-item.complete{color:#286d62}
+.loan-step-number{display:grid;place-items:center;width:28px;height:28px;border:1px solid #d1dde2;border-radius:50%;background:#fff;font-size:11px;color:#415b66;flex-shrink:0}
+.loan-step-item.active .loan-step-number{background:#1d5f66;border-color:#1d5f66;color:#fff}
+.loan-step-item.complete .loan-step-number{background:#e0f2ea;border-color:#afd9c7;color:#176f60}
+.loan-step-icon{color:currentColor}
+.loan-step-panel{padding:22px 28px 18px}
+.loan-step-header{margin-bottom:22px}
+.loan-step-kicker{display:inline-block;color:#1d5f66;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.loan-step-header h2{margin:6px 0 0;color:#1d3b4d;font-size:24px;font-weight:800}
+.loan-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}
+.loan-form-grid-one-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;grid-column:1 / -1}
+.loan-field{display:flex;flex-direction:column;gap:8px;color:#304b59;font-size:13px;font-weight:600}
+.loan-field span{display:block}
+.loan-field input, .loan-field select, .loan-field textarea{width:100%;min-height:46px;border:1px solid #d7e2e5;border-radius:8px;background:#f7fafb;padding:0 12px;color:#1b3541;outline:none;transition:border-color .15s ease, box-shadow .15s ease}
+.loan-field input:focus, .loan-field select:focus, .loan-field textarea:focus{border-color:#7aa7d8;box-shadow:0 0 0 3px rgba(93,144,214,.08)}
+.loan-field input::placeholder{color:#8b9ca3}
+.loan-field select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#4d6975 50%),linear-gradient(135deg,#4d6975 50%,transparent 50%);background-position:calc(100% - 18px) calc(50% - 2px),calc(100% - 12px) calc(50% - 2px);background-size:6px 6px;background-repeat:no-repeat;padding-right:30px}
+.loan-upload-row{grid-column:1 / -1}
+.upload-box{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border:1px solid #d7e2e5;border-radius:8px;background:#f7fafb;color:#3f5f73;font-weight:700;cursor:pointer}
+.upload-box.small{width:min(240px,100%)}
+.loan-data-table-wrap{grid-column:1 / -1;margin-top:8px}
+.loan-data-table-wrap h3{margin:0 0 12px;color:#1d3b4d;font-size:18px}
+.loan-data-table{width:100%;border-collapse:collapse;border:1px solid #dbe2e6;background:#fff}
+.loan-data-table th, .loan-data-table td{padding:10px 12px;border:1px solid #dfe6ea;text-align:left;font-size:12px;color:#2e4652}
+.loan-data-table th{background:#f3f7f8;font-weight:700}
+.loan-data-table tbody tr:nth-child(even){background:#fafcfd}
+.loan-step-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:30px;border-top:1px solid #edf1f3;margin-top:18px}
+.loan-primary-btn, .loan-secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:140px;height:42px;border-radius:8px;border:1px solid transparent;font-weight:700;transition:transform .15s ease, box-shadow .15s ease}
+.loan-primary-btn{background:#1f66d6;color:#fff;border-color:#1f66d6;box-shadow:0 8px 18px rgba(31,102,214,.18)}
+.loan-secondary-btn{background:#f5f7f8;border-color:#dce5e8;color:#224c5f}
+.loan-primary-btn:hover, .loan-secondary-btn:hover{transform:translateY(-1px)}
+.loan-secondary-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.spacer-box{min-height:46px}
+@media (max-width: 980px){
+  .loan-wizard-layout{grid-template-columns:1fr}
+  .loan-step-nav{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid #dfe9eb;padding:12px}
+  .loan-step-item{flex:1 1 180px;justify-content:center}
+  .loan-step-panel{padding:18px 18px 16px}
+}
+@media (max-width: 640px){
+  .loan-form-grid, .loan-form-grid-one-row{grid-template-columns:1fr}
+  .loan-step-actions{flex-direction:column-reverse}
+  .loan-primary-btn, .loan-secondary-btn{width:100%}
+  .application-meta{gap:8px}
+  .loan-topbar{flex-direction:column;align-items:flex-start}
+}
 .loan-application-shell{padding:22px 24px 32px}
 .loan-application-card{background:#fff;border:1px solid #dfe9eb;border-radius:12px;padding:18px 26px 28px;box-shadow:0 6px 18px rgba(17,36,44,.04)}
 .loan-application-header{margin:8px 0 16px}
@@ -57,6 +114,16 @@
 .loan-form-section{padding-top:8px}
 .loan-form-section h2{margin:0 0 18px;font-size:28px;color:#1d3b48}
 .loan-form-section h3{margin:24px 0 18px;font-size:20px;color:#1d3b48}
+.loan-form-warning{margin:0 0 18px;padding:12px 14px;border:1px solid #f2d4d7;border-radius:10px;background:#fff4f4;color:#923d3d}
+.loan-form-warning strong{display:block;margin-bottom:8px}
+.loan-form-warning ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.loan-table-actions{display:flex;align-items:center;gap:8px}
+.loan-inline-button{padding:6px 10px;border:1px solid #d8e3e8;border-radius:6px;background:#f5f9fa;color:#31505d;font-size:12px;font-weight:600}
+.loan-inline-button.danger{border-color:#e9c6c6;color:#9c3c3c;background:#fff4f4}
+.loan-file-input{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #dfe8eb;border-radius:8px;background:#f7fafb;color:#35535d;cursor:pointer;min-height:42px}
+.loan-file-input input{display:none}
+.loan-file-input span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.loan-data-table td input{width:100%;min-height:32px;border:1px solid #dfe8eb;border-radius:6px;padding:0 8px;background:#fff;color:#224250}
 .field-grid{display:grid;gap:18px;margin-bottom:18px}
 .one-col{grid-template-columns:1fr}
 .two-col{grid-template-columns:repeat(2,minmax(0,1fr))}
