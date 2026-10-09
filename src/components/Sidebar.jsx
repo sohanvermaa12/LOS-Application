@@ -1,7 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, BriefcaseBusiness, ClipboardList, House, PanelLeftClose, PanelLeftOpen, Settings2, ShieldCheck, UsersRound } from 'lucide-react';
+import {
+  BarChart3,
+  BriefcaseBusiness,
+  ClipboardList,
+  House,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings2,
+  ShieldCheck,
+  UsersRound
+} from 'lucide-react';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
@@ -16,17 +26,73 @@ const items = [
 ];
 
 export default function Sidebar({ open, collapsed, onToggle, onClose }) {
-  return <aside className={`sidebar ${open ? 'sidebar-open' : ''} ${collapsed ? 'sidebar-collapsed' : ''}`}>
-    <div className="brand-block">
-      <Link href="/bank_profile" onClick={onClose} aria-label="Open bank profile" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="brand-mark"><span>AX</span></div>
-      </Link>
-      <button className="icon-button sidebar-toggle" onClick={onToggle} aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
-        {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-      </button>
-      <button className="icon-button mobile-close" onClick={onClose} aria-label="Close menu">×</button>
-    </div>
-    <nav className="main-nav">{items.map(({ href, label, icon: Icon }) => <Link className="nav-item" href={href} key={`${href}-${label}`} onClick={onClose} aria-label={label} title={label}><Icon size={18} strokeWidth={1.8} /><span>{label}</span></Link>)}</nav>
-    <div className="sidebar-footer"><div className="mini-avatar" title="Vikram Aditya Mehta">VM</div><div className="user-meta"><strong>Vikram Aditya Mehta</strong><span>SUPER_ADMIN</span></div></div>
-  </aside>;
+  return (
+    <>
+      {open && (
+        <button
+          className="sidebar-backdrop"
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+        />
+      )}
+      <aside
+        id="app-sidebar"
+        className={`sidebar ${open ? 'sidebar-open' : ''} ${collapsed ? 'sidebar-collapsed' : ''}`}
+        aria-label="Main navigation"
+      >
+        <div className="brand-block">
+          <Link
+            href="/bank_profile"
+            onClick={onClose}
+            aria-label="Open bank profile"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <div className="brand-mark"><span>AX</span></div>
+          </Link>
+          <button
+            className="icon-button sidebar-toggle"
+            type="button"
+            onClick={onToggle}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            aria-controls="app-sidebar"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
+          <button
+            className="icon-button mobile-close"
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+          >
+            ×
+          </button>
+        </div>
+        <nav className="main-nav" aria-label="Primary">
+          {items.map(({ href, label, icon: Icon }) => (
+            <Link
+              className="nav-item"
+              href={href}
+              key={`${href}-${label}`}
+              onClick={onClose}
+              aria-label={label}
+              title={label}
+            >
+              <Icon size={18} strokeWidth={1.8} />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <div className="mini-avatar" title="Vikram Aditya Mehta">VM</div>
+          <div className="user-meta">
+            <strong>Vikram Aditya Mehta</strong>
+            <span>SUPER_ADMIN</span>
+          </div>
+        </div>
+      </aside>
+    </>
+  );
 }
