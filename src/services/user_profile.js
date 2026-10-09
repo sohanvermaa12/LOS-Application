@@ -46,6 +46,38 @@ export async function getUserProfile() {
   return result.data;
 }
 
+export async function updateUserProfile(updates) {
+  const authData = getAuthData();
+  const headers = { "Content-Type": "application/json" };
+
+  if (authData.accessToken) {
+    headers.Authorization = "Bearer " + authData.accessToken;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/${USER_ID}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(updates),
+  });
+
+  if (response.status === 204) return null;
+
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("Unable to read the profile update response.");
+  }
+
+  if (!response.ok || result?.success === false) {
+    throw new Error(
+      result?.message || result?.error || "Unable to update the user profile.",
+    );
+  }
+
+  return result?.data && typeof result.data === "object" ? result.data : null;
+}
+
 function getAuthData() {
   const storedAuthData = window.localStorage.getItem("authData");
 

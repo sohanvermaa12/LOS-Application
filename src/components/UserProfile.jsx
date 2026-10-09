@@ -4,11 +4,14 @@ import { useEffect, useState } from "react";
 import {
   Building2,
   ContactRound,
+  Check,
   KeyRound,
+  Pencil,
   ShieldCheck,
+  X,
   UserRound,
 } from "lucide-react";
-import { getUserProfile } from "../services/user_profile";
+import { getUserProfile, updateUserProfile } from "../services/user_profile";
 
 const profileSections = [
   {
@@ -30,8 +33,8 @@ const profileSections = [
     icon: ContactRound,
     className: "contact",
     fields: [
-      { label: "Email", keys: ["email"], link: "mailto:" },
-      { label: "Mobile", keys: ["mobile"], link: "tel:" },
+      { label: "Email", keys: ["email"], link: "mailto:", editable: true },
+      { label: "Mobile", keys: ["mobile"], link: "tel:", editable: true },
     ],
   },
   {
@@ -142,19 +145,36 @@ function toTitleCase(value) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function ProfileField({ field, profile }) {
-  const result = getFieldValue(profile, field.keys);
+function ProfileField({ field, profile, isEditing, draftProfile, onDraftChange }) {
+  const result =
+    getFieldValue(profile, field.keys) ||
+    (field.editable ? { key: field.keys[0], value: "" } : null);
   if (!result) return null;
 
   const { value } = result;
-  const displayValue = formatValue(value, field);
+  const draftValue = draftProfile[result.key] ?? "";
+  const displayValue = formatValue(
+    isEditing && field.editable ? draftValue : value,
+    field,
+  );
   const isMissing = value === "";
   const isEnabled = field.boolean && value === true;
 
   return (
-    <div className="user-profile-field">
+    <div className={`user-profile-field${isEditing && field.editable ? " is-editing" : ""}`}>
       <span className="user-profile-field-label">{field.label}</span>
-      {field.link && value ? (
+      {isEditing && field.editable ? (
+        <div className="user-profile-edit-value">
+          <input
+            aria-label={field.label}
+            className="user-profile-field-input"
+            onChange={(event) => onDraftChange(result.key, event.target.value)}
+            type={field.label === "Email" ? "email" : "text"}
+            value={draftValue}
+          />
+          <Pencil aria-hidden="true" className="user-profile-edit-pencil" size={13} />
+        </div>
+      ) : field.link && value ? (
         <a className="user-profile-field-value" href={`${field.link}${value}`}>
           {displayValue}
         </a>
@@ -180,6 +200,10 @@ export default function UserProfile() {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftProfile, setDraftProfile] = useState({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     let isCurrent = true;
@@ -213,6 +237,48 @@ export default function UserProfile() {
     .toUpperCase();
   const employeeNumber = getFieldValue(profile || {}, ["employee_id", "emp_no"]);
   const organization = profile?.organization_name;
+
+  function startEditing() {
+    const editableFields = profileSections.flatMap((section) => section.fields)
+      .filter((field) => field.editable);
+    const draft = {};
+
+    editableFields.forEach((field) => {
+      const result = getFieldValue(profile || {}, field.keys);
+      const key = result?.key || field.keys[0];
+      draft[key] = result?.value == null ? "" : String(result.value);
+    });
+
+    setDraftProfile(draft);
+    setSaveError("");
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setDraftProfile({});
+    setSaveError("");
+    setIsEditing(false);
+  }
+
+  async function saveProfile() {
+    setIsSaving(true);
+    setSaveError("");
+
+    try {
+      const updatedProfile = await updateUserProfile(draftProfile);
+      setProfile((currentProfile) => ({
+        ...currentProfile,
+        ...draftProfile,
+        ...(updatedProfile || {}),
+      }));
+      setDraftProfile({});
+      setIsEditing(false);
+    } catch (requestError) {
+      setSaveError(requestError.message || "Unable to update the user profile.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   return (
     <main className="user-profile">
@@ -253,7 +319,47 @@ export default function UserProfile() {
                 </p>
               </div>
             </div>
+            <div className="user-profile-actions">
+              {isEditing ? (
+                <>
+                  <button
+                    className="user-profile-action is-cancel"
+                    disabled={isSaving}
+                    onClick={cancelEditing}
+                    type="button"
+                  >
+                    <X aria-hidden="true" size={15} />
+                    Cancel
+                  </button>
+                  <button
+                    className="user-profile-action is-save"
+                    disabled={isSaving}
+                    onClick={saveProfile}
+                    type="button"
+                  >
+                    <Check aria-hidden="true" size={15} />
+                    {isSaving ? "Saving…" : "Save"}
+                  </button>
+                </>
+              ) : (
+                <button
+                  aria-label="Edit profile"
+                  className="user-profile-action is-edit"
+                  onClick={startEditing}
+                  type="button"
+                >
+                  <Pencil aria-hidden="true" size={15} />
+                  Edit
+                </button>
+              )}
+            </div>
           </section>
+
+          {saveError ? (
+            <div className="user-profile-message is-error" role="alert">
+              {saveError}
+            </div>
+          ) : null}
 
           <div className="user-profile-grid">
             {profileSections.map((section) => {
@@ -277,6 +383,11 @@ export default function UserProfile() {
                         key={field.label}
                         field={field}
                         profile={profile}
+                        isEditing={isEditing}
+                        draftProfile={draftProfile}
+                        onDraftChange={(key, value) =>
+                          setDraftProfile((current) => ({ ...current, [key]: value }))
+                        }
                       />
                     ))}
                   </div>
@@ -316,6 +427,63 @@ export default function UserProfile() {
           gap: 16px;
           padding: 9px 16px;
           margin-bottom: 10px;
+        }
+
+        .user-profile-actions {
+          display: flex;
+          flex: 0 0 auto;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .user-profile-action {
+          display: inline-flex;
+          min-height: 34px;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 6px 11px;
+          border: 1px solid transparent;
+          border-radius: 7px;
+          background: #fff;
+          cursor: pointer;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .user-profile-action.is-save {
+          border-color: #2463bd;
+          background: #2463bd;
+          color: #fff;
+        }
+
+        .user-profile-action.is-edit {
+          border-color: #d3e1f4;
+          color: #2463bd;
+        }
+
+        .user-profile-action.is-edit:hover {
+          background: #f1f6ff;
+        }
+
+        .user-profile-action.is-save:hover:not(:disabled) {
+          border-color: #194f9e;
+          background: #194f9e;
+        }
+
+        .user-profile-action.is-cancel {
+          border-color: #d5d9e0;
+          color: #384152;
+        }
+
+        .user-profile-action.is-cancel:hover:not(:disabled) {
+          background: #f4f6f8;
+        }
+
+        .user-profile-action:disabled {
+          cursor: wait;
+          opacity: 0.65;
         }
 
         .user-profile-identity {
@@ -465,6 +633,41 @@ export default function UserProfile() {
           border-bottom: 1px solid #c9cdd2;
         }
 
+        .user-profile-field.is-editing {
+          gap: 4px;
+        }
+
+        .user-profile-edit-value {
+          display: flex;
+          min-width: 0;
+          align-items: center;
+          gap: 5px;
+          border-bottom: 1px solid #2463bd;
+        }
+
+        .user-profile-field-input {
+          width: 100%;
+          min-width: 0;
+          padding: 1px 0 3px;
+          border: 0;
+          outline: 0;
+          background: transparent;
+          color: #111827;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 600;
+          line-height: 1.3;
+        }
+
+        .user-profile-field-input:focus-visible {
+          box-shadow: 0 1px 0 #2463bd;
+        }
+
+        .user-profile-edit-pencil {
+          flex: 0 0 auto;
+          color: #2463bd;
+        }
+
         .user-profile-fields > .user-profile-field:nth-child(2n) {
           border-right: 0;
         }
@@ -568,14 +771,12 @@ export default function UserProfile() {
 
         @media (max-width: 760px) {
           .user-profile-summary {
-            align-items: flex-start;
-            flex-direction: column;
-            gap: 10px;
+            align-items: center;
             padding: 13px;
           }
 
           .user-profile-identity {
-            width: 100%;
+            min-width: 0;
           }
 
           .user-profile-badges {
@@ -625,6 +826,12 @@ export default function UserProfile() {
         @media (max-width: 380px) {
           .user-profile-summary {
             padding: 12px;
+          }
+
+          .user-profile-action {
+            min-height: 32px;
+            padding-right: 8px;
+            padding-left: 8px;
           }
 
           .user-profile-identity {
