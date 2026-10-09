@@ -6,15 +6,8 @@ import { logout } from '../services/login';
 
 export default function Header({ title, onMenu }) {
   const handleLogout = async () => {
-    let accessToken;
     try {
-      accessToken = JSON.parse(window.localStorage.getItem('authData'))?.accessToken;
-    } catch {
-      accessToken = null;
-    }
-
-    try {
-      if (accessToken) await logout(accessToken);
+      await logout();
     } catch {
       // Always complete local sign-out even if the logout request fails.
     } finally {

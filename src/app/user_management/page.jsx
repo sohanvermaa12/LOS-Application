@@ -1,42 +1,89 @@
 "use client";
 
 import {
-  Building2, CalendarDays, Check, Clock3, Edit3, Eye, EyeOff, LockKeyhole,
+  Building2, Check, Clock3, Edit3, Eye, EyeOff, LockKeyhole,
   Plus, Search, ShieldCheck, UserRound, Users, X, Eye as ViewIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AppShell from "../../components/AppShell";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
+import {
+  createUser,
+  getUsers,
+  USER_ORGANIZATION_CODE,
+  USER_ORGANIZATION_ID,
+} from "../../services/user_management";
 
 const EMPTY_FORM = {
   employeeId: "", userName: "", password: "", confirmPassword: "",
-  twoFAEnabled: "Y", status: "Active",
+  twoFAEnabled: "Y", status: "OPERATIVE",
   firstName: "", middleName: "", lastName: "", dateOfBirth: "", email: "", mobile: "", gender: "",
   designation: "", role: "",
-  multiBranchAccess: "N", loginBranch: "", loginOnHolidays: "N",
-  loginTime: "09:00", logoutTime: "18:00", inactiveSessionTimeout: "900", badLogins: "0",
-  lastLoginDate: "", lastLoginTime: "",
+  multiBranchAccess: "1", loginBranch: "1", loginOnHolidays: "0",
+  loginTime: "09:00", logoutTime: "19:00", badLogins: "0",
 };
 
 const ROLES = {
-  Maker: "Create and process loan applications.",
-  Checker: "Review, verify and approve applications.",
-  Viewer: "View permitted application information.",
+  ADMIN: "Manage users and administrative access.",
+  MAKER: "Create and process loan applications.",
+  CHECKER: "Review, verify and approve applications.",
+  VIEWER: "View permitted application information.",
 };
-const BRANCHES = ["Head Office", "Pune Main Branch", "Mumbai Branch", "Nashik Branch", "Nagpur Branch"];
 
 const validatePassword = (p) => {
   if (p.length < 8) return "Password must contain at least 8 characters.";
   if (!/[A-Z]/.test(p)) return "Password must contain at least one uppercase letter.";
   if (!/[a-z]/.test(p)) return "Password must contain at least one lowercase letter.";
   if (!/[0-9]/.test(p)) return "Password must contain at least one number.";
-  if (!/[!@#$%^&*]/.test(p)) return "Password must contain at least one special character.";
+  if (!/[^A-Za-z0-9]/.test(p)) return "Password must contain at least one special character.";
   return "";
 };
 
 const passwordScore = (p) =>
-  [p.length >= 8, /[A-Z]/.test(p), /[a-z]/.test(p), /[0-9]/.test(p), /[!@#$%^&*]/.test(p)].filter(Boolean).length;
+  [p.length >= 8, /[A-Z]/.test(p), /[a-z]/.test(p), /[0-9]/.test(p), /[^A-Za-z0-9]/.test(p)].filter(Boolean).length;
+
+function normalizeUser(user) {
+  const fullName = [
+    user.first_name ?? user.firstName,
+    user.middle_name ?? user.middleName,
+    user.last_name ?? user.lastName,
+  ].filter(Boolean).join(" ") || String(user.full_name ?? user.fullName ?? user.name ?? "Unnamed user");
+  const employeeId = String(user.emp_no ?? user.employee_id ?? user.employeeId ?? "");
+  const role = String(user.role ?? "").toUpperCase();
+  const rawStatus = String(user.status ?? "").toUpperCase();
+  const twoFAValue = String(user["2fA"] ?? user.twoFAEnabled ?? "").toUpperCase();
+  const twoFAEnabled = twoFAValue === "TRUE" || twoFAValue === "Y";
+  const id = user.user_id ?? user.id ?? user.uuid ?? employeeId ?? user.username ?? fullName;
+
+  return {
+    id,
+    employeeId,
+    userName: String(user.username ?? user.user_name ?? user.userName ?? ""),
+    fullName,
+    email: String(user.email ?? ""),
+    mobile: String(user.mobile ?? ""),
+    designation: String(user.designation ?? ""),
+    role,
+    status: rawStatus === "ACTIVE" ? "OPERATIVE" : rawStatus === "INACTIVE" ? "INOPERATIVE" : rawStatus,
+    loginBranch: Number(user.allow_multibranch) === 1 ? "Multiple Branches" : String(user.login_branch ?? user.loginBranch ?? ""),
+    twoFAEnabled: twoFAEnabled ? "Y" : "N",
+    lastLogin: String(user.last_login ?? user.lastLogin ?? "Never"),
+    initials: fullName.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase(),
+  };
+}
+
+function extractUsers(result) {
+  const users = Array.isArray(result?.data)
+    ? result.data
+    : result?.data?.users ?? result?.data?.items ?? result?.users;
+
+  if (!Array.isArray(users)) {
+    throw new Error("The users response did not contain a user list.");
+  }
+
+  return users.map(normalizeUser);
+}
 
 /* ---------- small building blocks ---------- */
 
@@ -53,9 +100,9 @@ function Field({ label, required, hint, children }) {
   );
 }
 
-function Segmented({ value, onChange, options = [["Y", "Yes"], ["N", "No"]] }) {
+function Segmented({ value, onChange, options = [["Y", "Yes"], ["N", "No"]], className = "" }) {
   return (
-    <div className="um-seg" role="radiogroup">
+    <div className={`um-seg ${className}`} role="radiogroup">
       {options.map(([v, text]) => (
         <button
           key={v}
@@ -102,10 +149,13 @@ function PasswordInput({ show, onToggle, ...props }) {
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [listError, setListError] = useState("");
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
 
   const [query, setQuery] = useState("");
@@ -113,11 +163,45 @@ export default function UserManagementPage() {
   const [branchFilter, setBranchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
+  const refreshUsers = useCallback(async () => {
+    setLoadingUsers(true);
+    setListError("");
+
+    try {
+      setUsers(extractUsers(await getUsers(USER_ORGANIZATION_ID)));
+    } catch (error) {
+      setListError(error.message || "Unable to load users.");
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUsers();
+  }, [refreshUsers]);
+
   const set = (name, value) => {
     setForm((prev) => ({ ...prev, [name]: value }));
     setFormError("");
   };
   const handleChange = (e) => set(e.target.name, e.target.value);
+  const handleFormFieldChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "mobile") {
+      set(name, value.replace(/\D/g, "").slice(0, 10));
+      return;
+    }
+    if (name === "designation") {
+      set(name, value.replace(/[0-9]/g, ""));
+      return;
+    }
+    if (name === "firstName" || name === "middleName" || name === "lastName") {
+      const maxLength = name === "lastName" ? 60 : 50;
+      set(name, value.replace(/[0-9]/g, "").slice(0, maxLength));
+      return;
+    }
+    handleChange(e);
+  };
 
   const closeModal = () => {
     setShowCreateUser(false);
@@ -127,47 +211,102 @@ export default function UserManagementPage() {
     setShowConfirmPassword(false);
   };
 
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
 
-    if (!form.employeeId.trim()) return setFormError("Employee ID is required.");
-    if (!form.userName.trim()) return setFormError("User Name is required.");
+    const requiredFields = [
+      ["Employee ID", form.employeeId],
+      ["User name", form.userName],
+      ["First name", form.firstName],
+      ["Middle name", form.middleName],
+      ["Last name", form.lastName],
+      ["Date of birth", form.dateOfBirth],
+      ["Email", form.email],
+      ["Mobile number", form.mobile],
+      ["Gender", form.gender],
+      ["Designation", form.designation],
+      ["Role", form.role],
+      ["Status", form.status],
+      ["Login branch", form.loginBranch],
+      ["Login time", form.loginTime],
+      ["Logout time", form.logoutTime],
+      ["Number of bad logins", form.badLogins],
+    ];
+    const missingField = requiredFields.find(([, value]) => !String(value).trim());
+    if (missingField) return setFormError(`${missingField[0]} is required.`);
+    const nameFields = [
+      ["First name", form.firstName, 50],
+      ["Middle name", form.middleName, 50],
+      ["Last name", form.lastName, 60],
+    ];
+    for (const [label, value, maxLength] of nameFields) {
+      if (value.length > maxLength) return setFormError(`${label} must be ${maxLength} characters or fewer.`);
+      if (/[0-9]/.test(value)) return setFormError(`${label} cannot contain numbers.`);
+    }
+    if (/[0-9]/.test(form.designation)) return setFormError("Designation cannot contain numbers.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
+      return setFormError("Enter a valid email address.");
+    if (!/^[0-9]{10}$/.test(form.mobile))
+      return setFormError("Enter a valid 10-digit mobile number.");
+    if (Number.isNaN(Date.parse(form.dateOfBirth)) || form.dateOfBirth > new Date().toISOString().slice(0, 10))
+      return setFormError("Enter a valid date of birth that is not in the future.");
+    if (!["MALE", "FEMALE", "OTHER"].includes(form.gender))
+      return setFormError("Select a valid gender.");
+    if (!Number.isInteger(Number(form.loginBranch)) || Number(form.loginBranch) < 1)
+      return setFormError("Login branch must be a positive whole number.");
+    if (!Number.isInteger(Number(form.badLogins)) || Number(form.badLogins) < 0)
+      return setFormError("Number of bad logins must be zero or a positive whole number.");
+    if (!["1", "0"].includes(form.multiBranchAccess) || !["1", "0"].includes(form.loginOnHolidays))
+      return setFormError("Select valid branch and holiday access settings.");
+    if (!["Y", "N"].includes(form.twoFAEnabled))
+      return setFormError("Select a valid two-factor authentication setting.");
+    if (!/^\d{2}:\d{2}$/.test(form.loginTime) || !/^\d{2}:\d{2}$/.test(form.logoutTime))
+      return setFormError("Enter valid login and logout times.");
+    if (!Number.isInteger(USER_ORGANIZATION_ID) || USER_ORGANIZATION_ID < 1 || !USER_ORGANIZATION_CODE.trim())
+      return setFormError("Organization information is missing.");
+    if (!Object.hasOwn(ROLES, form.role)) return setFormError("Select a valid role.");
+    if (!["OPERATIVE", "INOPERATIVE"].includes(form.status))
+      return setFormError("Select a valid user status.");
 
     const pwError = validatePassword(form.password);
     if (pwError) return setFormError(pwError);
     if (form.password !== form.confirmPassword)
       return setFormError("Password and Confirm Password do not match.");
-    if (!form.role) return setFormError("Please select a user role.");
-    if (form.multiBranchAccess === "N" && !form.loginBranch)
-      return setFormError("Please select a Login Branch when Multi Branch Access is No.");
 
-    /*
-      BACKEND API INTEGRATION WILL BE ADDED LATER.
-      Password must NEVER be stored by the frontend — the backend should hash it.
-    */
-
-    const fullName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(" ");
-    const initials = fullName.split(" ").filter(Boolean).map((w) => w[0]).join("").substring(0, 2).toUpperCase();
-
-    setUsers((prev) => [
-      ...prev,
-      {
-        id: `USR-${String(prev.length + 1).padStart(5, "0")}`,
-        employeeId: form.employeeId,
-        userName: form.userName,
-        fullName,
-        email: form.email,
-        mobile: form.mobile,
-        designation: form.designation,
+    setIsSubmitting(true);
+    setFormError("");
+    try {
+ await createUser({
+        organization_id: USER_ORGANIZATION_ID,
+        organization_code: USER_ORGANIZATION_CODE,
+        emp_no: form.employeeId.trim(),
+        first_name: form.firstName.trim(),
+        middle_name: form.middleName.trim(),
+        last_name: form.lastName.trim(),
+        dob: form.dateOfBirth,
+        username: form.userName.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        mobile: `+91${form.mobile}`,
+        gender: form.gender,
+        designation: form.designation.trim(),
         role: form.role,
+        "2fA": form.twoFAEnabled === "Y",
         status: form.status,
-        loginBranch: form.multiBranchAccess === "Y" ? "Multiple Branches" : form.loginBranch,
-        twoFAEnabled: form.twoFAEnabled,
-        lastLogin: form.lastLoginDate && form.lastLoginTime ? `${form.lastLoginDate} ${form.lastLoginTime}` : "Never",
-        initials,
-      },
-    ]);
-    closeModal();
+        allow_multibranch: Number(form.multiBranchAccess),
+        login_branch: Number(form.loginBranch),
+        allow_login_in_holidays: Number(form.loginOnHolidays),
+        login_time: `${form.loginTime}:00`,
+        logout_time: `${form.logoutTime}:00`,
+        no_of_bad_logins: Number(form.badLogins),
+      });
+      closeModal();
+      await refreshUsers();
+    } catch (error) {
+      setFormError(error.message || "Unable to create user.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -191,9 +330,9 @@ export default function UserManagementPage() {
 
   const stats = [
     { label: "Total users", value: users.length, icon: Users, tone: "blue" },
-    { label: "Makers", value: count("Maker"), icon: Edit3, tone: "teal" },
-    { label: "Checkers", value: count("Checker"), icon: ShieldCheck, tone: "violet" },
-    { label: "Viewers", value: count("Viewer"), icon: ViewIcon, tone: "amber" },
+    { label: "Makers", value: count("MAKER"), icon: Edit3, tone: "teal" },
+    { label: "Checkers", value: count("CHECKER"), icon: ShieldCheck, tone: "violet" },
+    { label: "Viewers", value: count("VIEWER"), icon: ViewIcon, tone: "amber" },
   ];
 
   return (
@@ -243,12 +382,14 @@ export default function UserManagementPage() {
         </select>
         <select className="um-filter" value={branchFilter} onChange={(e) => setBranchFilter(e.target.value)} aria-label="Filter by branch">
           <option value="">All branches</option>
-          {[...BRANCHES, "Multiple Branches"].map((b) => <option key={b}>{b}</option>)}
+          {[...new Set(users.map((user) => user.loginBranch).filter(Boolean))].map((branch) => (
+            <option key={branch} value={branch}>{branch}</option>
+          ))}
         </select>
         <select className="um-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status">
           <option value="">All statuses</option>
-          <option>Active</option>
-          <option>Inactive</option>
+          <option value="OPERATIVE">Operative</option>
+          <option value="INOPERATIVE">Inoperative</option>
         </select>
       </div>
 
@@ -268,13 +409,22 @@ export default function UserManagementPage() {
           </button>
         </div>
 
-        {filtered.length === 0 ? (
+        {listError && (
+          <div className="um-error" role="alert">
+            {listError}{" "}
+            <button type="button" className="um-retry" onClick={refreshUsers}>Retry</button>
+          </div>
+        )}
+
+        {loadingUsers ? (
+          <div className="um-empty" role="status">Loading users...</div>
+        ) : filtered.length === 0 ? (
           <div className="um-empty">
             <span className="um-empty-icon"><UserRound size={26} /></span>
             <h3>{users.length === 0 ? "No users created yet" : "No users match your filters"}</h3>
             <p>
               {users.length === 0
-                ? "Create a user and assign a Maker, Checker or Viewer role."
+                ? "Create a user and assign an administrative or application role."
                 : "Try a different search term or clear the filters."}
             </p>
             {users.length === 0 && (
@@ -318,7 +468,7 @@ export default function UserManagementPage() {
                       </span>
                     </td>
                     <td data-label="Status">
-                      <span className={`um-pill ${u.status === "Active" ? "ok" : "warn"}`}>{u.status}</span>
+                      <span className={`um-pill ${u.status === "OPERATIVE" ? "ok" : "warn"}`}>{u.status || "-"}</span>
                     </td>
                     <td data-label="Last login">{u.lastLogin}</td>
                     <td className="um-actions">
@@ -352,16 +502,16 @@ export default function UserManagementPage() {
               <div className="um-body">
                 <Section icon={LockKeyhole} title="Employee & login" subtitle="Employee identity and authentication credentials">
                   <div className="um-grid g3">
-                    <Field label="Employee ID" required>
+                    <Field label="Employee number" required>
                       <input className="form-input um-input" name="employeeId" value={form.employeeId} onChange={handleChange} placeholder="Enter Employee ID" required />
                     </Field>
                     <Field label="User name" required>
                       <input className="form-input um-input" name="userName" value={form.userName} onChange={handleChange} placeholder="Enter login username" required />
                     </Field>
                     <Field label="Status" required>
-                      <select className="form-input um-input" name="status" value={form.status} onChange={handleChange}>
-                        <option>Active</option>
-                        <option>Inactive</option>
+                      <select className="form-input um-input" name="status" value={form.status} onChange={handleChange} required>
+                        <option value="OPERATIVE">Operative</option>
+                        <option value="INOPERATIVE">Inoperative</option>
                       </select>
                     </Field>
                   </div>
@@ -408,42 +558,45 @@ export default function UserManagementPage() {
                 <Section icon={UserRound} title="Personal information" subtitle="Employee personal and contact details">
                   <div className="um-grid g3">
                     <Field label="First name" required>
-                      <input className="form-input um-input" name="firstName" value={form.firstName} onChange={handleChange} placeholder="First name" required />
+                      <input className="form-input um-input" name="firstName" value={form.firstName} onChange={handleFormFieldChange} placeholder="First name" maxLength={50} required />
                     </Field>
-                    <Field label="Middle name">
-                      <input className="form-input um-input" name="middleName" value={form.middleName} onChange={handleChange} placeholder="Middle name" />
+                    <Field label="Middle name" required>
+                      <input className="form-input um-input" name="middleName" value={form.middleName} onChange={handleFormFieldChange} placeholder="Middle name" maxLength={50} required />
                     </Field>
                     <Field label="Last name" required>
-                      <input className="form-input um-input" name="lastName" value={form.lastName} onChange={handleChange} placeholder="Last name" required />
+                      <input className="form-input um-input" name="lastName" value={form.lastName} onChange={handleFormFieldChange} placeholder="Last name" maxLength={60} required />
                     </Field>
                   </div>
                   <div className="um-grid g3 um-gap">
-                    <Field label="Date of birth">
-                      <input className="form-input um-input" type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} />
+                    <Field label="Date of birth" required>
+                      <input className="form-input um-input" type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} max={new Date().toISOString().slice(0, 10)} required />
                     </Field>
-                    <Field label="Gender">
-                      <select className="form-input um-input" name="gender" value={form.gender} onChange={handleChange}>
+                    <Field label="Gender" required>
+                      <select className="form-input um-input" name="gender" value={form.gender} onChange={handleChange} required>
                         <option value="">Select gender</option>
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Other</option>
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                        <option value="OTHER">Other</option>
                       </select>
                     </Field>
-                    <Field label="Mobile no.">
-                      <input className="form-input um-input" type="tel" name="mobile" value={form.mobile} onChange={handleChange} placeholder="Enter mobile number" />
+                    <Field label="Mobile number" required>
+                      <div className="um-mobile">
+                        <span aria-hidden="true">+91</span>
+                        <input className="form-input um-input" type="tel" name="mobile" value={form.mobile} onChange={handleFormFieldChange} placeholder="9776541010" inputMode="numeric" pattern="[0-9]{10}" maxLength={10} aria-label="10-digit mobile number" required />
+                      </div>
                     </Field>
                   </div>
                   <div className="um-gap">
-                    <Field label="Email ID">
-                      <input className="form-input um-input" type="email" name="email" value={form.email} onChange={handleChange} placeholder="employee@bank.com" />
+                    <Field label="Email ID" required>
+                      <input className="form-input um-input" type="email" name="email" value={form.email} onChange={handleChange} placeholder="employee@bank.com" required />
                     </Field>
                   </div>
                 </Section>
 
                 <Section icon={ShieldCheck} title="Role & access" subtitle="Application role and functional access">
                   <div className="um-grid g2">
-                    <Field label="Designation">
-                      <input className="form-input um-input" name="designation" value={form.designation} onChange={handleChange} placeholder="e.g. Credit Officer" />
+                    <Field label="Designation" required>
+                      <input className="form-input um-input" name="designation" value={form.designation} onChange={handleFormFieldChange} placeholder="e.g. Credit Officer" required />
                     </Field>
                     <Field label="Role" required>
                       <select className="form-input um-input" name="role" value={form.role} onChange={handleChange} required>
@@ -468,27 +621,15 @@ export default function UserManagementPage() {
                 </Section>
 
                 <Section icon={Building2} title="Branch & login access" subtitle="Configure branch and working-day access">
-                  <div className="um-grid g2">
-                    <Field label="Multi branch access" required hint={form.multiBranchAccess === "Y" ? "User can access multiple authorized branches." : undefined}>
-                      <Segmented
-                        value={form.multiBranchAccess}
-                        onChange={(v) => setForm((p) => ({ ...p, multiBranchAccess: v, loginBranch: v === "Y" ? "" : p.loginBranch }))}
-                      />
+                  <div className="um-grid g3">
+                    <Field label="Multi branch access" required>
+                      <Segmented className="um-seg-switch" value={form.multiBranchAccess} onChange={(v) => set("multiBranchAccess", v)} options={[["1", "Enabled"], ["0", "Disabled"]]} />
                     </Field>
-                    <Field label="Login branch" required={form.multiBranchAccess === "N"}>
-                      <select
-                        className="form-input um-input" name="loginBranch" value={form.loginBranch}
-                        onChange={handleChange} disabled={form.multiBranchAccess === "Y"}
-                        required={form.multiBranchAccess === "N"}
-                      >
-                        <option value="">Select login branch</option>
-                        {BRANCHES.map((b) => <option key={b}>{b}</option>)}
-                      </select>
+                    <Field label="Login branch ID" required>
+                      <input className="form-input um-input" type="number" name="loginBranch" value={form.loginBranch} onChange={handleChange} min="1" step="1" required />
                     </Field>
-                  </div>
-                  <div className="um-gap">
                     <Field label="Login on holidays" required>
-                      <Segmented value={form.loginOnHolidays} onChange={(v) => set("loginOnHolidays", v)} />
+                      <Segmented className="um-seg-switch" value={form.loginOnHolidays} onChange={(v) => set("loginOnHolidays", v)} options={[["1", "Allowed"], ["0", "Not allowed"]]} />
                     </Field>
                   </div>
                 </Section>
@@ -496,41 +637,16 @@ export default function UserManagementPage() {
                 <Section icon={Clock3} title="Login & session" subtitle="Allowed login window and session security">
                   <div className="um-grid g3">
                     <Field label="Login time">
-                      <input className="form-input um-input" type="time" name="loginTime" value={form.loginTime} onChange={handleChange} />
+                      <input className="form-input um-input" type="time" name="loginTime" value={form.loginTime} onChange={handleChange} required />
                     </Field>
                     <Field label="Logout time">
-                      <input className="form-input um-input" type="time" name="logoutTime" value={form.logoutTime} onChange={handleChange} />
-                    </Field>
-                    <Field label="Inactive session timeout (sec)" required>
-                      <input className="form-input um-input" type="number" min="60" name="inactiveSessionTimeout" value={form.inactiveSessionTimeout} onChange={handleChange} placeholder="900" />
+                      <input className="form-input um-input" type="time" name="logoutTime" value={form.logoutTime} onChange={handleChange} required />
                     </Field>
                   </div>
                   <div className="um-gap um-narrow">
-                    <Field label="No. of bad logins" hint="Current failed login attempt count. Backend should enforce the lockout policy.">
-                      <input className="form-input um-input" type="number" min="0" name="badLogins" value={form.badLogins} onChange={handleChange} placeholder="0" />
+                    <Field label="Number of bad logins" required hint="Current failed login attempt count.">
+                      <input className="form-input um-input" type="number" min="0" step="1" name="badLogins" value={form.badLogins} onChange={handleChange} required />
                     </Field>
-                  </div>
-                </Section>
-
-                <Section icon={CalendarDays} title="Login audit" subtitle="Previous login information kept for audit purposes">
-                  <div className="um-grid g2">
-                    <Field label="Last login date">
-                      <input className="form-input um-input" type="date" name="lastLoginDate" value={form.lastLoginDate} onChange={handleChange} />
-                    </Field>
-                    <Field label="Last login time">
-                      <input className="form-input um-input" type="time" name="lastLoginTime" value={form.lastLoginTime} onChange={handleChange} />
-                    </Field>
-                  </div>
-                  <div className="um-note">
-                    <ShieldCheck size={18} />
-                    <div>
-                      <strong>Backend security integration</strong>
-                      <p>
-                        User creation APIs, password hashing, 2FA configuration, branch authorization,
-                        session timeout enforcement and audit logging will be integrated with the Java
-                        backend once the APIs are provided.
-                      </p>
-                    </div>
                   </div>
                 </Section>
 
@@ -541,8 +657,8 @@ export default function UserManagementPage() {
                 <span className="um-hint">Fields marked * are mandatory.</span>
                 <div className="um-foot-btns">
                   <button type="button" className="outline-button" onClick={closeModal}>Cancel</button>
-                  <button type="submit" className="primary-button" disabled={!form.role} style={{ opacity: form.role ? 1 : 0.5, cursor: form.role ? "pointer" : "not-allowed" }}>
-                    <Plus size={16} /> Create User
+                  <button type="submit" className="primary-button" disabled={isSubmitting}>
+                    <Plus size={16} /> {isSubmitting ? "Creating..." : "Create User"}
                   </button>
                 </div>
               </div>
@@ -590,7 +706,7 @@ const CSS = `
 .um-person{display:flex;align-items:center;gap:12px}.um-person strong{color:#142036}
 .um-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2457d6,#0b8a72);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;flex-shrink:0}
 .um-badge{display:inline-block;padding:4px 11px;border-radius:8px;font-size:12px;font-weight:650}
-.um-role-Maker{background:#dcf5ef;color:#0b6b59}.um-role-Checker{background:#eee8ff;color:#5632b5}.um-role-Viewer{background:#fff1d6;color:#8f5600}
+.um-role-ADMIN{background:#e8f0ff;color:#2457d6}.um-role-MAKER{background:#dcf5ef;color:#0b6b59}.um-role-CHECKER{background:#eee8ff;color:#5632b5}.um-role-VIEWER{background:#fff1d6;color:#8f5600}
 .um-pill{display:inline-block;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:650}
 .um-pill.ok{background:#dcf5e6;color:#0f7a3f}.um-pill.warn{background:#fff1d6;color:#8f5600}
 .um-dot{display:inline-flex;align-items:center;gap:7px;font-size:13px}
@@ -628,6 +744,9 @@ const CSS = `
 .um-input{width:100%;box-sizing:border-box;height:44px;padding:0 13px;border:1px solid #d5dde8;border-radius:10px;background:#fff;font-size:14px;color:#142036;transition:border-color .15s,box-shadow .15s}
 .um-input:focus{outline:0;border-color:#2457d6;box-shadow:0 0 0 4px rgba(36,87,214,.12)}
 .um-input:disabled{background:#f1f4f8;color:#8592a5;cursor:not-allowed}
+.um-mobile{display:flex;align-items:center;gap:8px}
+.um-mobile>span{display:flex;align-items:center;justify-content:center;flex:0 0 58px;height:44px;box-sizing:border-box;border:1px solid #d5dde8;border-radius:10px;background:#f8fafc;color:#111827;font-size:14px;font-weight:600}
+.um-mobile .um-input{flex:1;min-width:0;width:0}
 
 .um-pw{position:relative}.um-pw .um-input{padding-right:46px}
 .um-pw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;width:34px;height:34px;border-radius:8px;cursor:pointer;color:#64748b}
@@ -642,6 +761,9 @@ const CSS = `
 .um-seg{display:inline-flex;padding:4px;gap:4px;background:#eef1f6;border-radius:11px}
 .um-seg button{min-width:92px;padding:9px 16px;border:0;border-radius:8px;background:transparent;color:#52607a;font-weight:650;font-size:13.5px;cursor:pointer;transition:background .15s,color .15s}
 .um-seg button.um-seg-on{background:#fff;color:#2457d6;box-shadow:0 1px 3px rgba(15,23,42,.15)}
+.um-seg-switch{border-radius:999px;gap:3px}
+.um-seg-switch button{border-radius:999px;transition:background .2s ease,color .2s ease,box-shadow .2s ease,transform .2s ease}
+.um-seg-switch button:active{transform:scale(.97)}
 
 .um-roles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .um-role{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:18px;border-radius:14px;border:1.5px solid #dbe2ea;background:#fff;cursor:pointer;color:#64748b;transition:border-color .15s,background .15s}
@@ -654,6 +776,7 @@ const CSS = `
 .um-note svg{flex-shrink:0;margin-top:2px}.um-note strong{font-size:13px;color:#142036}
 .um-note p{margin:4px 0 0;font-size:12px;line-height:1.55;color:#52607a}
 .um-error{margin-bottom:20px;padding:12px 14px;border-radius:10px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:13px;font-weight:500}
+.um-retry{border:0;background:transparent;color:#991b1b;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer}
 
 @keyframes um-fade{from{opacity:0}to{opacity:1}}
 @keyframes um-pop{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
