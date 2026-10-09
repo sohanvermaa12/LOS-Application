@@ -15,8 +15,11 @@ Open `http://localhost:3000/login`.
 
 Application routes require a server-signed session cookie created after login
 or OTP verification. Set `SESSION_SECRET` to a unique random value containing
-at least 32 characters in `src/.env` and in the production environment. The
-session check runs locally on each route request and does not call the backend.
+at least 32 characters in `.env.local` at the project root and in the production
+environment. Next.js does not load environment files from `src/`. This secret
+is used by the frontend to sign its session cookie; the backend login endpoint
+does not use it. The session check runs locally on each route request and does
+not call the backend.
 
 ## Routes
 

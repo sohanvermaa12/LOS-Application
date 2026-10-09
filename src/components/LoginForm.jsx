@@ -335,7 +335,8 @@ export default function LoginForm() {
               />
 
               <input
-                type="email"
+                type="text"
+                autoComplete="username"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="Enter your username or email"
