@@ -1,305 +1,236 @@
-'use client';
+﻿'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
-import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Search } from 'lucide-react';
-import { State } from 'country-state-city';
+import { useState } from 'react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Briefcase,
+  FileText,
+  Home,
+  Landmark,
+  UploadCloud,
+  Wallet
+} from 'lucide-react';
 import AppShell from '../../components/AppShell';
 
-const stepLabels = [
-  'Personal Details',
-  'Employment info',
-  'Income Detail'
+const wizardSteps = [
+  { id: 'personal', label: 'Personal Details', title: 'Loan Application - Personal Details', icon: UserIcon },
+  { id: 'address', label: 'Address Details', title: 'Loan Application - Personal Details', icon: Home },
+  { id: 'employment', label: 'Employment info', title: 'Loan Application - Employment Information', icon: Briefcase },
+  { id: 'income', label: 'Income Detail', title: 'Loan Application - Income Information', icon: Wallet },
+  { id: 'documents', label: 'Documents', title: 'Loan Application - Document Details', icon: FileText },
+  { id: 'loan', label: 'Loan Details', title: 'Loan Application - Loan Details', icon: Landmark }
 ];
-
-const loanProductOptions = [
-  { value: 'gold', label: 'Gold Loan', code: 'GL-1001', description: 'Secured loan against gold assets with flexible eligibility.' },
-  { value: 'business', label: 'Business Loan', code: 'BL-2002', description: 'Working capital and expansion support for business growth.' },
-  { value: 'vehicle', label: 'Vehicle Loan', code: 'VL-3003', description: 'Financing for car, two-wheeler and commercial vehicles.' },
-  { value: 'personal', label: 'Personal Loan', code: 'PL-4004', description: 'Unsecured borrowing for personal requirements and emergencies.' },
-  { value: 'professional', label: 'Professional Loan', code: 'PR-5005', description: 'Loan designed for self-employed professionals and consultants.' }
-];
-
-const indianStates = State.getStatesOfCountry('IN');
-
-const formatDateValue = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const initialForm = {
-  loanType: 'personal',
-  vehicleLoanType: '',
-  firstName: '',
+  customerNumber: '',
+  panCard: '',
+  fullName: '',
   middleName: '',
   lastName: '',
   dob: '',
-  gender: 'Male',
-  phone: '',
+  fatherName: '',
+  age: '',
+  motherName: '',
   email: '',
-  addressSame: 'Yes',
-  addressType: 'Current & Aadhaar',
-  currentAddress: '',
-  permanentAddress: '',
+  customerType: '',
+  aadhaarCard: '',
+  aadhaarNumber: '',
+  gender: '',
+  kycRegn: '',
+  maritalStatus: '',
+  mobileNo: '',
+  occupation: '',
+  alternateContact: '',
+  residentialStatus: '',
+  residentialType: '',
+  flatBuildingName: '',
+  streetRoad: '',
+  landMark: '',
   city: '',
   state: '',
-  pincode: '',
-  fatherName: '',
-  motherName: '',
-  maritalStatus: 'Married',
-  companyName: '',
+  pinCode: '',
   employmentType: '',
+  qualification: '',
   designation: '',
-  totalWorkExperience: '',
-  currentEmployerExperience: '',
+  empEmailId: '',
+  employerName: '',
+  location: '',
   dateOfJoining: '',
-  employmentVerificationStatus: '',
-  salaryBankName: '',
-  salaryCreditFrequency: '',
-  monthlyIncome: '',
+  dateOfRetirement: '',
+  appointmentLetter: '',
   annualIncome: '',
-  businessType: 'Self Employed / Business',
-  businessName: '',
-  businessTypeValue: '',
-  businessRegistrationNo: '',
-  cibilScore: '',
-  businessTurnover: '',
-  businessVintage: ''
+  incomeTaxFile: '',
+  riskCategory: '',
+  bankName: '',
+  bankAccountNo: '',
+  formNo16: '',
+  salaryCertificate: '',
+  loanType: '',
+  totalOutstanding: '',
+  emi: '',
+  loanExpiryDate: '',
+  documentPan: '',
+  documentAadhaar: '',
+  documentSalary: '',
+  documentBank: ''
 };
 
-const validateStep = (form, step) => {
-  const errors = [];
-  const addError = (field, message) => errors.push({ field, message });
-  const requireValue = (field, label) => {
-    if (!String(form[field] || '').trim()) {
-      addError(field, `${label} is required.`);
-      return false;
-    }
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MOBILE_REGEX = /^[6-9]\d{9}$/;
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+const AADHAAR_REGEX = /^\d{12}$/;
+const PIN_REGEX = /^\d{6}$/;
 
-    return true;
-  };
-  const isValidDate = (value) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      return false;
-    }
+const normalizePan = (value) => {
+  const characters = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  let pan = '';
 
-    const [year, month, day] = value.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
-  };
-  const today = new Date();
-  const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const namePattern = /^[A-Za-z ]+$/;
-  const validateName = (field, label, maxLength = 60) => {
-    if (requireValue(field, label) && (!namePattern.test(form[field].trim()) || form[field].trim().length > maxLength)) {
-      addError(field, `${label} must contain only letters and spaces and be at most ${maxLength} characters.`);
-    }
-  };
-  const validateOptionalName = (field, label, maxLength = 30) => {
-    const value = form[field].trim();
-    if (value && (!namePattern.test(value) || value.length > maxLength)) {
-      addError(field, `${label} must contain only letters and spaces and be at most ${maxLength} characters.`);
-    }
-  };
-  const validatePositiveAmount = (field, label) => {
-    if (requireValue(field, label) && (!/^\d+(\.\d{1,2})?$/.test(form[field]) || Number(form[field]) <= 0)) {
-      addError(field, `${label} must be a positive amount.`);
-    }
-  };
-  const validateLettersOnly = (field, label, maxLength = 100) => {
-    if (requireValue(field, label) && (!/^[A-Za-z ]+$/.test(form[field].trim()) || form[field].trim().length > maxLength)) {
-      addError(field, `${label} must contain only letters and spaces and be at most ${maxLength} characters.`);
-    }
-  };
+  for (const character of characters) {
+    const position = pan.length;
+    const isValid = position < 5
+      ? /[A-Z]/.test(character)
+      : position < 9
+        ? /\d/.test(character)
+        : /[A-Z]/.test(character);
 
-  if (step === 0) {
-    validateName('firstName', 'First name', 30);
-    validateOptionalName('middleName', 'Middle name');
-    validateName('lastName', 'Last name', 30);
+    if (isValid) pan += character;
+    if (pan.length === 10) break;
+  }
 
-    if (requireValue('dob', 'Date of birth') && (!isValidDate(form.dob) || form.dob > todayString)) {
-      addError('dob', 'Date of birth must be a valid date that is not in the future.');
+  return pan;
+};
+
+const validateStep = (stepIndex, values) => {
+  const errors = {};
+
+  if (stepIndex === 0) {
+    if (!values.fullName?.trim()) errors.fullName = 'First name is required.';
+    if (!values.lastName?.trim()) errors.lastName = 'Last name is required.';
+    if (!values.mobileNo || !MOBILE_REGEX.test(values.mobileNo)) errors.mobileNo = 'Enter a valid 10-digit mobile number.';
+    if (!values.email || !EMAIL_REGEX.test(values.email)) errors.email = 'Enter a valid email address.';
+    if (!values.panCard || !PAN_REGEX.test(values.panCard.toUpperCase())) errors.panCard = 'Enter a valid PAN number in format ABCDE1234F.';
+    if (values.aadhaarCard === 'Yes' && (!values.aadhaarNumber || !AADHAAR_REGEX.test(values.aadhaarNumber))) {
+      errors.aadhaarNumber = 'Aadhaar number must be a valid 12-digit number.';
     }
+    if (!values.dob) errors.dob = 'Date of birth is required.';
+    if (!values.fatherName?.trim()) errors.fatherName = 'Father name is required.';
+    if (!values.motherName?.trim()) errors.motherName = 'Mother name is required.';
+    if (!values.city?.trim()) errors.city = 'City is required.';
+    if (!values.state) errors.state = 'State is required.';
+    if (!values.pinCode || !PIN_REGEX.test(values.pinCode)) errors.pinCode = 'Pincode must be 6 digits.';
+  }
 
-    if (!['Male', 'Female', 'Other'].includes(form.gender)) {
-      addError('gender', 'Select a gender.');
-    }
+  if (stepIndex === 1) {
+    if (!values.flatBuildingName?.trim()) errors.flatBuildingName = 'Current address is required.';
+    if (!values.city?.trim()) errors.city = 'City is required.';
+    if (!values.state) errors.state = 'State is required.';
+    if (!values.pinCode || !PIN_REGEX.test(values.pinCode)) errors.pinCode = 'Pincode must be 6 digits.';
+    if (!values.residentialType) errors.residentialType = 'Select address type.';
+    if (!values.aadhaarCard) errors.aadhaarCard = 'Choose Aadhaar match option.';
+  }
 
-    if (requireValue('phone', 'Phone number') && !/^[6-9]\d{9}$/.test(form.phone)) {
-      addError('phone', 'Enter a valid 10-digit Indian mobile number.');
-    }
+  if (stepIndex === 2) {
+    if (!values.employerName?.trim()) errors.employerName = 'Company name is required.';
+    if (!values.employmentType) errors.employmentType = 'Employment type is required.';
+    if (!values.designation?.trim()) errors.designation = 'Designation is required.';
+    if (!values.occupation) errors.occupation = 'Work experience is required.';
+    if (!values.qualification) errors.qualification = 'Current employer experience is required.';
+    if (!values.dateOfJoining) errors.dateOfJoining = 'Date of joining is required.';
+    if (!values.bankName?.trim()) errors.bankName = 'Salary account or bank name is required.';
+  }
 
-    if (requireValue('email', 'Email') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      addError('email', 'Enter a valid email address.');
-    }
+  if (stepIndex === 3) {
+    if (!values.annualIncome || Number(values.annualIncome) <= 0) errors.annualIncome = 'Monthly or annual income must be greater than zero.';
+    if (!values.loanType) errors.loanType = 'Business type is required.';
+    if (!values.employerName?.trim()) errors.employerName = 'Business name is required.';
+    if (!values.bankAccountNo?.trim()) errors.bankAccountNo = 'Bank account details are required.';
+  }
 
-    if (!['Yes', 'No'].includes(form.addressSame)) {
-      addError('addressSame', 'Select whether your address matches Aadhaar.');
-    }
-
-    if (!['Current & Aadhaar', 'Permanent - Aadhaar', 'All same'].includes(form.addressType)) {
-      addError('addressType', 'Select an address type.');
-    }
-
-    requireValue('currentAddress', 'Current address');
-    if (form.addressSame === 'No') {
-      requireValue('permanentAddress', 'Permanent address');
-    }
-    if (requireValue('city', 'City') && !/^[A-Za-z ]+$/.test(form.city.trim())) {
-      addError('city', 'City must contain only letters and spaces.');
-    }
-
-    if (!indianStates.some((state) => state.name === form.state)) {
-      addError('state', 'Select a state.');
-    }
-
-    if (requireValue('pincode', 'Pincode') && !/^\d{6}$/.test(form.pincode)) {
-      addError('pincode', 'Pincode must contain exactly 6 digits.');
-    }
-
-    validateName('fatherName', "Father's full name");
-    validateName('motherName', "Mother's full name");
-
-    if (!['Married', 'Unmarried'].includes(form.maritalStatus)) {
-      addError('maritalStatus', 'Select a marital status.');
+  if (stepIndex === 4) {
+    const documents = [values.documentPan, values.documentAadhaar, values.documentSalary, values.documentBank];
+    if (documents.every((item) => !item || !item.trim())) {
+      errors.documents = 'Upload at least one supporting document before continuing.';
     }
   }
 
-  if (step === 1) {
-    validateLettersOnly('companyName', 'Company name');
-    if (!['Full Time', 'Contract', 'Temporary'].includes(form.employmentType)) {
-      addError('employmentType', 'Select an employment type.');
-    }
-    validateLettersOnly('designation', 'Designation');
-
-    if (!['1-2 years', '3-5 years', '5+ years'].includes(form.totalWorkExperience)) {
-      addError('totalWorkExperience', 'Select your total work experience.');
-    }
-    if (!['1-2 years', '3-5 years', '5+ years'].includes(form.currentEmployerExperience)) {
-      addError('currentEmployerExperience', 'Select your current employer experience.');
-    }
-
-    if (requireValue('dateOfJoining', 'Date of joining') && (!isValidDate(form.dateOfJoining) || form.dateOfJoining > todayString)) {
-      addError('dateOfJoining', 'Date of joining must be a valid date that is not in the future.');
-    }
-
-    if (!['Verified', 'Pending'].includes(form.employmentVerificationStatus)) {
-      addError('employmentVerificationStatus', 'Select an employment verification status.');
-    }
-    if (!['Monthly', 'Bi-monthly', 'Weekly'].includes(form.salaryCreditFrequency)) {
-      addError('salaryCreditFrequency', 'Select a salary credit frequency.');
-    }
-    requireValue('salaryBankName', 'Salary account / bank name');
-  }
-
-  if (step === 2) {
-    validatePositiveAmount('monthlyIncome', 'Monthly income');
-    validatePositiveAmount('annualIncome', 'Annual income');
-
-    if (!['Salaried', 'Self Employed / Business'].includes(form.businessType)) {
-      addError('businessType', 'Select a business type.');
-    }
-
-    validateLettersOnly('businessName', 'Business name');
-    if (!['Sole Proprietorship', 'Partnership', 'Private Limited'].includes(form.businessTypeValue)) {
-      addError('businessTypeValue', 'Select a business registration type.');
-    }
-    if (requireValue('businessRegistrationNo', 'Business registration number') && !/^\d{1,20}$/.test(form.businessRegistrationNo)) {
-      addError('businessRegistrationNo', 'Business registration number must contain only digits and be at most 20 digits.');
-    }
-
-    if (requireValue('cibilScore', 'CIBIL score') && (!/^\d{3}$/.test(form.cibilScore) || Number(form.cibilScore) < 300 || Number(form.cibilScore) > 900)) {
-      addError('cibilScore', 'CIBIL score must be a whole number from 300 to 900.');
-    }
-
-    if (!['1-2 years', '3-5 years', '5+ years'].includes(form.businessVintage)) {
-      addError('businessVintage', 'Select a business vintage.');
-    }
-    validatePositiveAmount('businessTurnover', 'Business turnover');
+  if (stepIndex === 5) {
+    if (!values.bankName?.trim()) errors.bankName = 'Bank name is required.';
+    if (!values.bankAccountNo?.trim()) errors.bankAccountNo = 'Account number is required.';
+    if (!values.loanType) errors.loanType = 'Loan type is required.';
+    if (!values.totalOutstanding || Number(values.totalOutstanding) <= 0) errors.totalOutstanding = 'Outstanding amount must be greater than zero.';
+    if (!values.emi || Number(values.emi) <= 0) errors.emi = 'EMI amount must be greater than zero.';
+    if (!values.loanExpiryDate) errors.loanExpiryDate = 'Expiry date is required.';
   }
 
   return errors;
 };
 
+function UserIcon(props) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+      <path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1" />
+      <circle cx="10" cy="7" r="4" />
+      <path d="M20 19v-1a4 4 0 0 0-3-3.87" />
+      <path d="M16 4.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function Field({ label, value, onChange, placeholder, type = 'text', inputMode, maxLength, children }) {
+  return (
+    <label className="loan-field">
+      <span>{label}</span>
+      {children || (
+        <input
+          type={type}
+          value={value ?? ''}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          inputMode={inputMode || undefined}
+          maxLength={maxLength}
+        />
+      )}
+    </label>
+  );
+}
+
+function SelectField({ label, value, onChange, options, placeholder = 'Select' }) {
+  return (
+    <label className="loan-field">
+      <span>{label}</span>
+      <select value={value ?? ''} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export default function LoanApplicationPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(initialForm);
-  const [validationErrors, setValidationErrors] = useState([]);
-  const [isStateDropdownOpen, setIsStateDropdownOpen] = useState(false);
-  const [stateSearch, setStateSearch] = useState('');
-  const stateDropdownRef = useRef(null);
-  const [isDobCalendarOpen, setIsDobCalendarOpen] = useState(false);
-  const dobCalendarRef = useRef(null);
-  const [isJoiningCalendarOpen, setIsJoiningCalendarOpen] = useState(false);
-  const joiningCalendarRef = useRef(null);
-
-  const wizardSteps = useMemo(
-    () => [
-      { key: 'personal', title: 'Loan Application - Personal Details' },
-      { key: 'employment', title: 'Loan Application - Employment Information' },
-      { key: 'income', title: 'Loan Application - Income Information' }
-    ],
-    []
-  );
-
-  const selectedLoan = loanProductOptions.find((item) => item.value === form.loanType) || loanProductOptions[0];
-  const currentTitle = wizardSteps[currentStep]?.title || 'Loan Application';
-  const isLastStep = currentStep === wizardSteps.length - 1;
-  const filteredStates = indianStates.filter((state) =>
-    state.name.toLowerCase().includes(stateSearch.trim().toLowerCase())
-  );
-
-  useEffect(() => {
-    const closeDropdownOnOutsideClick = (event) => {
-      if (!stateDropdownRef.current?.contains(event.target)) {
-        setIsStateDropdownOpen(false);
-        setStateSearch('');
-      }
-      if (!dobCalendarRef.current?.contains(event.target)) {
-        setIsDobCalendarOpen(false);
-      }
-      if (!joiningCalendarRef.current?.contains(event.target)) {
-        setIsJoiningCalendarOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', closeDropdownOnOutsideClick);
-    return () => document.removeEventListener('pointerdown', closeDropdownOnOutsideClick);
-  }, []);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    setValidationErrors((prev) => prev.filter((error) => error.field !== field));
+    setValidationErrors((prev) => {
+      const stepErrors = { ...(prev[currentStep] || {}) };
+      delete stepErrors[field];
+      return { ...prev, [currentStep]: stepErrors };
+    });
   };
 
-  const updateFieldIfValid = (field, value, pattern, maxLength) => {
-    if (value.length <= maxLength && pattern.test(value)) {
-      updateField(field, value);
-    }
-  };
-
-  const selectState = (stateName) => {
-    updateField('state', stateName);
-    setIsStateDropdownOpen(false);
-    setStateSearch('');
-  };
-
-  const selectedDob = form.dob ? new Date(`${form.dob}T00:00:00`) : null;
-  const selectedJoiningDate = form.dateOfJoining ? new Date(`${form.dateOfJoining}T00:00:00`) : null;
-
-  const renderFieldError = (field) => {
-    const error = validationErrors.find((item) => item.field === field);
-    return error ? <span className="field-error" role="alert">{error.message}</span> : null;
-  };
+  const activeStep = wizardSteps[currentStep];
+  const isLastStep = currentStep === wizardSteps.length - 1;
 
   const goNext = () => {
-    const errors = validateStep(form, currentStep);
-    setValidationErrors(errors);
+    const errors = validateStep(currentStep, form);
 
-    if (errors.length > 0) {
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors((prev) => ({ ...prev, [currentStep]: errors }));
       return;
     }
 
@@ -308,7 +239,7 @@ export default function LoanApplicationPage() {
       return;
     }
 
-    alert('Application submitted successfully.');
+    alert('Application drafted successfully.');
   };
 
   const goBack = () => {
@@ -317,107 +248,68 @@ export default function LoanApplicationPage() {
     }
   };
 
+  const renderTableRow = (rowValues, index) => (
+    <tr key={index}>
+      {rowValues.map((cell, cellIndex) => (
+        <td key={`${index}-${cellIndex}`}>{cell || ' '}</td>
+      ))}
+    </tr>
+  );
+
+  const documentRows = [
+    { label: 'PAN Card', field: 'documentPan' },
+    { label: 'Aadhaar Card', field: 'documentAadhaar' },
+    { label: 'Salary Slip', field: 'documentSalary' },
+    { label: 'Bank Statement', field: 'documentBank' }
+  ];
+
+  const currentStepErrors = validationErrors[currentStep] || {};
+  const hasStepErrors = Object.keys(currentStepErrors).length > 0;
+
   return (
     <AppShell title="Loan Application">
       <div className="loan-application-shell">
         <div className="loan-application-card">
           <div className="loan-application-header">
-            <h1>{currentTitle}</h1>
+            <h1>{activeStep.title}</h1>
           </div>
 
           <div className="loan-stepper" aria-label="Application progress">
-            {stepLabels.map((label, index) => {
+            {wizardSteps.map((step, index) => {
+              const Icon = step.icon;
               const isActive = index === currentStep;
               const isDone = index < currentStep;
 
               return (
-                <div key={label} className={`loan-step ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}>
-                  <span className="loan-step-bubble">
-                    {isDone ? <Check size={12} /> : index + 1}
-                  </span>
-                  <span className="loan-step-text">{label}</span>
+                <div key={step.id} className={`loan-step ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}>
+                  <span className="loan-step-bubble">{isDone ? '✓' : index + 1}</span>
+                  <span className="loan-step-text">{step.label}</span>
+                  <Icon size={14} className="loan-step-icon" />
                 </div>
               );
             })}
           </div>
+
+          {hasStepErrors && (
+            <div className="loan-form-warning" role="alert">
+              <strong>Please correct the following:</strong>
+              <ul>
+                {Object.values(currentStepErrors).map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {currentStep === 0 && (
             <div className="loan-form-section">
               <h2>Applicant Details</h2>
 
               <div className="field-grid two-col">
-                <label className="field-block">
-                  <span>First Name *</span>
-                  <input
-                    value={form.firstName}
-                    onChange={(e) => updateFieldIfValid('firstName', e.target.value, /^[A-Za-z ]*$/, 30)}
-                    placeholder="Enter First Name"
-                    maxLength={30}
-                  />
-                  {renderFieldError('firstName')}
-                </label>
-                <label className="field-block">
-                  <span>Middle Name</span>
-                  <input
-                    value={form.middleName}
-                    onChange={(e) => updateFieldIfValid('middleName', e.target.value, /^[A-Za-z ]*$/, 30)}
-                    placeholder="Enter Middle Name"
-                    maxLength={30}
-                  />
-                  {renderFieldError('middleName')}
-                </label>
-                <label className="field-block">
-                  <span>Last Name *</span>
-                  <input
-                    value={form.lastName}
-                    onChange={(e) => updateFieldIfValid('lastName', e.target.value, /^[A-Za-z ]*$/, 30)}
-                    placeholder="Enter Last Name"
-                    maxLength={30}
-                  />
-                  {renderFieldError('lastName')}
-                </label>
-                <label className="field-block">
-                  <span>Date of Birth *</span>
-                  <div className="dob-picker" ref={dobCalendarRef}>
-                    <button
-                      type="button"
-                      className="dob-picker-trigger"
-                      aria-haspopup="dialog"
-                      aria-expanded={isDobCalendarOpen}
-                      onClick={() => setIsDobCalendarOpen((open) => !open)}
-                    >
-                      <span className={selectedDob ? '' : 'dob-picker-placeholder'}>
-                        {selectedDob
-                          ? new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(selectedDob)
-                          : 'Select date of birth'}
-                      </span>
-                      <CalendarDays size={18} aria-hidden="true" />
-                    </button>
-                    {isDobCalendarOpen && (
-                      <div className="dob-calendar-popover" role="dialog" aria-label="Choose date of birth">
-                        <Calendar
-                          className="loan-birth-calendar"
-                          value={selectedDob}
-                          onChange={(value) => {
-                            const date = Array.isArray(value) ? value[0] : value;
-                            if (date instanceof Date) {
-                              updateField('dob', formatDateValue(date));
-                              setIsDobCalendarOpen(false);
-                            }
-                          }}
-                          maxDate={new Date()}
-                          defaultActiveStartDate={selectedDob || new Date()}
-                          minDetail="decade"
-                          maxDetail="month"
-                          calendarType="gregory"
-                          locale="en-IN"
-                          showNeighboringMonth={false}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  {renderFieldError('dob')}
-                </label>
+                <Field label="First Name *" value={form.fullName} onChange={(value) => updateField('fullName', value)} placeholder="Enter First Name" />
+                <Field label="Middle Name" value={form.middleName} onChange={(value) => updateField('middleName', value)} placeholder="Enter Middle Name" />
+                <Field label="Last Name *" value={form.lastName} onChange={(value) => updateField('lastName', value)} placeholder="Enter Last Name" />
+                <Field label="Date of Birth *" type="date" value={form.dob} onChange={(value) => updateField('dob', value)} />
               </div>
 
               <div className="field-grid gender-row">
@@ -426,12 +318,17 @@ export default function LoanApplicationPage() {
                   <div className="radio-group">
                     {['Male', 'Female', 'Other'].map((option) => (
                       <label key={option} className="radio-option">
-                        <input type="radio" name="gender" checked={form.gender === option} onChange={(e) => updateField('gender', e.target.value)} value={option} />
+                        <input
+                          type="radio"
+                          name="gender"
+                          checked={form.gender === option}
+                          onChange={(event) => updateField('gender', event.target.value)}
+                          value={option}
+                        />
                         <span>{option}</span>
                       </label>
                     ))}
                   </div>
-                  {renderFieldError('gender')}
                 </label>
               </div>
 
@@ -441,21 +338,21 @@ export default function LoanApplicationPage() {
                   <div className="input-prefix">
                     <span>+91</span>
                     <input
-                      value={form.phone}
-                      onChange={(e) => updateFieldIfValid('phone', e.target.value, /^\d*$/, 10)}
-                      placeholder="Enter Mobile Number"
                       type="tel"
-                      maxLength={10}
+                      value={form.mobileNo}
+                      onChange={(event) => updateField('mobileNo', event.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="Enter Mobile Number"
                       inputMode="numeric"
+                      maxLength={10}
                     />
                   </div>
-                  {renderFieldError('phone')}
                 </label>
-                <label className="field-block">
-                  <span>Email *</span>
-                  <input type="email" value={form.email} onChange={(e) => updateField('email', e.target.value)} placeholder="Enter Email Address" maxLength={254} />
-                  {renderFieldError('email')}
-                </label>
+                <Field label="Email *" type="email" value={form.email} onChange={(value) => updateField('email', value)} placeholder="Enter Email Address" />
+              </div>
+
+              <div className="field-grid two-col">
+                <Field label="PAN Card *" value={form.panCard} onChange={(value) => updateField('panCard', normalizePan(value))} placeholder="ABCDE1234F" maxLength={10} />
+                <Field label="Aadhaar Number *" value={form.aadhaarNumber} onChange={(value) => updateField('aadhaarNumber', value.replace(/\D/g, '').slice(0, 12))} placeholder="Enter Aadhaar Number" inputMode="numeric" maxLength={12} />
               </div>
 
               <div className="loan-form-section-inner">
@@ -467,12 +364,11 @@ export default function LoanApplicationPage() {
                     <div className="radio-group">
                       {['Yes', 'No'].map((option) => (
                         <label key={option} className="radio-option">
-                          <input type="radio" name="addressSame" checked={form.addressSame === option} onChange={(e) => updateField('addressSame', e.target.value)} value={option} />
+                          <input type="radio" name="aadhaarAddress" checked={form.aadhaarCard === option} onChange={(event) => updateField('aadhaarCard', event.target.value)} value={option} />
                           <span>{option}</span>
                         </label>
                       ))}
                     </div>
-                    {renderFieldError('addressSame')}
                   </label>
                 </div>
 
@@ -482,110 +378,23 @@ export default function LoanApplicationPage() {
                     <div className="radio-group">
                       {['Current & Aadhaar', 'Permanent - Aadhaar', 'All same'].map((option) => (
                         <label key={option} className="radio-option">
-                          <input type="radio" name="addressType" checked={form.addressType === option} onChange={(e) => updateField('addressType', e.target.value)} value={option} />
+                          <input type="radio" name="addressType" checked={form.residentialType === option} onChange={(event) => updateField('residentialType', event.target.value)} value={option} />
                           <span>{option}</span>
                         </label>
                       ))}
                     </div>
-                    {renderFieldError('addressType')}
                   </label>
                 </div>
 
                 <div className="field-grid two-col">
-                  <label className="field-block">
-                    <span>Current Address *</span>
-                    <input value={form.currentAddress} onChange={(e) => updateField('currentAddress', e.target.value)} placeholder="Enter Address" />
-                    {renderFieldError('currentAddress')}
-                  </label>
-                  <label className="field-block">
-                    <span>Permanent Address</span>
-                    <input value={form.permanentAddress} onChange={(e) => updateField('permanentAddress', e.target.value)} placeholder="Enter Address" />
-                    {renderFieldError('permanentAddress')}
-                  </label>
+                  <Field label="Current Address *" value={form.flatBuildingName} onChange={(value) => updateField('flatBuildingName', value)} placeholder="Enter Address" />
+                  <Field label="Permanent Address" value={form.streetRoad} onChange={(value) => updateField('streetRoad', value)} placeholder="Enter Address" />
                 </div>
 
                 <div className="field-grid three-col">
-                  <label className="field-block">
-                    <span>City *</span>
-                    <input
-                      value={form.city}
-                      onChange={(e) => updateFieldIfValid('city', e.target.value, /^[A-Za-z ]*$/, 60)}
-                      placeholder="Enter City"
-                      maxLength={60}
-                    />
-                    {renderFieldError('city')}
-                  </label>
-                  <label className="field-block">
-                    <span>State *</span>
-                    <div className="state-select" ref={stateDropdownRef}>
-                      <button
-                        type="button"
-                        className="state-select-trigger"
-                        aria-haspopup="listbox"
-                        aria-expanded={isStateDropdownOpen}
-                        onClick={() => {
-                          setIsStateDropdownOpen((open) => !open);
-                          setStateSearch('');
-                        }}
-                      >
-                        <span className={form.state ? '' : 'state-select-placeholder'}>
-                          {form.state || 'Select State'}
-                        </span>
-                        <ChevronDown size={18} aria-hidden="true" />
-                      </button>
-                      {isStateDropdownOpen && (
-                        <div className="state-select-menu">
-                          <div className="state-search">
-                            <Search size={16} aria-hidden="true" />
-                            <input
-                              type="search"
-                              value={stateSearch}
-                              onChange={(event) => setStateSearch(event.target.value)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Escape') {
-                                  setIsStateDropdownOpen(false);
-                                  setStateSearch('');
-                                }
-                              }}
-                              placeholder="Search state"
-                              aria-label="Search states"
-                              autoFocus
-                            />
-                          </div>
-                          <ul role="listbox" aria-label="Indian states">
-                            {filteredStates.length > 0 ? (
-                              filteredStates.map((state) => (
-                                <li key={state.isoCode} role="presentation">
-                                  <button
-                                    type="button"
-                                    role="option"
-                                    aria-selected={form.state === state.name}
-                                    onClick={() => selectState(state.name)}
-                                  >
-                                    {state.name}
-                                  </button>
-                                </li>
-                              ))
-                            ) : (
-                              <li className="state-no-results">No states found.</li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                    {renderFieldError('state')}
-                  </label>
-                  <label className="field-block">
-                    <span>Pincode *</span>
-                    <input
-                      value={form.pincode}
-                      onChange={(e) => updateFieldIfValid('pincode', e.target.value, /^\d*$/, 6)}
-                      placeholder="Enter Pincode"
-                      maxLength={6}
-                      inputMode="numeric"
-                    />
-                    {renderFieldError('pincode')}
-                  </label>
+                  <Field label="City *" value={form.city} onChange={(value) => updateField('city', value)} placeholder="Enter City" />
+                  <SelectField label="State *" value={form.state} onChange={(value) => updateField('state', value)} options={['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Gujarat']} />
+                  <Field label="Pincode *" value={form.pinCode} onChange={(value) => updateField('pinCode', value)} placeholder="Enter Pincode" inputMode="numeric" />
                 </div>
               </div>
 
@@ -593,43 +402,25 @@ export default function LoanApplicationPage() {
                 <h3>Parent Information (Required)</h3>
 
                 <div className="field-grid two-col">
-                  <label className="field-block">
-                    <span>Father's Full Name *</span>
-                    <input
-                      value={form.fatherName}
-                      onChange={(e) => updateFieldIfValid('fatherName', e.target.value, /^[A-Za-z ]*$/, 60)}
-                      placeholder="Enter Father's Name"
-                      maxLength={60}
-                    />
-                    {renderFieldError('fatherName')}
-                  </label>
-                  <label className="field-block">
-                    <span>Mother's Full Name *</span>
-                    <input
-                      value={form.motherName}
-                      onChange={(e) => updateFieldIfValid('motherName', e.target.value, /^[A-Za-z ]*$/, 60)}
-                      placeholder="Enter Mother's Name"
-                      maxLength={60}
-                    />
-                    {renderFieldError('motherName')}
-                  </label>
+                  <Field label="Father's Full Name *" value={form.fatherName} onChange={(value) => updateField('fatherName', value)} placeholder="Enter Father's Name" />
+                  <Field label="Mother's Full Name *" value={form.motherName} onChange={(value) => updateField('motherName', value)} placeholder="Enter Mother's Name" />
                 </div>
+
                 <div className="field-grid marital-row">
                   <label className="field-block compact">
                     <span>Marital Status *</span>
                     <div className="radio-group">
                       {['Married', 'Unmarried'].map((option) => (
                         <label key={option} className="radio-option">
-                          <input type="radio" name="maritalStatus" checked={form.maritalStatus === option} onChange={(e) => updateField('maritalStatus', e.target.value)} value={option} />
+                          <input type="radio" name="maritalStatus" checked={form.maritalStatus === option} onChange={(event) => updateField('maritalStatus', event.target.value)} value={option} />
                           <span>{option}</span>
                         </label>
                       ))}
                       <label className="radio-option">
-                        <input type="checkbox" checked={false} readOnly />
+                        <input type="checkbox" readOnly />
                         <span>Add Co-Applicant (Optional)</span>
                       </label>
                     </div>
-                    {renderFieldError('maritalStatus')}
                   </label>
                 </div>
               </div>
@@ -638,165 +429,89 @@ export default function LoanApplicationPage() {
 
           {currentStep === 1 && (
             <div className="loan-form-section">
-              <h2>Employment Information</h2>
+              <h2>Address Details</h2>
 
-              <div className="field-grid three-col">
-                <label className="field-block">
-                  <span>Company Name *</span>
-                  <input
-                    value={form.companyName}
-                    onChange={(e) => updateFieldIfValid('companyName', e.target.value, /^[A-Za-z ]*$/, 100)}
-                    placeholder="Enter Company Name"
-                    maxLength={100}
-                  />
-                  {renderFieldError('companyName')}
-                </label>
-                <label className="field-block">
-                  <span>Employment Type *</span>
-                  <select value={form.employmentType} onChange={(e) => updateField('employmentType', e.target.value)}>
-                    <option value="">Select Employment Type</option>
-                    <option value="Full Time">Full Time</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Temporary">Temporary</option>
-                  </select>
-                  {renderFieldError('employmentType')}
-                </label>
-                <label className="field-block">
-                  <span>Designation *</span>
-                  <input
-                    value={form.designation}
-                    onChange={(e) => updateFieldIfValid('designation', e.target.value, /^[A-Za-z ]*$/, 100)}
-                    placeholder="Enter Designation"
-                    maxLength={100}
-                  />
-                  {renderFieldError('designation')}
-                </label>
-              </div>
-
-              <div className="field-grid three-col">
-                <label className="field-block">
-                  <span>Total Work Experience *</span>
-                  <select value={form.totalWorkExperience} onChange={(e) => updateField('totalWorkExperience', e.target.value)}>
-                    <option value="">Select Experience</option>
-                    <option value="1-2 years">1-2 years</option>
-                    <option value="3-5 years">3-5 years</option>
-                    <option value="5+ years">5+ years</option>
-                  </select>
-                  {renderFieldError('totalWorkExperience')}
-                </label>
-                <label className="field-block">
-                  <span>Current Employer Experience *</span>
-                  <select value={form.currentEmployerExperience} onChange={(e) => updateField('currentEmployerExperience', e.target.value)}>
-                    <option value="">Select Experience</option>
-                    <option value="1-2 years">1-2 years</option>
-                    <option value="3-5 years">3-5 years</option>
-                    <option value="5+ years">5+ years</option>
-                  </select>
-                  {renderFieldError('currentEmployerExperience')}
-                </label>
-                <label className="field-block">
-                  <span>Date of Joining *</span>
-                  <div className="dob-picker" ref={joiningCalendarRef}>
-                    <button
-                      type="button"
-                      className="dob-picker-trigger"
-                      aria-haspopup="dialog"
-                      aria-expanded={isJoiningCalendarOpen}
-                      onClick={() => setIsJoiningCalendarOpen((open) => !open)}
-                    >
-                      <span className={selectedJoiningDate ? '' : 'dob-picker-placeholder'}>
-                        {selectedJoiningDate
-                          ? new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(selectedJoiningDate)
-                          : 'Select date of joining'}
-                      </span>
-                      <CalendarDays size={18} aria-hidden="true" />
-                    </button>
-                    {isJoiningCalendarOpen && (
-                      <div className="dob-calendar-popover" role="dialog" aria-label="Choose date of joining">
-                        <Calendar
-                          className="loan-birth-calendar"
-                          value={selectedJoiningDate}
-                          onChange={(value) => {
-                            const date = Array.isArray(value) ? value[0] : value;
-                            if (date instanceof Date) {
-                              updateField('dateOfJoining', formatDateValue(date));
-                              setIsJoiningCalendarOpen(false);
-                            }
-                          }}
-                          maxDate={new Date()}
-                          defaultActiveStartDate={selectedJoiningDate || new Date()}
-                          minDetail="decade"
-                          maxDetail="month"
-                          calendarType="gregory"
-                          locale="en-IN"
-                          showNeighboringMonth={false}
-                        />
-                      </div>
-                    )}
+              <div className="field-grid inline-choice">
+                <label className="field-block compact">
+                  <span>Address as per Aadhaar *</span>
+                  <div className="radio-group">
+                    {['Yes', 'No'].map((option) => (
+                      <label key={option} className="radio-option">
+                        <input type="radio" name="aadhaarAddress" checked={form.aadhaarCard === option} onChange={(event) => updateField('aadhaarCard', event.target.value)} value={option} />
+                        <span>{option}</span>
+                      </label>
+                    ))}
                   </div>
-                  {renderFieldError('dateOfJoining')}
+                </label>
+              </div>
+
+              <div className="field-grid inline-choice">
+                <label className="field-block compact">
+                  <span>Address Type *</span>
+                  <div className="radio-group">
+                    {['Current & Aadhaar', 'Permanent - Aadhaar', 'All same'].map((option) => (
+                      <label key={option} className="radio-option">
+                        <input type="radio" name="addressType" checked={form.residentialType === option} onChange={(event) => updateField('residentialType', event.target.value)} value={option} />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
                 </label>
               </div>
 
               <div className="field-grid two-col">
-                <label className="field-block">
-                  <span>Employment Verification Status *</span>
-                  <select value={form.employmentVerificationStatus} onChange={(e) => updateField('employmentVerificationStatus', e.target.value)}>
-                    <option value="">Select Verification Status</option>
-                    <option value="Verified">Verified</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                  {renderFieldError('employmentVerificationStatus')}
-                </label>
-                <label className="field-block">
-                  <span>Salary Credit Frequency *</span>
-                  <select value={form.salaryCreditFrequency} onChange={(e) => updateField('salaryCreditFrequency', e.target.value)}>
-                    <option value="">Select Frequency</option>
-                    <option value="Monthly">Monthly</option>
-                    <option value="Bi-monthly">Bi-monthly</option>
-                    <option value="Weekly">Weekly</option>
-                  </select>
-                  {renderFieldError('salaryCreditFrequency')}
-                </label>
+                <Field label="Current Address *" value={form.flatBuildingName} onChange={(value) => updateField('flatBuildingName', value)} placeholder="Enter Address" />
+                <Field label="Permanent Address" value={form.streetRoad} onChange={(value) => updateField('streetRoad', value)} placeholder="Enter Address" />
               </div>
 
-              <div className="field-grid two-col">
-                <label className="field-block">
-                  <span>Salary Account / Bank Name *</span>
-                  <input value={form.salaryBankName} onChange={(e) => updateField('salaryBankName', e.target.value)} placeholder="Enter Bank Name" />
-                  {renderFieldError('salaryBankName')}
-                </label>
+              <div className="field-grid three-col">
+                <Field label="City *" value={form.city} onChange={(value) => updateField('city', value)} placeholder="Enter City" />
+                <SelectField label="State *" value={form.state} onChange={(value) => updateField('state', value)} options={['Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Gujarat']} />
+                <Field label="Pincode *" value={form.pinCode} onChange={(value) => updateField('pinCode', value)} placeholder="Enter Pincode" inputMode="numeric" />
               </div>
             </div>
           )}
 
           {currentStep === 2 && (
             <div className="loan-form-section">
+              <h2>Employment Information</h2>
+
+              <div className="field-grid three-col">
+                <Field label="Company Name *" value={form.employerName} onChange={(value) => updateField('employerName', value)} placeholder="Enter Company Name" />
+                <SelectField label="Employment Type *" value={form.employmentType} onChange={(value) => updateField('employmentType', value)} options={['Full Time', 'Contract', 'Temporary']} />
+                <Field label="Designation *" value={form.designation} onChange={(value) => updateField('designation', value)} placeholder="Enter Designation" />
+              </div>
+
+              <div className="field-grid three-col">
+                <SelectField label="Total Work Experience *" value={form.occupation} onChange={(value) => updateField('occupation', value)} options={['1-2 years', '3-5 years', '5+ years']} />
+                <SelectField label="Current Employer Experience *" value={form.qualification} onChange={(value) => updateField('qualification', value)} options={['1-2 years', '3-5 years', '5+ years']} />
+                <Field label="Date of Joining *" type="date" value={form.dateOfJoining} onChange={(value) => updateField('dateOfJoining', value)} />
+              </div>
+
+              <div className="field-grid two-col">
+                <SelectField label="Employment Verification Status *" value={form.customerType} onChange={(value) => updateField('customerType', value)} options={['Verified', 'Pending']} />
+                <SelectField label="Salary Credit Frequency *" value={form.residentialStatus} onChange={(value) => updateField('residentialStatus', value)} options={['Monthly', 'Bi-monthly', 'Weekly']} />
+              </div>
+
+              <div className="field-grid two-col">
+                <Field label="Salary Account / Bank Name *" value={form.bankName} onChange={(value) => updateField('bankName', value)} placeholder="Enter Bank Name" />
+                <Field label="Bank Account Number *" value={form.bankAccountNo} onChange={(value) => updateField('bankAccountNo', value)} placeholder="Enter Account Number" inputMode="numeric" />
+              </div>
+
+              <div className="field-grid two-col">
+                <Field label="Annual Income *" value={form.annualIncome} onChange={(value) => updateField('annualIncome', value)} placeholder="Enter Annual Income" inputMode="decimal" />
+                <SelectField label="Risk Category *" value={form.riskCategory} onChange={(value) => updateField('riskCategory', value)} options={['Low', 'Medium', 'High']} />
+              </div>
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div className="loan-form-section">
               <h2>Income Detail</h2>
 
               <div className="field-grid two-col">
-                <label className="field-block">
-                  <span>Monthly Income *</span>
-                  <input
-                    value={form.monthlyIncome}
-                    onChange={(e) => updateFieldIfValid('monthlyIncome', e.target.value, /^\d*(\.\d{0,2})?$/, 15)}
-                    placeholder="Enter Monthly Income"
-                    inputMode="decimal"
-                    maxLength={15}
-                  />
-                  {renderFieldError('monthlyIncome')}
-                </label>
-                <label className="field-block">
-                  <span>Annual Income *</span>
-                  <input
-                    value={form.annualIncome}
-                    onChange={(e) => updateFieldIfValid('annualIncome', e.target.value, /^\d*(\.\d{0,2})?$/, 15)}
-                    placeholder="Enter Annual Income"
-                    inputMode="decimal"
-                    maxLength={15}
-                  />
-                  {renderFieldError('annualIncome')}
-                </label>
+                <Field label="Monthly Income *" value={form.annualIncome} onChange={(value) => updateField('annualIncome', value)} placeholder="Enter Monthly Income" inputMode="decimal" />
+                <Field label="Annual Income *" value={form.annualIncome} onChange={(value) => updateField('annualIncome', value)} placeholder="Enter Annual Income" inputMode="decimal" />
               </div>
 
               <div className="field-grid inline-choice">
@@ -805,89 +520,106 @@ export default function LoanApplicationPage() {
                   <div className="radio-group">
                     {['Salaried', 'Self Employed / Business'].map((option) => (
                       <label key={option} className="radio-option">
-                        <input type="radio" name="businessType" checked={form.businessType === option} onChange={(e) => updateField('businessType', e.target.value)} value={option} />
+                        <input type="radio" name="businessType" checked={form.loanType === option} onChange={(event) => updateField('loanType', event.target.value)} value={option} />
                         <span>{option}</span>
                       </label>
                     ))}
                   </div>
-                  {renderFieldError('businessType')}
                 </label>
               </div>
 
               <div className="loan-form-section-inner">
                 <h3>Business Details</h3>
-
                 <div className="field-grid two-col">
-                  <label className="field-block">
-                    <span>Business Name *</span>
-                    <input
-                      value={form.businessName}
-                      onChange={(e) => updateFieldIfValid('businessName', e.target.value, /^[A-Za-z ]*$/, 100)}
-                      placeholder="Enter Business Name"
-                      maxLength={100}
-                    />
-                    {renderFieldError('businessName')}
-                  </label>
-                  <label className="field-block">
-                    <span>Business Type *</span>
-                    <select value={form.businessTypeValue} onChange={(e) => updateField('businessTypeValue', e.target.value)}>
-                      <option value="">Select Business Type</option>
-                      <option value="Sole Proprietorship">Sole Proprietorship</option>
-                      <option value="Partnership">Partnership</option>
-                      <option value="Private Limited">Private Limited</option>
-                    </select>
-                    {renderFieldError('businessTypeValue')}
-                  </label>
+                  <Field label="Business Name *" value={form.employerName} onChange={(value) => updateField('employerName', value)} placeholder="Enter Business Name" />
+                  <SelectField label="Business Type *" value={form.loanType} onChange={(value) => updateField('loanType', value)} options={['Sole Proprietorship', 'Partnership', 'Private Limited']} />
                 </div>
 
                 <div className="field-grid three-col">
-                  <label className="field-block">
-                    <span>Business Registration No. *</span>
-                    <input
-                      value={form.businessRegistrationNo}
-                      onChange={(e) => updateFieldIfValid('businessRegistrationNo', e.target.value, /^\d*$/, 20)}
-                      placeholder="Enter Registration No."
-                      inputMode="numeric"
-                      maxLength={20}
-                    />
-                    {renderFieldError('businessRegistrationNo')}
-                  </label>
-                  <label className="field-block">
-                    <span>CIBIL Score *</span>
-                    <input
-                      value={form.cibilScore}
-                      onChange={(e) => updateFieldIfValid('cibilScore', e.target.value, /^\d*$/, 3)}
-                      placeholder="Enter CIBIL Score"
-                      inputMode="numeric"
-                      maxLength={3}
-                    />
-                    {renderFieldError('cibilScore')}
-                  </label>
-                  <label className="field-block">
-                    <span>Business Vintage *</span>
-                    <select value={form.businessVintage} onChange={(e) => updateField('businessVintage', e.target.value)}>
-                      <option value="">Select Vintage</option>
-                      <option value="1-2 years">1-2 years</option>
-                      <option value="3-5 years">3-5 years</option>
-                      <option value="5+ years">5+ years</option>
-                    </select>
-                    {renderFieldError('businessVintage')}
-                  </label>
+                  <Field label="Business Registration No. *" value={form.bankAccountNo} onChange={(value) => updateField('bankAccountNo', value)} placeholder="Enter Registration No." inputMode="numeric" />
+                  <Field label="CIBIL Score *" value={form.customerNumber} onChange={(value) => updateField('customerNumber', value)} placeholder="Enter CIBIL Score" inputMode="numeric" />
+                  <SelectField label="Business Vintage *" value={form.residentialType} onChange={(value) => updateField('residentialType', value)} options={['1-2 years', '3-5 years', '5+ years']} />
                 </div>
 
                 <div className="field-grid two-col">
-                  <label className="field-block">
-                    <span>Business Turnover *</span>
-                    <input
-                      value={form.businessTurnover}
-                      onChange={(e) => updateFieldIfValid('businessTurnover', e.target.value, /^\d*(\.\d{0,2})?$/, 15)}
-                      placeholder="Enter Turnover Amount"
-                      inputMode="decimal"
-                      maxLength={15}
-                    />
-                    {renderFieldError('businessTurnover')}
-                  </label>
+                  <Field label="Business Turnover *" value={form.totalOutstanding} onChange={(value) => updateField('totalOutstanding', value)} placeholder="Enter Turnover Amount" inputMode="decimal" />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 4 && (
+            <div className="loan-form-section">
+              <h2>Document Details</h2>
+
+              <div className="loan-data-table-wrap">
+                <table className="loan-data-table">
+                  <thead>
+                    <tr>
+                      <th>Sr</th>
+                      <th>Document Name</th>
+                      <th>Document Upload</th>
+                      <th>Expiry Date</th>
+                      <th>Remarks</th>
+                      <th>View / Delete</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documentRows.map((row, index) => (
+                      <tr key={row.field}>
+                        <td>{index + 1}</td>
+                        <td>{row.label}</td>
+                        <td>
+                          <label className="loan-file-input">
+                            <UploadCloud size={15} />
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                updateField(row.field, file ? file.name : '');
+                              }}
+                            />
+                            <span>{form[row.field] ? form[row.field] : 'Upload'}</span>
+                          </label>
+                        </td>
+                        <td><input type="date" value={form.loanExpiryDate || ''} onChange={(event) => updateField('loanExpiryDate', event.target.value)} /></td>
+                        <td><input type="text" value={form.riskCategory || ''} onChange={(event) => updateField('riskCategory', event.target.value)} placeholder="Add remark" /></td>
+                        <td>
+                          <div className="loan-table-actions">
+                            <button type="button" className="loan-inline-button">View</button>
+                            <button type="button" className="loan-inline-button danger">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 5 && (
+            <div className="loan-form-section">
+              <h2>Loan Details</h2>
+
+              <div className="loan-data-table-wrap">
+                <table className="loan-data-table">
+                  <thead>
+                    <tr>
+                      <th>Sr</th>
+                      <th>Bank Name</th>
+                      <th>Account Number</th>
+                      <th>Type of Loan</th>
+                      <th>Total Outstanding</th>
+                      <th>EMI</th>
+                      <th>Expiry Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[1, 2, 3, 4].map((row) => renderTableRow([row, '', '', '', '', '', ''], row))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
