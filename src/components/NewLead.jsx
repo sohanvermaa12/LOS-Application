@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { getLoanProducts } from '../services/loanProducts';
+import { getEmployees } from '../services/employeeService';
 
 const verhoeffMultiplication = [
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -73,16 +74,19 @@ const getCustomerTypeFromAge = (age) => {
   if (age === '' || age === null || Number.isNaN(Number(age))) return '';
   if (Number(age) < 18) return 'Minor';
   if (Number(age) >= 60) return 'Senior Citizen';
-  return 'Adult';
+  return 'Normal';
 };
 
 const initialForm = {
-  customerName: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
   dateOfBirth: '',
   passportExpiryDate: '',
   age: '',
   customerType: '',
   mobileNumber: '',
+  email: '',
   otpNumber: '',
   otpSent: false,
   panCard: '',
@@ -117,12 +121,39 @@ const initialForm = {
   partnerName: '',
   employeeId: '',
   employeeName: '',
+  assignedCheckerId: '',
+  assignedCheckerName: '',
+  assignedViewerId: '',
+  assignedViewerName: '',
+  status: 'New',
+};
+
+const getLeadFormValues = (lead) => {
+  if (!lead) return initialForm;
+
+  const nameParts = String(lead.customerName || lead.name || '').trim().split(/\s+/).filter(Boolean);
+  return {
+    ...initialForm,
+    ...lead,
+    firstName: lead.firstName || nameParts[0] || '',
+    middleName: lead.middleName || (nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : ''),
+    lastName: lead.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''),
+    mobileNumber: lead.mobileNumber || lead.mobile || '',
+    loanProductType: lead.loanProductType || lead.product || '',
+    loanAmount: lead.loanAmount || String(lead.amount || '').replace(/,/g, ''),
+    acquisitionChannel: lead.acquisitionChannel || lead.source || '',
+    status: lead.status || 'New',
+  };
 };
 
 const steps = [
   { title: 'Personal Details', fields: [
-    { name: 'customerName', label: 'Name of the Customer', required: true, wide: true },
+    { name: 'firstName', label: 'First Name', required: true },
+    { name: 'middleName', label: 'Middle Name' },
+    { name: 'lastName', label: 'Last Name', required: true },
     { name: 'dateOfBirth', label: 'Date of Birth', type: 'date', required: true },
+    { name: 'mobileNumber', label: 'Mobile Number', inputMode: 'numeric', maxLength: 10, required: true },
+    { name: 'email', label: 'Email ID', type: 'email', maxLength: 254 },
     { name: 'otpNumber', label: 'OTP Number', inputMode: 'numeric', maxLength: 6 },
     { name: 'panCard', label: 'PAN Card', pattern: '[A-Z]{5}[0-9]{4}[A-Z]', maxLength: 10 },
     { name: 'aadhaarCard', label: 'Aadhar Card', inputMode: 'numeric', pattern: '[0-9]{12}', maxLength: 12 },
@@ -157,19 +188,34 @@ const steps = [
   ] },
 ];
 
-export default function NewLead({ open, onClose, onCreate }) {
+export default function NewLead({ open, onClose, onCreate, onUpdate, initialData = null }) {
   const [form, setForm] = useState(initialForm);
   const [activeStep, setActiveStep] = useState(0);
   const [otpMessage, setOtpMessage] = useState('');
+  const [mobileMessage, setMobileMessage] = useState('');
   const [aadhaarMessage, setAadhaarMessage] = useState('');
   const [aadhaarValidated, setAadhaarValidated] = useState(false);
   const [loanProducts, setLoanProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState('');
+  const [assignmentUsers, setAssignmentUsers] = useState([]);
+  const checkerUsers = assignmentUsers.filter(
+    (employee) => String(employee.userRole || employee.role || '').toLowerCase() === 'checker'
+  );
+  const viewerUsers = assignmentUsers.filter(
+    (employee) => String(employee.userRole || employee.role || '').toLowerCase() === 'viewer'
+  );
 
   useEffect(() => {
     if (!open) return undefined;
 
+    setForm(getLeadFormValues(initialData));
+    setActiveStep(0);
+    setOtpMessage('');
+    setMobileMessage('');
+    setAadhaarMessage('');
+    setAadhaarValidated(false);
+    setAssignmentUsers(getEmployees());
     const controller = new AbortController();
     setProductsLoading(true);
     setProductsError('');
@@ -190,7 +236,7 @@ export default function NewLead({ open, onClose, onCreate }) {
       });
 
     return () => controller.abort();
-  }, [open]);
+  }, [open, initialData]);
 
   if (!open) return null;
 
@@ -217,6 +263,8 @@ export default function NewLead({ open, onClose, onCreate }) {
     const { name, value } = event.target;
     const normalizedValue = name === 'aadhaarCard' || name === 'otpNumber'
       ? value.replace(/\D/g, '').slice(0, name === 'aadhaarCard' ? 12 : 6)
+      : name === 'mobileNumber' ? value.replace(/\D/g, '').slice(0, 10)
+      : ['firstName', 'middleName', 'lastName'].includes(name) ? value.replace(/[^\p{L}\p{M} .'-]/gu, '').slice(0, 100)
       : name === 'panCard' ? normalizePan(value) : value;
 
     setForm((current) => ({
@@ -235,12 +283,14 @@ export default function NewLead({ open, onClose, onCreate }) {
       setOtpMessage('');
       setAadhaarMessage('');
     }
+    if (name === 'mobileNumber') setMobileMessage('');
   };
 
   const resetAndClose = () => {
     setForm(initialForm);
     setActiveStep(0);
     setOtpMessage('');
+    setMobileMessage('');
     setAadhaarMessage('');
     setAadhaarValidated(false);
     onClose();
@@ -285,6 +335,14 @@ export default function NewLead({ open, onClose, onCreate }) {
     setAadhaarValidated(true);
     setAadhaarMessage('Aadhaar number format and checksum are valid.');
     setOtpMessage('OTP delivery to the Aadhaar-registered mobile will be connected through the backend.');
+  };
+
+  const handleVerifyMobile = () => {
+    if (!/^[6-9]\d{9}$/.test(form.mobileNumber)) {
+      setMobileMessage('Enter a valid 10-digit mobile number starting with 6-9.');
+      return;
+    }
+    setMobileMessage('Number format is valid. OTP ownership verification requires the backend mobile-verification service.');
   };
 
   const handleVerifyOtp = () => {
@@ -335,20 +393,21 @@ export default function NewLead({ open, onClose, onCreate }) {
   );
 
   const renderPersonalDetails = () => (
-    <div className="lead-personal-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '18px 20px' }}>
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignSelf: 'end' }}>
-        <span>Name of the Customer <em>*</em></span>
-        <input
-          name="customerName"
-          value={form.customerName}
-          onChange={handleChange}
-          required
-          autoComplete="off"
-          style={{ minHeight: '42px' }}
-        />
+    <div className="lead-personal-grid">
+      <label className="lead-field">
+        <span>First Name <em>*</em></span>
+        <input name="firstName" value={form.firstName} onChange={handleChange} required maxLength={100} autoComplete="given-name" />
+      </label>
+      <label className="lead-field">
+        <span>Middle Name</span>
+        <input name="middleName" value={form.middleName} onChange={handleChange} maxLength={100} autoComplete="additional-name" />
+      </label>
+      <label className="lead-field">
+        <span>Last Name <em>*</em></span>
+        <input name="lastName" value={form.lastName} onChange={handleChange} required maxLength={100} autoComplete="family-name" />
       </label>
 
-      <div style={{ gridColumn: '2 / span 2', display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'flex-end' }}>
+      <div className="lead-personal-actions">
         <button type="button" style={{ minWidth: '168px', minHeight: '42px', border: '1px solid #bfd4e8', background: '#edf3fb', color: '#20476d', borderRadius: '6px', fontWeight: 600, padding: '0 16px' }}>
           De-Duplicate Check
         </button>
@@ -357,63 +416,77 @@ export default function NewLead({ open, onClose, onCreate }) {
         </button>
       </div>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Date of Birth</span>
-        <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} />
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Age</span>
-        <input name="age" value={computedAge} readOnly style={{ minHeight: '42px', background: '#f6f8fa' }} />
+        <input name="age" value={computedAge} readOnly className="lead-computed-field" />
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Customer Type</span>
-        <input name="customerType" value={computedCustomerType} readOnly style={{ minHeight: '42px', background: '#f6f8fa' }} />
+        <input name="customerType" value={computedCustomerType} readOnly className="lead-computed-field" />
       </label>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '12px' }}>
-        <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <span>Aadhaar Card</span>
-          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} title="Enter the 12-digit Aadhaar number without spaces." style={{ minHeight: '42px' }} />
+      <div className="lead-mobile-field">
+        <label className="lead-field">
+          <span>Mobile Number <em>*</em></span>
+          <input name="mobileNumber" type="tel" value={form.mobileNumber} onChange={handleChange} inputMode="numeric" autoComplete="tel-national" pattern="[6-9][0-9]{9}" maxLength={10} required title="Enter a 10-digit mobile number starting with 6-9." />
         </label>
-        <button type="button" onClick={handleValidateAndSendOtp} style={{ minWidth: '145px', minHeight: '42px', border: '1px solid #bfd4e8', background: '#e6edf6', color: '#223f5b', borderRadius: '6px', fontWeight: 700, padding: '0 14px' }}>
+        <button type="button" className="lead-verify-button" onClick={handleVerifyMobile}>Verify Mobile</button>
+        {mobileMessage ? <p role="status" className="lead-mobile-message">{mobileMessage}</p> : null}
+      </div>
+
+      <label className="lead-field">
+        <span>Email ID</span>
+        <input name="email" type="email" value={form.email} onChange={handleChange} maxLength={254} autoComplete="email" />
+      </label>
+
+      <div className="lead-identity-field">
+        <label className="lead-field">
+          <span>Aadhaar Card</span>
+          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} title="Enter the 12-digit Aadhaar number without spaces." />
+        </label>
+        <button type="button" onClick={handleValidateAndSendOtp} className="lead-verify-button">
           Validate &amp; Send OTP
         </button>
         {aadhaarMessage ? <p role="status" style={{ gridColumn: '1 / -1', margin: 0, color: '#526b76', fontSize: '11px' }}>{aadhaarMessage}</p> : null}
       </div>
 
       <div className="lead-otp-field">
-        <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <label className="lead-field">
           <span>OTP Number</span>
-          <input name="otpNumber" value={form.otpNumber} onChange={handleChange} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} title="Enter the 6-digit OTP." disabled={!aadhaarValidated} style={{ minHeight: '42px' }} />
+          <input name="otpNumber" value={form.otpNumber} onChange={handleChange} inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} title="Enter the 6-digit OTP." disabled={!aadhaarValidated} />
         </label>
         <button type="button" className="lead-otp-verify" onClick={handleVerifyOtp} disabled={!aadhaarValidated}>Verify OTP</button>
         {otpMessage ? <p className="lead-otp-message" role="status">{otpMessage}</p> : null}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '12px' }}>
-        <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <label className="lead-field">
           <span>PAN Card</span>
-          <input name="panCard" value={form.panCard} onChange={handleChange} autoComplete="off" maxLength={10} pattern="[A-Z]{5}[0-9]{4}[A-Z]" title="Enter PAN in the format ABCDE1234F." style={{ minHeight: '42px' }} />
+          <input name="panCard" value={form.panCard} onChange={handleChange} autoComplete="off" maxLength={10} pattern="[A-Z]{5}[0-9]{4}[A-Z]" title="Enter PAN in the format ABCDE1234F." />
         </label>
-        <button type="button" style={{ minWidth: '90px', minHeight: '42px', border: '1px solid #bfd4e8', background: '#e6edf6', color: '#223f5b', borderRadius: '6px', fontWeight: 700, padding: '0 14px' }}>
+        <button type="button" className="lead-verify-button">
           Validate
         </button>
       </div>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Residential Status</span>
-        <select name="residentialStatus" value={form.residentialStatus} onChange={handleChange} style={{ minHeight: '42px' }}>
+        <select name="residentialStatus" value={form.residentialStatus} onChange={handleChange}>
           <option value="">Select</option>
           <option value="Resident">Resident</option>
           <option value="Non-Resident">Non-Resident</option>
         </select>
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Gender</span>
-        <select name="gender" value={form.gender} onChange={handleChange} style={{ minHeight: '42px' }}>
+        <select name="gender" value={form.gender} onChange={handleChange}>
           <option value="">Select</option>
           <option value="Female">Female</option>
           <option value="Male">Male</option>
@@ -421,9 +494,9 @@ export default function NewLead({ open, onClose, onCreate }) {
         </select>
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Marital Status</span>
-        <select name="maritalStatus" value={form.maritalStatus} onChange={handleChange} style={{ minHeight: '42px' }}>
+        <select name="maritalStatus" value={form.maritalStatus} onChange={handleChange}>
           <option value="">Select</option>
           <option value="Single">Single</option>
           <option value="Married">Married</option>
@@ -432,14 +505,14 @@ export default function NewLead({ open, onClose, onCreate }) {
         </select>
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Passport No.</span>
-        <input name="passportNo" value={form.passportNo} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <input name="passportNo" value={form.passportNo} onChange={handleChange} />
       </label>
 
-      <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <label className="lead-field">
         <span>Passport Expiry Date</span>
-        <input type="date" name="passportExpiryDate" value={form.passportExpiryDate} onChange={handleChange} min={new Date().toISOString().slice(0, 10)} style={{ minHeight: '42px' }} />
+        <input type="date" name="passportExpiryDate" value={form.passportExpiryDate} onChange={handleChange} min={new Date().toISOString().slice(0, 10)} />
       </label>
 
     </div>
@@ -449,7 +522,7 @@ export default function NewLead({ open, onClose, onCreate }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '18px 20px' }}>
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Loan Product Type <em>*</em></span>
-        <select name="loanProductType" value={form.loanProductType} onChange={handleChange} required disabled={productsLoading || Boolean(productsError)} style={{ minHeight: '42px' }}>
+        <select name="loanProductType" value={form.loanProductType} onChange={handleChange} required={!initialData || Boolean(initialData.loanProductType || initialData.product)} disabled={productsLoading || Boolean(productsError)} style={{ minHeight: '42px' }}>
           <option value="">{productsLoading ? 'Loading products...' : 'Select product'}</option>
           {loanProducts.map((product) => <option key={product.id} value={product.name}>{product.name}</option>)}
         </select>
@@ -459,7 +532,7 @@ export default function NewLead({ open, onClose, onCreate }) {
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Loan Amount <em>*</em></span>
-        <input name="loanAmount" type="number" min="1" value={form.loanAmount} onChange={handleChange} required style={{ minHeight: '42px' }} />
+        <input name="loanAmount" type="number" min="1" value={form.loanAmount} onChange={handleChange} required={!initialData || Boolean(initialData.loanAmount || initialData.amount)} style={{ minHeight: '42px' }} />
       </label>
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -485,7 +558,7 @@ export default function NewLead({ open, onClose, onCreate }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '12px' }}>
         <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span>Tenure</span>
-          <input name="tenure" type="number" min="1" value={form.tenure} onChange={handleChange} required style={{ minHeight: '42px' }} />
+          <input name="tenure" type="number" min="1" value={form.tenure} onChange={handleChange} required={!initialData || Boolean(initialData.tenure)} style={{ minHeight: '42px' }} />
         </label>
         <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span>Unit</span>
@@ -504,7 +577,7 @@ export default function NewLead({ open, onClose, onCreate }) {
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Interest Rate (% p.a.) <em>*</em></span>
-        <input name="interestRate" type="number" min="0" max="100" step="0.01" value={form.interestRate} onChange={handleChange} required style={{ minHeight: '42px' }} />
+        <input name="interestRate" type="number" min="0" max="100" step="0.01" value={form.interestRate} onChange={handleChange} required={!initialData || Boolean(initialData.interestRate)} style={{ minHeight: '42px' }} />
       </label>
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -531,7 +604,7 @@ export default function NewLead({ open, onClose, onCreate }) {
       <div className="lead-income-grid">
         <label className="lead-field">
           <span>Employment Type <em>*</em></span>
-          <select name="employmentType" value={form.employmentType} onChange={handleChange} required>
+          <select name="employmentType" value={form.employmentType} onChange={handleChange} required={!initialData || Boolean(initialData.employmentType)}>
             <option value="">Select type</option>
             <option value="Employee">Employee</option>
             <option value="Self-Employed">Self-Employed</option>
@@ -540,7 +613,7 @@ export default function NewLead({ open, onClose, onCreate }) {
 
         <label className="lead-field">
           <span>Annual Income <em>*</em></span>
-          <input name="annualIncome" type="number" min="1" value={form.annualIncome} onChange={handleChange} required />
+          <input name="annualIncome" type="number" min="1" value={form.annualIncome} onChange={handleChange} required={!initialData || Boolean(initialData.annualIncome)} />
         </label>
 
         <label className="lead-field">
@@ -640,6 +713,71 @@ export default function NewLead({ open, onClose, onCreate }) {
         <span>Emp Name</span>
         <input name="employeeName" value={form.employeeName} onChange={handleChange} disabled={!referralEnabled} style={{ minHeight: '42px' }} />
       </label>
+
+      <div className="lead-assignment-section">
+        <div className="lead-assignment-heading">
+          <h4>Lead Assignment</h4>
+          <p>Assign this lead to the users responsible for checking and viewing it.</p>
+        </div>
+        <label className="lead-field">
+          <span>Lead Status</span>
+          <select name="status" value={form.status} onChange={handleChange}>
+            {['New', 'In Progress', 'Contacted', 'Qualified', 'On Hold', 'Rejected', 'Converted'].map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+        </label>
+        <label className="lead-field">
+          <span>Assign Checker</span>
+          <select
+            name="assignedCheckerId"
+            value={form.assignedCheckerId}
+            onChange={(event) => {
+              const selected = assignmentUsers.find((employee) => String(employee.id) === event.target.value);
+              setForm((current) => ({
+                ...current,
+                assignedCheckerId: event.target.value,
+                assignedCheckerName: selected?.name || selected?.fullName || '',
+              }));
+            }}
+          >
+            <option value="">Select checker</option>
+            {checkerUsers.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name || employee.fullName} ({employee.empNo || employee.employeeId}){employee.status !== 'Active' ? ` - ${employee.status}` : ''}
+                </option>
+              ))}
+          </select>
+          {!checkerUsers.length && (
+            <span className="lead-assignment-hint">No Checker users are available.</span>
+          )}
+        </label>
+        <label className="lead-field">
+          <span>Assign Viewer</span>
+          <select
+            name="assignedViewerId"
+            value={form.assignedViewerId}
+            onChange={(event) => {
+              const selected = assignmentUsers.find((employee) => String(employee.id) === event.target.value);
+              setForm((current) => ({
+                ...current,
+                assignedViewerId: event.target.value,
+                assignedViewerName: selected?.name || selected?.fullName || '',
+              }));
+            }}
+          >
+            <option value="">Select viewer</option>
+            {viewerUsers.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.name || employee.fullName} ({employee.empNo || employee.employeeId}){employee.status !== 'Active' ? ` - ${employee.status}` : ''}
+                </option>
+              ))}
+          </select>
+          {!viewerUsers.length && (
+            <span className="lead-assignment-hint">No Viewer users are available.</span>
+          )}
+        </label>
+      </div>
         </>;
       })()}
     </div>
@@ -659,7 +797,7 @@ export default function NewLead({ open, onClose, onCreate }) {
         </button>
       ) : (
         <button type="submit" className="lead-save-btn" style={{ minWidth: '120px' }}>
-          Submit
+        {initialData ? 'Save Changes' : 'Submit'}
         </button>
       )}
 
@@ -682,7 +820,22 @@ export default function NewLead({ open, onClose, onCreate }) {
       return;
     }
 
-    onCreate({ ...form, instalments: computedInstalments, monthlyEmi: computedMonthlyEmi, totalInterest: computedTotalInterest, securityAmount: computedTotalAmount });
+    const customerName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ').trim();
+    const leadData = {
+      ...form,
+      customerName,
+      name: customerName,
+      age: computedAge,
+      customerType: computedCustomerType,
+      instalments: computedInstalments,
+      monthlyEmi: computedMonthlyEmi,
+      totalInterest: computedTotalInterest,
+      securityAmount: computedTotalAmount,
+    };
+    delete leadData.otpNumber;
+    delete leadData.otpSent;
+    if (initialData) onUpdate(leadData);
+    else onCreate(leadData);
     resetAndClose();
   };
 
@@ -691,8 +844,8 @@ export default function NewLead({ open, onClose, onCreate }) {
       <div className="lead-modal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="lead-modal-header">
           <div>
-            <h2>New Lead</h2>
-            <p>Capture the applicant and loan requirements</p>
+            <h2>{initialData ? `Edit Lead ${initialData.id}` : 'New Lead'}</h2>
+            <p>{initialData ? 'Update the lead information, assignment, and status.' : 'Capture the applicant and loan requirements.'}</p>
           </div>
           <button type="button" className="lead-modal-close" aria-label="Close form" onClick={resetAndClose}>
             <X size={18} />

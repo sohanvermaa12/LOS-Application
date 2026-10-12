@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Pencil, X } from 'lucide-react';
 
-export default function LeadDetails({ lead, open, onClose }) {
+export default function LeadDetails({ lead, open, onClose, onEdit }) {
   const [tab, setTab] = useState('lead');
 
   if (!open || !lead) return null;
@@ -13,14 +14,107 @@ export default function LeadDetails({ lead, open, onClose }) {
     { id: 'activity', label: 'Activity Log' },
   ];
 
+  const detailSections = [
+    {
+      title: 'Customer Information',
+      fields: [
+        ['Customer Name', lead.customerName || lead.name],
+        ['First Name', lead.firstName],
+        ['Middle Name', lead.middleName],
+        ['Last Name', lead.lastName],
+        ['Date of Birth', lead.dateOfBirth],
+        ['Age', lead.age],
+        ['Customer Type', lead.customerType],
+        ['Mobile Number', lead.mobileNumber || lead.mobile],
+        ['Email ID', lead.email],
+        ['Residential Status', lead.residentialStatus],
+        ['Gender', lead.gender],
+        ['Marital Status', lead.maritalStatus],
+        ['Dependents', lead.dependents],
+        ['PAN Card', lead.panCard],
+        ['Aadhaar Card', lead.aadhaarCard],
+        ['Passport Number', lead.passportNo],
+        ['Passport Expiry Date', lead.passportExpiryDate],
+      ],
+    },
+    {
+      title: 'Loan Details',
+      fields: [
+        ['Loan Product Type', lead.loanProductType || lead.product],
+        ['Loan Amount', lead.loanAmount || lead.amount],
+        ['Purpose of Loan', lead.loanPurpose],
+        ['Down Payment / Collateral', lead.collateral],
+        ['Tenure', lead.tenure ? `${lead.tenure} ${lead.tenureUnit || 'month'}${Number(lead.tenure) === 1 ? '' : 's'}` : ''],
+        ['Number of Instalments', lead.instalments],
+        ['Interest Rate (% p.a.)', lead.interestRate ? `${lead.interestRate}%` : ''],
+        ['Monthly EMI', lead.monthlyEmi],
+        ['Total Interest', lead.totalInterest],
+        ['Total Amount', lead.securityAmount],
+      ],
+    },
+    {
+      title: 'Income and Employment',
+      fields: [
+        ['Employment Type', lead.employmentType],
+        ['Annual Income', lead.annualIncome],
+        ['Designation', lead.designation],
+        ['Employer / Business Name', lead.employerName],
+        ['Location', lead.location],
+        ['State', lead.state],
+        ['Take Home Pay', lead.takeHomePay],
+        ['Deductions', lead.deductions],
+        ['Bank Name', lead.bankName],
+        ['Primary Bank Account', lead.primaryBankAccount],
+      ],
+    },
+    {
+      title: 'Referral and Assignment',
+      fields: [
+        ['Lead Acquisition Channel', lead.acquisitionChannel || lead.source],
+        ['Referral Date', lead.referralDate],
+        ['Sourcing Agent / Partner ID', lead.partnerId],
+        ['Agent / Partner Name', lead.partnerName],
+        ['Employee ID', lead.employeeId],
+        ['Employee Name', lead.employeeName],
+        ['Assigned Checker', lead.assignedCheckerName],
+        ['Assigned Viewer', lead.assignedViewerName],
+      ],
+    },
+    {
+      title: 'Lead Tracking',
+      fields: [
+        ['Lead ID', lead.id],
+        ['Lead Date', lead.date],
+        ['Status', lead.status],
+        ['Preferred Branch', lead.branch],
+        ['Remarks', lead.remarks],
+      ],
+    },
+  ];
+
+  const renderDetailValue = (value) => {
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    return value;
+  };
+
   return (
     <div className="lead-detail-backdrop" onMouseDown={onClose}>
       <div className="lead-detail-modal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="lead-detail-header">
-          <h2>Lead Details</h2>
-          <button type="button" className="lead-detail-back" onClick={onClose}>
-            <span>-</span> Back
-          </button>
+          <div>
+            <span className="lead-detail-eyebrow">LEAD RECORD</span>
+            <h2>Lead Details <span>{lead.id}</span></h2>
+          </div>
+          <div className="lead-detail-actions">
+            {onEdit && (
+              <button type="button" className="lead-detail-edit" onClick={() => onEdit(lead)}>
+                <Pencil size={15} /> Edit Lead
+              </button>
+            )}
+            <button type="button" className="lead-detail-back" aria-label="Close lead details" onClick={onClose}>
+              <X size={18} /> Close
+            </button>
+          </div>
         </div>
 
         <div className="lead-detail-body">
@@ -29,11 +123,10 @@ export default function LeadDetails({ lead, open, onClose }) {
 
             <div className="detail-grid">
               <div className="detail-row"><span>Lead ID</span><strong>:</strong><em>{lead.id}</em></div>
-              <div className="detail-row"><span>Name</span><strong>:</strong><em>{lead.name}</em></div>
-              <div className="detail-row"><span>Mobile Number</span><strong>:</strong><em>{lead.mobile}</em></div>
-              <div className="detail-row"><span>Email ID</span><strong>:</strong><em>{lead.email}</em></div>
-              <div className="detail-row"><span>Source</span><strong>:</strong><em>{lead.source}</em></div>
-              <div className="detail-row"><span>Date</span><strong>:</strong><em>{lead.date}</em></div>
+              <div className="detail-row"><span>Customer Name</span><strong>:</strong><em>{lead.customerName || lead.name || '—'}</em></div>
+              <div className="detail-row"><span>Mobile Number</span><strong>:</strong><em>{lead.mobileNumber || lead.mobile || '—'}</em></div>
+              <div className="detail-row"><span>Acquisition Channel</span><strong>:</strong><em>{lead.acquisitionChannel || lead.source || '—'}</em></div>
+              <div className="detail-row"><span>Lead Date</span><strong>:</strong><em>{lead.date || '—'}</em></div>
               <div className="detail-row"><span>Status</span><strong>:</strong><em><span className={`lead-status status-${lead.statusKey}`}>{lead.status}</span></em></div>
             </div>
           </div>
@@ -52,17 +145,22 @@ export default function LeadDetails({ lead, open, onClose }) {
               ))}
             </div>
 
-            {tab === 'lead' && (
-              <>
-                <h3>Additional Details</h3>
-                <div className="detail-grid detail-grid-secondary">
-                  <div className="detail-row"><span>Preferred Branch</span><strong>:</strong><em>{lead.branch}</em></div>
-                  <div className="detail-row"><span>Product Interest</span><strong>:</strong><em>{lead.product}</em></div>
-                  <div className="detail-row"><span>Loan Amount</span><strong>:</strong><em>{lead.amount}</em></div>
-                  <div className="detail-row multi-line"><span>Remarks</span><strong>:</strong><em>{lead.remarks}</em></div>
-                </div>
-              </>
-            )}
+            {tab === 'lead' && detailSections.map((section) => {
+              const populatedFields = section.fields.filter(([, value]) => value !== null && value !== undefined && value !== '');
+              if (!populatedFields.length) return null;
+              return (
+                <section className="lead-detail-section" key={section.title}>
+                  <h3>{section.title}</h3>
+                  <div className="detail-grid detail-grid-secondary">
+                    {populatedFields.map(([label, value]) => (
+                      <div className="detail-row" key={label}>
+                        <span>{label}</span><strong>:</strong><em>{renderDetailValue(value)}</em>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
 
             {tab === 'notes' && (
               <div className="detail-empty-state">No notes added yet.</div>
