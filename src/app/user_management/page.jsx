@@ -81,7 +81,8 @@ export default function UserManagementPage() {
     router.push(`/user_management/view/${id}`);
   };
 
-  // Navigate to dedicated full-page Edit
+
+  
   const handleEdit = (emp) => {
     const id = emp.empNo || emp.employeeId || emp.id;
     router.push(`/user_management/edit/${id}`);
