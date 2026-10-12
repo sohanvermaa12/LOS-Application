@@ -49,9 +49,9 @@ export default function DashboardPage() {
       </section>
       <section className="metric-grid">
         <MetricCard label="Total applications" value="248" change="12.8%" tone="ink" />
-        <MetricCard label="Awaiting my review" value="18" change="4.2%" tone="blue" />
-        <MetricCard label="Approved this month" value="96" change="18.6%" tone="green" />
-        <MetricCard label="Average TAT" value="2.4d" change="0.6d" tone="amber" />
+        <MetricCard label="Total No. of Leads" value="1,248" change="9.4%" tone="blue" />
+        <MetricCard label="Total No. of Customers" value="856" change="14.2%" tone="green" />
+        <MetricCard label="Total Amount Disbursed" value="₹14.8 Cr" change="18.6%" tone="amber" />
       </section>
       <section className="dashboard-grid">
         <Card>
