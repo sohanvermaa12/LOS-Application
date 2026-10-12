@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 const API_BASE_URL =
@@ -14,60 +13,17 @@ const sessionCookieOptions = {
   maxAge: SESSION_TTL_SECONDS,
 };
 
-function getSessionSecret() {
-  const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("SESSION_SECRET must contain at least 32 characters");
-  }
-  return secret;
-}
-
-function createSessionValue(accessToken) {
-  const payload = Buffer.from(
-    JSON.stringify({
-      accessToken,
-      expiresAt: Date.now() + SESSION_TTL_SECONDS * 1000,
-    }),
-  ).toString("base64url");
-  const signature = createHmac("sha256", getSessionSecret())
-    .update(payload)
-    .digest("base64url");
-
-  return `${payload}.${signature}`;
-}
-
 export function readSessionAccessToken(value) {
-  if (!value) return null;
+  if (typeof value !== "string") return null;
 
-  const [payload, signature, ...extra] = value.split(".");
-  if (!payload || !signature || extra.length) return null;
-
-  let expectedSignature;
-  try {
-    expectedSignature = createHmac("sha256", getSessionSecret())
-      .update(payload)
-      .digest();
-  } catch {
-    return null;
-  }
-
-  const actualSignature = Buffer.from(signature, "base64url");
-  if (
-    actualSignature.length !== expectedSignature.length ||
-    !timingSafeEqual(actualSignature, expectedSignature)
-  ) {
-    return null;
-  }
+  const [header, payload, signature, ...extra] = value.split(".");
+  if (!header || !payload || !signature || extra.length) return null;
 
   try {
-    const session = JSON.parse(Buffer.from(payload, "base64url").toString());
-    if (
-      typeof session.accessToken !== "string" ||
-      session.expiresAt <= Date.now()
-    ) {
-      return null;
-    }
-    return session.accessToken;
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return Number.isFinite(claims.exp) && claims.exp * 1000 > Date.now()
+      ? value
+      : null;
   } catch {
     return null;
   }
@@ -114,28 +70,19 @@ export async function forwardAuthRequest(request, path, requireAccessToken = fal
   }
 
   const accessToken = result?.data?.accessToken;
-  if ((requireAccessToken || !result?.data?.otpRequired) && !accessToken) {
+  if (
+    (requireAccessToken || !result?.data?.otpRequired) &&
+    !readSessionAccessToken(accessToken)
+  ) {
     return NextResponse.json(
-      { success: false, message: "The authentication response did not include a session" },
+      { success: false, message: "The authentication response did not include a valid access token" },
       { status: 502 },
     );
   }
 
-  let sessionValue;
-  if (accessToken && !result?.data?.otpRequired) {
-    try {
-      sessionValue = createSessionValue(accessToken);
-    } catch (error) {
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 },
-      );
-    }
-  }
-
   const response = NextResponse.json(result, { status: upstream.status });
-  if (sessionValue) {
-    response.cookies.set(AUTH_SESSION_COOKIE, sessionValue, sessionCookieOptions);
+  if (accessToken && !result?.data?.otpRequired) {
+    response.cookies.set(AUTH_SESSION_COOKIE, accessToken, sessionCookieOptions);
   }
 
   return response;

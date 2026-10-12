@@ -82,7 +82,15 @@ export default function LoginForm() {
           }
 
           setTempSessionToken(response.data.tempSessionToken);
-          setDevOtp(response.data.devOtp || "");
+          const returnedDevOtp = response.data.devOtp;
+          const visibleDevOtp =
+            typeof returnedDevOtp === "string" ||
+            typeof returnedDevOtp === "number"
+              ? String(returnedDevOtp)
+              : "";
+          const isSixDigitDevOtp = /^\d{6}$/.test(visibleDevOtp);
+          setDevOtp(isSixDigitDevOtp ? visibleDevOtp : "");
+          setOtp(isSixDigitDevOtp ? visibleDevOtp : "");
           setOtpStep(true);
           return;
         }
