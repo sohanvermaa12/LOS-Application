@@ -1,6 +1,9 @@
 node_modules/
 .next/
 out/
-.env*.local
 dist/
+
+# Environment variables
 .env
+.env.*
+!.env.example

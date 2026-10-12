@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: 'Northstar LOS | Operations Console',
+  title: 'LOS - Loan Origination System',
   description: 'Loan origination operations workspace'
 };
 

@@ -1,69 +1,47 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://los-backend-355v.onrender.com";
 
-const sampleBankProfile = {
-  success: true,
-  message: "Operation completed successfully",
-  data: {
-    name: "Axis Bank Limited",
-    type: "COMMERCIAL_BANK",
-    id: "427775a5-81d8-402d-84a4-fd2cac160566",
-    pkid: 5,
-    bank_code: "AXISBA01",
-    bank_name: "Axis Bank Limited",
-    legal_name: "Axis Bank Ltd",
-    bank_type: "COMMERCIAL_BANK",
-    license_number: "REG-MH-2024-9988",
-    registration_number: "REG-MH-2024-9988",
-    PAN: "AAACA9876K",
-    gst_number: "L65110GJ1993PLC020769",
-    gst_no: "L65110GJ1993PLC020769",
-    CIN: "L65110GJ1993PLC020769",
-    website: "https://www.axisbank.com",
-    regulatory_authority_id: "b5a76e2d-3c9f-4321-9e87-654321fedcba",
-    regulatory_status: "ACTIVE",
-    country: "India",
-    status: "ACTIVE",
-    contact_email: "support@axisbank.com",
-    contact_phone: "+912224252525",
-    db_name: "los_axisba01_db",
-    db_host: "localhost",
-    db_port: 5432,
-    created_at: "2026-09-28T10:16:18.39665",
-    updated_at: "2026-09-28T10:16:18.39665",
-  },
-};
+const ORGANIZATION_ID = 20;
 
 export async function getBankProfile() {
-  const endpoints = [
-    "/api/v1/bank-profile",
-    "/api/v1/bank-profile/detail",
-    "/api/v1/banks/profile",
-    "/api/v1/banks/summary",
-  ];
+  const baseUrl = API_BASE_URL.replace(/\/+$/, "");
+  const apiBaseUrl = /\/api\/v\d+$/i.test(baseUrl) ? baseUrl : `${baseUrl}/api/v1`;
+  const storedAuthData = window.localStorage.getItem("authData");
+  const headers = { "Content-Type": "application/json" };
 
-  for (const endpoint of endpoints) {
+  if (storedAuthData) {
+    let authData;
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        continue;
-      }
-
-      const result = await response.json();
-      if (result && result.data) {
-        return result;
-      }
+      authData = JSON.parse(storedAuthData);
     } catch {
-      // Continue to the next endpoint if the current one is unavailable.
+      throw new Error("Verified session data is invalid. Please sign in again.");
+    }
+
+    if (authData?.accessToken) {
+      headers.Authorization = "Bearer " + authData.accessToken;
     }
   }
 
-  return sampleBankProfile;
-}
+  const response = await fetch(
+    `${apiBaseUrl}/administration/organizations/${ORGANIZATION_ID}`,
+    { method: "GET", headers, cache: "no-store" },
+  );
 
-export { sampleBankProfile };
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("Unable to read the bank profile response.");
+  }
+
+  if (!response.ok || result?.success === false) {
+    throw new Error(
+      result?.message || result?.error || "Unable to load the bank profile.",
+    );
+  }
+
+  if (!result?.data || typeof result.data !== "object" || Array.isArray(result.data)) {
+    throw new Error("The bank profile response did not include organization data.");
+  }
+
+  return result;
+}
