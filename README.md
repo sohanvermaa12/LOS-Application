@@ -16,7 +16,7 @@ Open `http://localhost:3000/login`.
 Application routes require a session cookie set after successful login or OTP
 verification. The HttpOnly cookie contains the backend-issued JWT; its expiry is
 checked locally, and the backend remains responsible for validating the token
-for API requests. No `SESSION_SECRET` is required.
+for API requests.
 
 ## Routes
 
