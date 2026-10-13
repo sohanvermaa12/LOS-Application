@@ -10,19 +10,33 @@ import {
   PanelLeftOpen,
   Settings2,
   ShieldCheck,
-  UsersRound
-} from 'lucide-react';
+  UsersRound,
+  BookOpen,
+} from "lucide-react";
 
 const items = [
-  { href: '/dashboard', label: 'Dashboard', icon: House },
-  { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
-  { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
-  { href: '/loan_application', label: 'Loan Application Management', icon: ClipboardList },
-  { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
-  { href: '/user_management', label: 'User Management', icon: UsersRound },
-  { href: '/master_creation', label: 'Master Creation', icon: ClipboardList },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings2 }
+  { href: "/dashboard", label: "Dashboard", icon: House },
+  {
+    href: "/lead_managenet",
+    label: "Lead Management",
+    icon: BriefcaseBusiness,
+  },
+  {
+    href: "/customer_management",
+    label: "Customer Management",
+    icon: UsersRound,
+  },
+  {
+    href: "/loan_application",
+    label: "Loan Application Management",
+    icon: ClipboardList,
+  },
+  { href: "/rule_engine", label: "Rule Engine", icon: ShieldCheck },
+  { href: "/user_management", label: "User Management", icon: UsersRound },
+  { href: "/master_creation", label: "Master Creation", icon: ClipboardList },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/settings", label: "Settings", icon: Settings2 },
+  { href: "/lookup_management", label: "Lookup Management", icon: BookOpen }
 ];
 
 export default function Sidebar({ open, collapsed, onToggle, onClose }) {
