@@ -54,11 +54,11 @@ const styles = {
     borderRadius: "8px",
     border: "1px solid #E2E6EE",
     // Tailwind "bg-accent" is a theme token; override via --accent if needed
-    backgroundColor: "var(--accent, #EEF2FB)",
+    backgroundColor: "var(--accent, #235dff)",
     padding: "0 16px",
     fontSize: "14px",
     fontWeight: 500,
-    color: "#213B7A",
+    color: "#fff",
     cursor: "pointer",
     transition: "all 150ms ease",
     outline: "none",
