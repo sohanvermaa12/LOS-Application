@@ -1,28 +1,34 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://los-backend-355v.onrender.com";
 
-const ORGANIZATION_ID = 20;
-
 export async function getBankProfile() {
   const baseUrl = API_BASE_URL.replace(/\/+$/, "");
   const apiBaseUrl = /\/api\/v\d+$/i.test(baseUrl) ? baseUrl : `${baseUrl}/api/v1`;
   const storedAuthData = window.localStorage.getItem("authData");
+  if (!storedAuthData) {
+    throw new Error("Verified session data is unavailable. Please sign in again.");
+  }
+
   const headers = { "Content-Type": "application/json" };
+  let authData;
 
-  if (storedAuthData) {
-    let authData;
-    try {
-      authData = JSON.parse(storedAuthData);
-    } catch {
-      throw new Error("Verified session data is invalid. Please sign in again.");
-    }
+  try {
+    authData = JSON.parse(storedAuthData);
+  } catch {
+    throw new Error("Verified session data is invalid. Please sign in again.");
+  }
 
-    if (authData?.accessToken) {
-      headers.Authorization = "Bearer " + authData.accessToken;
-    }
+  const organizationId = authData.organizationId ?? authData.organization_id;
+
+  if (organizationId === undefined || organizationId === null || organizationId === "") {
+    throw new Error("Organization ID is missing from the verified session.");
+  }
+
+  if (authData.accessToken) {
+    headers.Authorization = "Bearer " + authData.accessToken;
   }
 
   const response = await fetch(
-    `${apiBaseUrl}/administration/organizations/${ORGANIZATION_ID}`,
+    `${apiBaseUrl}/administration/organizations/${organizationId}`,
     { method: "GET", headers, cache: "no-store" },
   );
 

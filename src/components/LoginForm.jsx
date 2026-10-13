@@ -56,11 +56,22 @@ export default function LoginForm() {
   }
 
   function handleOtpKeyDown(event, index) {
-    if (event.key === "Backspace" && !otp[index] && index > 0) {
+    if (event.key === "Backspace" && otp[index]?.trim()) {
+      event.preventDefault();
+      const nextOtp = otp.padEnd(6, " ").split("");
+      nextOtp[index] = " ";
+      setOtp(nextOtp.join(""));
+    } else if (event.key === "Backspace" && index > 0) {
+      event.preventDefault();
+      const nextOtp = otp.padEnd(6, " ").split("");
+      nextOtp[index - 1] = " ";
+      setOtp(nextOtp.join(""));
       otpInputRefs.current[index - 1]?.focus();
     } else if (event.key === "ArrowLeft" && index > 0) {
+      event.preventDefault();
       otpInputRefs.current[index - 1]?.focus();
     } else if (event.key === "ArrowRight" && index < 5) {
+      event.preventDefault();
       otpInputRefs.current[index + 1]?.focus();
     }
   }

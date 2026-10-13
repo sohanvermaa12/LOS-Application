@@ -1,9 +1,9 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "https://los-backend-355v.onrender.com";
-const USER_ID = 1;
 
 export async function getUserProfile() {
   const authData = getAuthData();
+  const userId = getUserId(authData);
   const organizationId = authData.organizationId ?? authData.organization_id;
 
   if (organizationId === undefined || organizationId === null || organizationId === "") {
@@ -18,7 +18,7 @@ export async function getUserProfile() {
   }
 
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/administration/users/${USER_ID}?${query.toString()}`,
+    `${API_BASE_URL}/api/v1/administration/users/${userId}?${query.toString()}`,
     {
       method: "GET",
       headers,
@@ -48,13 +48,14 @@ export async function getUserProfile() {
 
 export async function updateUserProfile(updates) {
   const authData = getAuthData();
+  const userId = getUserId(authData);
   const headers = { "Content-Type": "application/json" };
 
   if (authData.accessToken) {
     headers.Authorization = "Bearer " + authData.accessToken;
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/v1/users/${USER_ID}`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/users/${userId}`, {
     method: "PUT",
     headers,
     body: JSON.stringify(updates),
@@ -94,4 +95,14 @@ function getAuthData() {
   } catch {
     throw new Error("Verified session data is invalid. Please sign in again.");
   }
+}
+
+function getUserId(authData) {
+  const userId = authData.user?.id;
+
+  if (userId === undefined || userId === null || userId === "") {
+    throw new Error("User ID is missing from the verified session.");
+  }
+
+  return userId;
 }
