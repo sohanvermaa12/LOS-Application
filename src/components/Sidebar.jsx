@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   BarChart3,
+  BookOpen,
   BriefcaseBusiness,
   ClipboardList,
   ClipboardCheck,
@@ -14,7 +15,7 @@ import {
   Percent,
   Settings2,
   ShieldCheck,
-  UsersRound
+  UsersRound,
 } from 'lucide-react';
 import { getUserProfile } from '../services/user_profile';
 
@@ -29,8 +30,9 @@ const items = [
   { href: '/product_management', label: 'Product Management', icon: Package },
   { href: '/loan_eligibility', label: 'Loan Eligibility', icon: ClipboardCheck },
   { href: '/interest_rate_master', label: 'Interest Rate Master', icon: Percent },
+  { href: '/lookup_management', label: 'Lookup Management', icon: BookOpen },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/settings', label: 'Settings', icon: Settings2 }
+  { href: '/settings', label: 'Settings', icon: Settings2 },
 ];
 
 export default function Sidebar({ open, collapsed, onToggle, onClose }) {
