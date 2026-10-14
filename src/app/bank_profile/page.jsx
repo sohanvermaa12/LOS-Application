@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Building2, ChevronRight, ExternalLink, Home, Phone, Plus, ShieldCheck, X } from 'lucide-react';
+import { Building2, ChevronRight, ExternalLink, FileText, Fingerprint, Globe2, Home, Landmark, Mail, MapPin, Network, Phone, Plus, ShieldCheck, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import { getBankProfile } from '../../services/bankProfile';
 
@@ -96,12 +96,27 @@ function formatValue(key, value) {
   return String(value);
 }
 
+function getFieldIcon(key) {
+  if (/(address|street|road|landmark|city|state|pincode|country)/i.test(key)) return MapPin;
+  if (/website/i.test(key)) return Globe2;
+  if (/email/i.test(key)) return Mail;
+  if (/phone/i.test(key)) return Phone;
+  if (/branch|clearing|iftas|micr|ifsc/i.test(key)) return Network;
+  if (/bank|type/i.test(key)) return Landmark;
+  if (/pan|gst|cin|license|registration|regulatory/i.test(key)) return Fingerprint;
+  return FileText;
+}
+
 function ProfileField({ field }) {
   const isStatus = field.key === 'status' || field.key === 'regulatory_status';
+  const Icon = getFieldIcon(field.key);
   return (
     <div className="bank-profile-field">
-      <span>{field.label || getFieldLabel(field.key)}</span>
-      <strong className={isStatus ? 'bank-profile-status-value' : ''}>{isStatus ? <i /> : null}{formatValue(field.key, field.value)}</strong>
+      <span className="bank-profile-field-icon" aria-hidden="true"><Icon size={17} strokeWidth={1.9} /></span>
+      <div className="bank-profile-field-copy">
+        <span>{field.label || getFieldLabel(field.key)}</span>
+        <strong className={isStatus ? 'bank-profile-status-value' : ''}>{isStatus ? <i /> : null}{formatValue(field.key, field.value)}</strong>
+      </div>
     </div>
   );
 }
@@ -110,7 +125,7 @@ function ProfileSection({ id, title, description, icon: Icon, fields }) {
   if (!fields.length) return null;
 
   return (
-    <section className="bank-profile-section" id={id}>
+    <section className={`bank-profile-section bank-profile-section-${id}`} id={id}>
       <header className="bank-profile-section-heading">
         <span className="bank-profile-section-icon"><Icon size={20} strokeWidth={2.2} /></span>
         <div>
@@ -306,12 +321,12 @@ export default function BankProfilePage() {
         <style>{`
           .bank-profile-page {
             --bank-blue: #2165e8;
-            --bank-ink: #17345f;
-            --bank-muted: #7189a8;
-            --bank-line: #d8e6fa;
+            --bank-ink: #162d4c;
+            --bank-muted: #71819a;
+            --bank-line: #e1e9f3;
             max-width: 1560px;
             margin: 0 auto;
-            padding: 18px 22px 36px;
+            padding: 18px 20px 36px;
             color: var(--bank-ink);
             font-family: "Google Sans", Arial, sans-serif;
             font-size: 16px;
@@ -320,33 +335,38 @@ export default function BankProfilePage() {
           .bank-profile-breadcrumb { display: flex; align-items: center; gap: 10px; margin: 0; color: #6782a4; font-size: 14px; }
           .bank-profile-breadcrumb svg:first-child { color: #607fa6; }
           .bank-profile-breadcrumb svg:nth-child(2) { color: #99acc3; }
-          .bank-profile-add-button { display: inline-flex; align-self: flex-start; align-items: center; justify-content: center; gap: 8px; width: fit-content; margin: 0; min-height: 42px; padding: 0 16px; border: 1px solid #2165e8; border-radius: 8px; background: #2165e8; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
-          .bank-profile-add-button:hover { background: #1855c8; }
-          .bank-profile-summary { display: grid; grid-template-columns: minmax(290px, 1.15fr) minmax(420px, 1fr); align-items: center; gap: 26px; min-height: 150px; padding: 24px 26px; border: 1px solid var(--bank-line); border-radius: 12px; background: #fff; }
+          .bank-profile-add-button { display: inline-flex; align-self: flex-start; align-items: center; justify-content: center; gap: 8px; width: fit-content; margin: 0; min-height: 42px; padding: 0 16px; border: 1px solid #2165e8; border-radius: 9px; background: #2165e8; color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .18s ease, transform .18s ease; }
+          .bank-profile-add-button:hover { background: #1855c8; transform: translateY(-1px); }
+          .bank-profile-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .55fr); align-items: center; gap: 28px; min-height: 112px; padding: 18px 24px; border: 1px solid var(--bank-line); border-radius: 12px; background: linear-gradient(115deg, #fff 0%, #fbfdff 100%); box-shadow: 0 3px 12px rgb(32 65 105 / 3%); }
           .bank-profile-identity { display: flex; align-items: center; gap: 20px; min-width: 0; }
-          .bank-profile-avatar { display: grid; place-items: center; flex: 0 0 82px; width: 82px; height: 82px; border-radius: 16px; background: #edf4ff; color: var(--bank-blue); font-size: 28px; font-weight: 800; }
+          .bank-profile-avatar { display: grid; place-items: center; flex: 0 0 72px; width: 72px; height: 72px; border: 1px solid #edf0f6; border-radius: 14px; background: #fff; color: #a61e53; font-size: 24px; font-weight: 800; box-shadow: 0 3px 12px rgb(27 48 78 / 6%); }
           .bank-profile-identity-copy { min-width: 0; }
-          .bank-profile-overline { display: block; margin-bottom: 7px; color: var(--bank-muted); font-size: 13px; font-weight: 700; text-transform: uppercase; }
-          .bank-profile-identity-copy h1 { margin: 0; color: #142f59; font-size: 28px; line-height: 1.3; font-weight: 700; }
-          .bank-profile-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 10px; color: var(--bank-muted); font-size: 14px; }
-          .bank-profile-badge { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 20px; background: #dff7eb; color: #138553; font-size: 13px; font-weight: 700; text-transform: capitalize; }
+          .bank-profile-overline { display: block; margin-bottom: 3px; color: #203653; font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
+          .bank-profile-identity-copy h1 { margin: 0; color: #657993; font-size: 14px; line-height: 1.5; font-weight: 500; }
+          .bank-profile-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 6px; color: var(--bank-muted); font-size: 13px; }
+          .bank-profile-badge { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid #c8f0db; border-radius: 20px; background: #e7f9ef; color: #138553; font-size: 11px; font-weight: 700; text-transform: capitalize; }
           .bank-profile-badge i, .bank-profile-status-value i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #19b76d; }
-          .bank-profile-summary-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; }
-          .bank-profile-summary-facts > div { display: grid; align-content: center; gap: 9px; min-width: 0; min-height: 64px; padding: 0 18px; border-left: 1px solid #e0eaf8; }
-          .bank-profile-summary-facts span { color: var(--bank-muted); font-size: 13px; font-weight: 600; }
-          .bank-profile-summary-facts strong { overflow-wrap: anywhere; color: #1a365f; font-size: 15px; font-weight: 700; line-height: 1.45; }
-          .bank-profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
-          .bank-profile-section { min-width: 0; overflow: hidden; border: 1px solid var(--bank-line); border-radius: 12px; background: #fff; }
-          .bank-profile-section-heading { display: flex; align-items: center; gap: 15px; min-height: 72px; padding: 14px 20px; background: #f3f7fd; }
-          .bank-profile-section-icon { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; background: var(--bank-blue); color: #fff; }
-          .bank-profile-section-heading h2 { margin: 0 0 4px; color: #1b3b6b; font-size: 18px; font-weight: 700; }
-          .bank-profile-section-heading p { margin: 0; color: #7189a8; font-size: 13px; line-height: 1.45; }
-          .bank-profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 22px; padding: 21px 22px; }
-          .bank-profile-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
-          .bank-profile-field > span { color: #7186a1; font-size: 13px; font-weight: 600; }
-          .bank-profile-field > strong { overflow-wrap: anywhere; color: #1d3c6a; font-size: 15px; font-weight: 600; line-height: 1.5; }
-          .bank-profile-field > strong.bank-profile-status-value { display: inline-flex; align-items: center; gap: 8px; width: max-content; max-width: 100%; padding: 5px 11px; border-radius: 16px; background: #def6eb; color: #16905d; font-size: 13px; text-transform: uppercase; }
-          .bank-profile-field > strong.bank-profile-status-value i { width: 7px; height: 7px; }
+          .bank-profile-summary-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+          .bank-profile-summary-facts > div { display: grid; align-content: center; gap: 6px; min-width: 0; min-height: 54px; padding: 0 18px; border-left: 1px solid #e6edf5; }
+          .bank-profile-summary-facts span { color: var(--bank-muted); font-size: 12px; font-weight: 500; }
+          .bank-profile-summary-facts strong { overflow-wrap: anywhere; color: #1a2e49; font-size: 14px; font-weight: 700; line-height: 1.45; }
+          .bank-profile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+          .bank-profile-section { min-width: 0; overflow: hidden; border: 1px solid var(--bank-line); border-radius: 12px; background: #fff; box-shadow: 0 3px 12px rgb(32 65 105 / 3%); }
+          .bank-profile-section-organization, .bank-profile-section-additional { grid-column: 1 / -1; }
+          .bank-profile-section-heading { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 12px 18px; border-bottom: 1px solid #edf1f6; background: #fff; }
+          .bank-profile-section-icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid #e6edf6; border-radius: 11px; background: #f5f8fc; color: #526a89; }
+          .bank-profile-section-heading h2 { margin: 0 0 3px; color: #233a58; font-size: 15px; font-weight: 700; }
+          .bank-profile-section-heading p { margin: 0; color: #8291a5; font-size: 12px; line-height: 1.45; }
+          .bank-profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 14px; }
+          .bank-profile-section-organization .bank-profile-fields, .bank-profile-section-additional .bank-profile-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .bank-profile-field { display: flex; align-items: flex-start; gap: 10px; min-width: 0; min-height: 64px; padding: 12px; border: 1px solid #e7edf5; border-radius: 9px; background: #fff; transition: border-color .18s ease, background .18s ease; }
+          .bank-profile-field:hover { border-color: #cad9eb; background: #fbfdff; }
+          .bank-profile-field-icon { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: #f3f6fa; color: #304b6c; }
+          .bank-profile-field-copy { display: grid; align-content: center; gap: 4px; min-width: 0; min-height: 34px; }
+          .bank-profile-field-copy > span { color: #77879d; font-size: 11px; font-weight: 500; line-height: 1.35; }
+          .bank-profile-field-copy > strong { overflow-wrap: anywhere; color: #1a2e49; font-size: 13px; font-weight: 600; line-height: 1.45; }
+          .bank-profile-field-copy > strong.bank-profile-status-value { display: inline-flex; align-items: center; gap: 8px; width: max-content; max-width: 100%; padding: 5px 11px; border-radius: 16px; background: #def6eb; color: #16905d; font-size: 12px; text-transform: uppercase; }
+          .bank-profile-field-copy > strong.bank-profile-status-value i { width: 7px; height: 7px; }
           .bank-profile-link { display: inline-flex; align-items: center; gap: 6px; color: #1d69d9; text-decoration: underline; overflow-wrap: anywhere; }
           .bank-profile-message { padding: 26px; border: 1px solid var(--bank-line); border-radius: 10px; background: #fff; color: #516b8c; font-size: 16px; }
           .bank-profile-error { border-color: #f2caca; background: #fff7f7; color: #ad3030; }
@@ -364,12 +384,14 @@ export default function BankProfilePage() {
           .bank-profile-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 3px; }
           .bank-profile-cancel-button { min-height: 42px; padding: 0 16px; border: 1px solid #cbd9eb; border-radius: 8px; background: #fff; color: #405775; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
           @media (max-width: 1050px) {
-            .bank-profile-summary { grid-template-columns: 1fr; gap: 20px; }
+            .bank-profile-summary { grid-template-columns: minmax(0, 1fr) auto; gap: 16px; }
+            .bank-profile-section-organization .bank-profile-fields, .bank-profile-section-additional .bank-profile-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .bank-profile-summary-facts > div:first-child { border-left: 0; padding-left: 0; }
           }
           @media (max-width: 760px) {
             .bank-profile-page { padding: 14px 12px 26px; }
             .bank-profile-grid { grid-template-columns: 1fr; }
+            .bank-profile-section-organization, .bank-profile-section-additional { grid-column: auto; }
             .bank-profile-summary { padding: 20px; }
           }
           @media (max-width: 480px) {
@@ -379,7 +401,11 @@ export default function BankProfilePage() {
             .bank-profile-identity-copy h1 { font-size: 22px; }
             .bank-profile-summary-facts { grid-template-columns: 1fr; gap: 14px; }
             .bank-profile-summary-facts > div { min-height: 0; padding: 0; border-left: 0; }
-            .bank-profile-fields { grid-template-columns: 1fr; gap: 16px; padding: 18px; }
+            .bank-profile-fields, .bank-profile-section-organization .bank-profile-fields, .bank-profile-section-additional .bank-profile-fields { grid-template-columns: 1fr; gap: 10px; padding: 12px; }
+            .bank-profile-summary { grid-template-columns: 1fr; gap: 16px; }
+            .bank-profile-summary-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .bank-profile-summary-facts > div { padding: 0 10px; border-left: 1px solid #e6edf5; }
+            .bank-profile-summary-facts > div:first-child { padding-left: 0; border-left: 0; }
             .bank-profile-section-heading { padding: 12px 16px; }
           }
         `}</style>

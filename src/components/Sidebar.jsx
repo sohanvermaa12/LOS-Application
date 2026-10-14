@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   BarChart3,
@@ -12,6 +13,7 @@ import {
   ShieldCheck,
   UsersRound
 } from 'lucide-react';
+import { getUserProfile } from '../services/user_profile';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
@@ -26,6 +28,37 @@ const items = [
 ];
 
 export default function Sidebar({ open, collapsed, onToggle, onClose }) {
+  const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState('');
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    async function loadProfile() {
+      try {
+        const userProfile = await getUserProfile();
+        if (isCurrent) setProfile(userProfile);
+      } catch (requestError) {
+        if (isCurrent) {
+          setProfileError(requestError.message || 'Unable to load the user profile.');
+        }
+      }
+    }
+
+    loadProfile();
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  const firstName = [profile?.first_name, profile?.firstName].find(
+    (value) => typeof value === 'string' && value.trim(),
+  )?.trim();
+  const role = [profile?.role, profile?.role_name].find(
+    (value) => typeof value === 'string' && value.trim(),
+  )?.trim();
+  const displayName = firstName || (profileError ? 'Profile unavailable' : 'Loading...');
+
   return (
     <>
       {open && (
@@ -85,11 +118,13 @@ export default function Sidebar({ open, collapsed, onToggle, onClose }) {
             </Link>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          <div className="mini-avatar" title="Vikram Aditya Mehta">VM</div>
+        <div className="sidebar-footer" title={profileError || undefined}>
+          <div className="mini-avatar" title={displayName}>
+            {firstName ? firstName.charAt(0).toUpperCase() : '?'}
+          </div>
           <div className="user-meta">
-            <strong>Vikram Aditya Mehta</strong>
-            <span>SUPER_ADMIN</span>
+            <strong>{displayName}</strong>
+            <span>{profileError ? 'Unable to load role' : role || (profile ? 'Role unavailable' : '')}</span>
           </div>
         </div>
       </aside>
