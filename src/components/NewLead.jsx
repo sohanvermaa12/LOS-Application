@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { getLoanProducts } from '../services/loanProducts';
-import { getEmployees } from '../services/employeeService';
+import { getUsers } from '../services/user_management';
 
 const verhoeffMultiplication = [
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -70,6 +70,27 @@ const getAgeFromDob = (dateString) => {
   return age;
 };
 
+const getTodayInputDate = () => {
+  const today = new Date();
+  const localDate = new Date(today.getTime() - today.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
+};
+
+const getRows = (result) => [
+  result?.data?.users,
+  result?.data?.items,
+  result?.data?.records,
+  result?.data?.content,
+  result?.data,
+  result?.users,
+  result?.items,
+  result?.records,
+  result?.content,
+].find(Array.isArray) || [];
+
+const getUserId = (user) => user.id ?? user.userId ?? user.employeeId ?? user.empNo ?? '';
+const getUserName = (user) => user.name || user.fullName || [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ') || user.username || user.userName || user.email || '';
+
 const getCustomerTypeFromAge = (age) => {
   if (age === '' || age === null || Number.isNaN(Number(age))) return '';
   if (Number(age) < 18) return 'Minor';
@@ -78,6 +99,7 @@ const getCustomerTypeFromAge = (age) => {
 };
 
 const initialForm = {
+  namePrefix: '',
   firstName: '',
   middleName: '',
   lastName: '',
@@ -125,7 +147,10 @@ const initialForm = {
   assignedCheckerName: '',
   assignedViewerId: '',
   assignedViewerName: '',
-  status: 'New',
+  assignedBy: '',
+  assignedToId: '',
+  assignedToName: '',
+  status: 'Pending',
 };
 
 const getLeadFormValues = (lead) => {
@@ -135,6 +160,8 @@ const getLeadFormValues = (lead) => {
   return {
     ...initialForm,
     ...lead,
+    assignedToId: lead.assignedToId || lead.assignedCheckerId || lead.assignedViewerId || '',
+    assignedToName: lead.assignedToName || lead.assignedCheckerName || lead.assignedViewerName || '',
     firstName: lead.firstName || nameParts[0] || '',
     middleName: lead.middleName || (nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : ''),
     lastName: lead.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''),
@@ -142,7 +169,7 @@ const getLeadFormValues = (lead) => {
     loanProductType: lead.loanProductType || lead.product || '',
     loanAmount: lead.loanAmount || String(lead.amount || '').replace(/,/g, ''),
     acquisitionChannel: lead.acquisitionChannel || lead.source || '',
-    status: lead.status || 'New',
+    status: lead.status || 'Pending',
   };
 };
 
@@ -197,14 +224,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
   const [aadhaarValidated, setAadhaarValidated] = useState(false);
   const [loanProducts, setLoanProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [productsError, setProductsError] = useState('');
   const [assignmentUsers, setAssignmentUsers] = useState([]);
-  const checkerUsers = assignmentUsers.filter(
-    (employee) => String(employee.userRole || employee.role || '').toLowerCase() === 'checker'
-  );
-  const viewerUsers = assignmentUsers.filter(
-    (employee) => String(employee.userRole || employee.role || '').toLowerCase() === 'viewer'
-  );
 
   useEffect(() => {
     if (!open) return undefined;
@@ -215,10 +235,28 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     setMobileMessage('');
     setAadhaarMessage('');
     setAadhaarValidated(false);
-    setAssignmentUsers(getEmployees());
+    setAssignmentUsers([]);
+    let isActive = true;
+    try {
+      const authData = JSON.parse(window.localStorage.getItem('authData'));
+      const user = authData?.user || {};
+      const assignedBy = getUserName(user);
+      if (!initialData && assignedBy) {
+        setForm((current) => ({ ...current, assignedBy }));
+      }
+    } catch {
+      if (!initialData) setForm((current) => ({ ...current, assignedBy: '' }));
+    }
+    getUsers()
+      .then((result) => {
+        if (isActive) setAssignmentUsers(getRows(result));
+      })
+      .catch(() => {
+        if (isActive) setAssignmentUsers([]);
+      });
+
     const controller = new AbortController();
     setProductsLoading(true);
-    setProductsError('');
     let accessToken;
     try {
       accessToken = JSON.parse(window.localStorage.getItem('authData'))?.accessToken;
@@ -229,13 +267,16 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     getLoanProducts(controller.signal, accessToken)
       .then(setLoanProducts)
       .catch((error) => {
-        if (error.name !== 'AbortError') setProductsError(error.message);
+        if (error.name !== 'AbortError') setLoanProducts([]);
       })
       .finally(() => {
         if (!controller.signal.aborted) setProductsLoading(false);
       });
 
-    return () => controller.abort();
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
   }, [open, initialData]);
 
   if (!open) return null;
@@ -258,6 +299,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
   const computedTotalAmount = principal > 0 && computedTotalInterest !== ''
     ? String(Math.round(principal + Number(computedTotalInterest)))
     : '';
+  const todayInputDate = getTodayInputDate();
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -265,11 +307,13 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       ? value.replace(/\D/g, '').slice(0, name === 'aadhaarCard' ? 12 : 6)
       : name === 'mobileNumber' ? value.replace(/\D/g, '').slice(0, 10)
       : ['firstName', 'middleName', 'lastName'].includes(name) ? value.replace(/[^\p{L}\p{M} .'-]/gu, '').slice(0, 100)
-      : name === 'panCard' ? normalizePan(value) : value;
+      : name === 'panCard' ? normalizePan(value)
+      : name === 'passportNo' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) : value;
 
     setForm((current) => ({
       ...current,
       [name]: normalizedValue,
+      ...(name === 'employmentType' && value === 'Self-Employed' ? { designation: '' } : {}),
       ...(name === 'loanProductType'
         ? { interestRate: String(loanProducts.find((product) => product.name === value)?.annualInterestRate ?? '') }
         : {}),
@@ -306,6 +350,13 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       amountField?.setCustomValidity('');
       collateralField?.setCustomValidity(invalidDownPayment ? 'Down payment must be less than the loan amount.' : '');
+    }
+
+    if (activeStep === 0) {
+      const aadhaarField = document.querySelector('.lead-step-panel input[name="aadhaarCard"]');
+      const aadhaar = form.aadhaarCard;
+      const invalidAadhaar = Boolean(aadhaar) && /^[0-9]{12}$/.test(aadhaar) && !hasValidAadhaarChecksum(aadhaar);
+      aadhaarField?.setCustomValidity(invalidAadhaar ? 'Enter a valid 12-digit Aadhaar number.' : '');
     }
 
     const fields = Array.from(document.querySelectorAll('.lead-step-panel input, .lead-step-panel select'));
@@ -394,10 +445,19 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
   const renderPersonalDetails = () => (
     <div className="lead-personal-grid">
-      <label className="lead-field">
-        <span>First Name <em>*</em></span>
-        <input name="firstName" value={form.firstName} onChange={handleChange} required maxLength={100} autoComplete="given-name" />
-      </label>
+      <div className="lead-name-combo">
+        <label className="lead-field lead-prefix-field">
+          <span>Title</span>
+          <select name="namePrefix" value={form.namePrefix} onChange={handleChange}>
+      <option value="">Mr</option>
+            {[ 'Ms', 'Mrs', 'Miss', 'Dr', 'Other'].map((title) => <option key={title} value={title}>{title}</option>)}
+          </select>
+        </label>
+        <label className="lead-field">
+          <span>First Name <em>*</em></span>
+          <input name="firstName" value={form.firstName} onChange={handleChange} required maxLength={100} autoComplete="given-name" />
+        </label>
+      </div>
       <label className="lead-field">
         <span>Middle Name</span>
         <input name="middleName" value={form.middleName} onChange={handleChange} maxLength={100} autoComplete="additional-name" />
@@ -416,20 +476,20 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         </button>
       </div>
 
-      <label className="lead-field">
-        <span>Date of Birth</span>
-        <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} />
-      </label>
-
-      <label className="lead-field">
-        <span>Age</span>
-        <input name="age" value={computedAge} readOnly className="lead-computed-field" />
-      </label>
-
-      <label className="lead-field">
-        <span>Customer Type</span>
-        <input name="customerType" value={computedCustomerType} readOnly className="lead-computed-field" />
-      </label>
+      <div className="lead-personal-demographics">
+        <label className="lead-field">
+          <span>Date of Birth <em>*</em></span>
+          <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} max={todayInputDate} required />
+        </label>
+        <label className="lead-field">
+          <span>Age</span>
+          <input name="age" value={computedAge} readOnly className="lead-computed-field" />
+        </label>
+        <label className="lead-field">
+          <span>Customer Type</span>
+          <input name="customerType" value={computedCustomerType} readOnly className="lead-computed-field" />
+        </label>
+      </div>
 
       <div className="lead-mobile-field">
         <label className="lead-field">
@@ -448,7 +508,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       <div className="lead-identity-field">
         <label className="lead-field">
           <span>Aadhaar Card</span>
-          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} title="Enter the 12-digit Aadhaar number without spaces." />
+          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} title="Enter a valid 12-digit Aadhaar number without spaces." />
         </label>
         <button type="button" onClick={handleValidateAndSendOtp} className="lead-verify-button">
           Validate &amp; Send OTP
@@ -507,12 +567,12 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <label className="lead-field">
         <span>Passport No.</span>
-        <input name="passportNo" value={form.passportNo} onChange={handleChange} />
+        <input name="passportNo" value={form.passportNo} onChange={handleChange} pattern="[A-Z][0-9]{7}" maxLength={8} title="Enter an Indian passport number in the format A1234567." />
       </label>
 
       <label className="lead-field">
         <span>Passport Expiry Date</span>
-        <input type="date" name="passportExpiryDate" value={form.passportExpiryDate} onChange={handleChange} min={new Date().toISOString().slice(0, 10)} />
+        <input type="date" name="passportExpiryDate" value={form.passportExpiryDate} onChange={handleChange} min={todayInputDate} />
       </label>
 
     </div>
@@ -522,12 +582,10 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '18px 20px' }}>
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Loan Product Type <em>*</em></span>
-        <select name="loanProductType" value={form.loanProductType} onChange={handleChange} required={!initialData || Boolean(initialData.loanProductType || initialData.product)} disabled={productsLoading || Boolean(productsError)} style={{ minHeight: '42px' }}>
-          <option value="">{productsLoading ? 'Loading products...' : 'Select product'}</option>
+        <select name="loanProductType" value={form.loanProductType} onChange={handleChange} required={loanProducts.length > 0 && (!initialData || Boolean(initialData.loanProductType || initialData.product))} disabled={productsLoading} style={{ minHeight: '42px' }}>
+          <option value="">{productsLoading ? 'Loading products...' : loanProducts.length ? 'Select product' : 'No products available'}</option>
           {loanProducts.map((product) => <option key={product.id} value={product.name}>{product.name}</option>)}
         </select>
-        {productsError ? <span role="alert" style={{ color: '#b33b3b', fontSize: '11px' }}>{productsError}</span> : null}
-        {!productsLoading && !productsError && loanProducts.length === 0 ? <span role="status" style={{ color: '#708087', fontSize: '11px' }}>No active loan products are available.</span> : null}
       </label>
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -618,11 +676,11 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
         <label className="lead-field">
           <span>Designation</span>
-          <input name="designation" value={form.designation} onChange={handleChange} />
+          <input name="designation" value={form.designation} onChange={handleChange} disabled={form.employmentType === 'Self-Employed'} />
         </label>
 
         <label className="lead-field lead-income-employer">
-          <span>Employer Name</span>
+          <span>{form.employmentType === 'Self-Employed' ? 'Business Name' : 'Employer Name'}</span>
           <input name="employerName" value={form.employerName} onChange={handleChange} />
         </label>
 
@@ -717,65 +775,35 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       <div className="lead-assignment-section">
         <div className="lead-assignment-heading">
           <h4>Lead Assignment</h4>
-          <p>Assign this lead to the users responsible for checking and viewing it.</p>
+          <p>New leads remain pending until they are assigned.</p>
         </div>
         <label className="lead-field">
-          <span>Lead Status</span>
-          <select name="status" value={form.status} onChange={handleChange}>
-            {['New', 'In Progress', 'Contacted', 'Qualified', 'On Hold', 'Rejected', 'Converted'].map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
+          <span>Assign By</span>
+          <input name="assignedBy" value={form.assignedBy} readOnly placeholder="Signed-in user" />
         </label>
         <label className="lead-field">
-          <span>Assign Checker</span>
+          <span>Assign To</span>
           <select
-            name="assignedCheckerId"
-            value={form.assignedCheckerId}
+            name="assignedToId"
+            value={form.assignedToId}
             onChange={(event) => {
-              const selected = assignmentUsers.find((employee) => String(employee.id) === event.target.value);
+              const selected = assignmentUsers.find((user) => String(getUserId(user)) === event.target.value);
               setForm((current) => ({
                 ...current,
-                assignedCheckerId: event.target.value,
-                assignedCheckerName: selected?.name || selected?.fullName || '',
+                assignedToId: event.target.value,
+                assignedToName: selected ? getUserName(selected) : '',
+                status: selected ? 'In Progress' : 'Pending',
               }));
             }}
           >
-            <option value="">Select checker</option>
-            {checkerUsers.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.name || employee.fullName} ({employee.empNo || employee.employeeId}){employee.status !== 'Active' ? ` - ${employee.status}` : ''}
-                </option>
-              ))}
+            <option value="">Select assignee</option>
+            {assignmentUsers.map((user) => {
+              const userId = getUserId(user);
+              const userName = getUserName(user);
+              return userId ? <option key={userId} value={userId}>{userName || userId}</option> : null;
+            })}
           </select>
-          {!checkerUsers.length && (
-            <span className="lead-assignment-hint">No Checker users are available.</span>
-          )}
-        </label>
-        <label className="lead-field">
-          <span>Assign Viewer</span>
-          <select
-            name="assignedViewerId"
-            value={form.assignedViewerId}
-            onChange={(event) => {
-              const selected = assignmentUsers.find((employee) => String(employee.id) === event.target.value);
-              setForm((current) => ({
-                ...current,
-                assignedViewerId: event.target.value,
-                assignedViewerName: selected?.name || selected?.fullName || '',
-              }));
-            }}
-          >
-            <option value="">Select viewer</option>
-            {viewerUsers.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.name || employee.fullName} ({employee.empNo || employee.employeeId}){employee.status !== 'Active' ? ` - ${employee.status}` : ''}
-                </option>
-              ))}
-          </select>
-          {!viewerUsers.length && (
-            <span className="lead-assignment-hint">No Viewer users are available.</span>
-          )}
+          {!assignmentUsers.length && <span className="lead-assignment-hint">No assignees are available from the user lookup.</span>}
         </label>
       </div>
         </>;
@@ -820,7 +848,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       return;
     }
 
-    const customerName = [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ').trim();
+    const customerName = [form.namePrefix, form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ').trim();
     const leadData = {
       ...form,
       customerName,
@@ -831,6 +859,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       monthlyEmi: computedMonthlyEmi,
       totalInterest: computedTotalInterest,
       securityAmount: computedTotalAmount,
+      status: form.assignedToId ? 'In Progress' : initialData ? form.status : 'Pending',
     };
     delete leadData.otpNumber;
     delete leadData.otpSent;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Eye, Pencil, Plus, Search } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import NewLead from '../../components/NewLead';
@@ -9,6 +9,7 @@ import LeadDetails from '../../components/LeadDetails';
 const leadTableColumns = [
   ['id', 'Lead ID'],
   ['customerName', 'Customer Name'],
+  ['namePrefix', 'Title'],
   ['firstName', 'First Name'],
   ['middleName', 'Middle Name'],
   ['lastName', 'Last Name'],
@@ -51,8 +52,8 @@ const leadTableColumns = [
   ['partnerName', 'Partner Name'],
   ['employeeId', 'Employee ID'],
   ['employeeName', 'Employee Name'],
-  ['assignedCheckerName', 'Assigned Checker'],
-  ['assignedViewerName', 'Assigned Viewer'],
+  ['assignedBy', 'Assigned By'],
+  ['assignedToName', 'Assigned To'],
   ['status', 'Status'],
   ['date', 'Lead Date'],
 ];
@@ -82,6 +83,7 @@ const maskSensitiveValue = (field, value) => {
 };
 
 const statusKeys = {
+  Pending: 'new',
   New: 'new',
   'In Progress': 'progress',
   Contacted: 'contacted',
@@ -90,6 +92,8 @@ const statusKeys = {
   Rejected: 'progress',
   Converted: 'qualified',
 };
+
+const LEADS_PER_PAGE = 5;
 
 const toIsoDate = (date) => {
   const [day, month, year] = String(date || '').split('-');
@@ -117,6 +121,11 @@ export default function LeadManagementPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sourceFilter, statusFilter, fromDate, toDate]);
 
   const handleCreateLead = (form) => {
     setLeads((current) => {
@@ -131,8 +140,8 @@ export default function LeadManagementPage() {
         mobile: form.mobileNumber,
         source: form.acquisitionChannel,
         date,
-        status: form.status || 'New',
-        statusKey: statusKeys[form.status || 'New'] || 'new',
+        status: form.assignedToId ? 'In Progress' : 'Pending',
+        statusKey: statusKeys[form.assignedToId ? 'In Progress' : 'Pending'],
         branch: '',
         product: form.loanProductType,
         amount: Number(form.loanAmount).toLocaleString('en-IN'),
@@ -153,8 +162,8 @@ export default function LeadManagementPage() {
           source: form.acquisitionChannel,
           product: form.loanProductType,
           amount: Number(form.loanAmount).toLocaleString('en-IN'),
-          status: form.status || lead.status,
-          statusKey: statusKeys[form.status || lead.status] || 'new',
+          status: form.assignedToId ? 'In Progress' : (form.status || lead.status),
+          statusKey: statusKeys[form.assignedToId ? 'In Progress' : (form.status || lead.status)] || 'new',
         }
         : lead
     )));
@@ -166,7 +175,10 @@ export default function LeadManagementPage() {
     setEditingLead(lead);
   };
 
-  const handleSearch = () => setSearchQuery(searchInput.trim().toLowerCase());
+  const handleSearch = () => {
+    setCurrentPage(1);
+    setSearchQuery(searchInput.trim().toLowerCase());
+  };
   const clearFilters = () => {
     setSearchField('all');
     setSearchInput('');
@@ -189,6 +201,11 @@ export default function LeadManagementPage() {
     const searchMatches = !searchQuery || fieldValues.some((value) => String(value ?? '').toLowerCase().includes(searchQuery));
     return sourceMatches && statusMatches && fromMatches && toMatches && searchMatches;
   });
+  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / LEADS_PER_PAGE));
+  const visiblePage = Math.min(currentPage, pageCount);
+  const pageStart = filteredLeads.length ? (visiblePage - 1) * LEADS_PER_PAGE : 0;
+  const paginatedLeads = filteredLeads.slice(pageStart, pageStart + LEADS_PER_PAGE);
+  const pageEnd = Math.min(pageStart + LEADS_PER_PAGE, filteredLeads.length);
 
   return (
     <>
@@ -282,7 +299,7 @@ export default function LeadManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredLeads.map((lead) => (
+              {paginatedLeads.map((lead) => (
                 <tr key={lead.id}>
                   {leadTableColumns.map(([field]) => (
                     <td key={field}>
@@ -307,13 +324,13 @@ export default function LeadManagementPage() {
         </div>
 
           <div className="lead-pagination">
-            <span>Showing {filteredLeads.length ? 1 : 0} to {filteredLeads.length} of {filteredLeads.length} records</span>
+            <span>Showing {filteredLeads.length ? pageStart + 1 : 0} to {pageEnd} of {filteredLeads.length} records</span>
             <div className="pagination-controls">
-              <button className="pager-button" aria-label="Previous page">
+              <button className="pager-button" aria-label="Previous page" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={visiblePage === 1}>
                 <ChevronLeft size={16} />
               </button>
-              <span className="page-number">1</span>
-              <button className="pager-button" aria-label="Next page">
+              <span className="page-number">{visiblePage} / {pageCount}</span>
+              <button className="pager-button" aria-label="Next page" onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))} disabled={visiblePage === pageCount}>
                 <ChevronRight size={16} />
               </button>
             </div>

@@ -5,9 +5,12 @@ import {
   BarChart3,
   BriefcaseBusiness,
   ClipboardList,
+  ClipboardCheck,
   House,
+  Package,
   PanelLeftClose,
   PanelLeftOpen,
+  Percent,
   Settings2,
   ShieldCheck,
   UsersRound
@@ -20,7 +23,10 @@ const items = [
   { href: '/loan_application', label: 'Loan Application Management', icon: ClipboardList },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
   { href: '/user_management', label: 'User Management', icon: UsersRound },
-  { href: '/master_creation', label: 'Master Creation', icon: ClipboardList },
+  { href: '/master_creation', label: 'Bank Master', icon: ClipboardList },
+  { href: '/product_management', label: 'Product Management', icon: Package },
+  { href: '/loan_eligibility', label: 'Loan Eligibility', icon: ClipboardCheck },
+  { href: '/interest_rate_master', label: 'Interest Rate Master', icon: Percent },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings2 }
 ];
