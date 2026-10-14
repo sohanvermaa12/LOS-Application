@@ -1,28 +1,51 @@
-import { useState } from "react";
+"use client";
+import { useEffect, useState } from "react";
 
 /* =========================
    Lookup Options
 ========================= */
 
-const ROLE_OPTIONS = [
+export const ROLE_OPTIONS = [
   { key: "Admin", value: 1 },
   { key: "Maker", value: 2 },
   { key: "Checker", value: 3 },
   { key: "Viewer", value: 4 },
 ];
 
-const DESIGNATION_OPTIONS = [
+export const DESIGNATION_OPTIONS = [
   { key: "Manager", value: 1 },
   { key: "Officer", value: 2 },
   { key: "Clerk", value: 3 },
   { key: "Executive", value: 4 },
 ];
 
-const STATUS_OPTIONS = [
+export const STATUS_OPTIONS = [
   { key: "Active", value: 1 },
   { key: "Inactive", value: 2 },
   { key: "Locked", value: 3 },
 ];
+
+/* =========================
+   Mode config
+========================= */
+
+const MODE_CONFIG = {
+  create: {
+    title: "Lookup Type Management",
+    subtitle: "Create a new lookup type",
+    submitLabel: "Submit",
+  },
+  edit: {
+    title: "Lookup Type Management",
+    subtitle: "Update lookup type details",
+    submitLabel: "Update",
+  },
+  view: {
+    title: "Lookup Type Management",
+    subtitle: "View lookup type details",
+    submitLabel: null, // no submit button in view mode
+  },
+};
 
 /* =========================
    Inline Styles
@@ -145,6 +168,12 @@ const styles = {
     backgroundColor: "#F7F9FC",
   },
 
+  // Applied to every field in view mode
+  fieldViewMode: {
+    backgroundColor: "#F7F9FC",
+    cursor: "default",
+  },
+
   fieldHover: {
     borderColor: "#C8CED9",
   },
@@ -201,6 +230,11 @@ const styles = {
     backgroundColor: "#1B3269",
   },
 
+  submitButtonDisabled: {
+    opacity: 0.7,
+    cursor: "not-allowed",
+  },
+
   buttonFocus: {
     boxShadow: "0 0 0 2px rgba(33, 59, 122, 0.2)",
   },
@@ -210,7 +244,9 @@ const styles = {
    Dummy API
 ========================= */
 
-async function dummyCreateLookupTypeApi(data) {
+async function dummyLookupTypeApi(data, mode) {
+  const isEdit = mode === "edit";
+
   console.log("=================================");
   console.log("DUMMY API HIT");
   console.log("=================================");
@@ -219,7 +255,7 @@ async function dummyCreateLookupTypeApi(data) {
   console.log("/api/v1/administration/lookup-types");
 
   console.log("Method:");
-  console.log("POST");
+  console.log(isEdit ? "PUT" : "POST");
 
   console.log("Request Payload:");
   console.log(data);
@@ -233,7 +269,9 @@ async function dummyCreateLookupTypeApi(data) {
 
   const dummyResponse = {
     success: true,
-    message: "Lookup type created successfully",
+    message: isEdit
+      ? "Lookup type updated successfully"
+      : "Lookup type created successfully",
     data: data,
   };
 
@@ -245,7 +283,23 @@ async function dummyCreateLookupTypeApi(data) {
   return dummyResponse;
 }
 
-export function LookupTypePopup({ open, onClose, onSubmit }) {
+/**
+ * Reusable popup.
+ *
+ * Props:
+ *  - open: boolean
+ *  - mode: "create" | "view" | "edit"   (default "create")
+ *  - initialData: { lookupCode, lookupName, role, designation, status } | null
+ *  - onClose: () => void
+ *  - onSubmit: (data) => void           (called on create + update)
+ */
+export function LookupTypePopup({
+  open,
+  mode = "create",
+  initialData = null,
+  onClose,
+  onSubmit,
+}) {
   const [lookupCode, setLookupCode] = useState("");
   const [lookupName, setLookupName] = useState("");
 
@@ -253,13 +307,45 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
   const [designation, setDesignation] = useState("");
   const [status, setStatus] = useState("");
 
+  const [submitting, setSubmitting] = useState(false);
+
   // Hover / focus tracking (inline styles can't use :hover / :focus)
-  // Holds the id of the element currently hovered / focused, or null
   const [hovered, setHovered] = useState(null);
   const [focused, setFocused] = useState(null);
 
+  const isView = mode === "view";
+  const config = MODE_CONFIG[mode] || MODE_CONFIG.create;
+
+  /* =========================
+     Prefill when opened
+     (must run before the early return below)
+  ========================= */
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (initialData) {
+      setLookupCode(initialData.lookupCode ?? "");
+      setLookupName(initialData.lookupName ?? "");
+      setRole(initialData.role ?? "");
+      setDesignation(initialData.designation ?? "");
+      setStatus(initialData.status ?? "");
+    } else {
+      resetForm();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, mode, initialData]);
+
   if (!open) {
     return null;
+  }
+
+  function resetForm() {
+    setLookupCode("");
+    setLookupName("");
+    setRole("");
+    setDesignation("");
+    setStatus("");
   }
 
   /* Helpers to attach hover/focus handlers and merge styles */
@@ -277,13 +363,17 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
     return {
       ...styles.field,
       ...extra,
-      ...(hovered === id ? styles.fieldHover : {}),
-      ...(focused === id ? styles.fieldFocus : {}),
+      ...(isView ? styles.fieldViewMode : {}),
+      ...(!isView && hovered === id ? styles.fieldHover : {}),
+      ...(!isView && focused === id ? styles.fieldFocus : {}),
     };
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    // No submit in view mode
+    if (isView || submitting) return;
 
     /* =========================
        Validation
@@ -291,6 +381,9 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
 
     const trimmedLookupCode = lookupCode.trim();
     const trimmedLookupName = lookupName.trim();
+    const trimmedRole = role.toString().trim();
+    const trimmedDesignation = designation.toString().trim();
+    const trimmedStatus = status.toString().trim();
 
     if (!trimmedLookupCode) {
       console.log("Lookup Code is required");
@@ -302,17 +395,17 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
       return;
     }
 
-    if (role === "") {
+    if (!trimmedRole) {
       console.log("Role is required");
       return;
     }
 
-    if (designation === "") {
+    if (!trimmedDesignation) {
       console.log("Designation is required");
       return;
     }
 
-    if (status === "") {
+    if (!trimmedStatus) {
       console.log("Status is required");
       return;
     }
@@ -334,20 +427,13 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
       status: Number(status),
     };
 
-    /* =========================
-       Console Payload
-    ========================= */
-
     console.log("=================================");
-    console.log("LOOKUP TYPE FORM SUBMITTED");
+    console.log(
+      mode === "edit"
+        ? "LOOKUP TYPE FORM UPDATED"
+        : "LOOKUP TYPE FORM SUBMITTED",
+    );
     console.log("=================================");
-
-    console.log("Lookup Code:", data.lookupCode);
-    console.log("Lookup Name:", data.lookupName);
-
-    console.log("Role Number:", data.role);
-    console.log("Designation Number:", data.designation);
-    console.log("Status Number:", data.status);
 
     console.log("Complete Payload:");
     console.log(JSON.stringify(data, null, 2));
@@ -356,32 +442,23 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
        Dummy API Hit
     ========================= */
 
-    await dummyCreateLookupTypeApi(data);
+    setSubmitting(true);
 
-    /* =========================
-       Parent Callback
-    ========================= */
+    try {
+      await dummyLookupTypeApi(data, mode);
 
-    onSubmit(data);
+      /* Parent Callback */
+      onSubmit(data);
 
-    /* =========================
-       Reset Form
-    ========================= */
-
-    setLookupCode("");
-    setLookupName("");
-    setRole("");
-    setDesignation("");
-    setStatus("");
+      /* Reset Form */
+      resetForm();
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function handleCancel() {
-    setLookupCode("");
-    setLookupName("");
-    setRole("");
-    setDesignation("");
-    setStatus("");
-
+    resetForm();
     onClose();
   }
 
@@ -401,9 +478,9 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
 
         <div style={styles.header}>
           <div>
-            <h2 style={styles.title}>Lookup Type Management</h2>
+            <h2 style={styles.title}>{config.title}</h2>
 
-            <p style={styles.subtitle}>Create a new lookup type</p>
+            <p style={styles.subtitle}>{config.subtitle}</p>
           </div>
 
           <button
@@ -440,13 +517,14 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
                 value={lookupCode}
                 onChange={(event) => setLookupCode(event.target.value)}
                 placeholder="Enter lookup code"
-                // readOnly
+                readOnly={isView}
                 onFocus={() => setFocused("code")}
                 onBlur={() => setFocused(null)}
                 style={{
                   ...styles.field,
                   ...styles.fieldReadonlyBg,
-                  ...(focused === "code" ? styles.fieldFocus : {}),
+                  ...(!isView && focused === "code" ? styles.fieldFocus : {}),
+                  ...(isView ? { cursor: "default" } : {}),
                 }}
               />
             </div>
@@ -464,6 +542,7 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
                 value={lookupName}
                 onChange={(event) => setLookupName(event.target.value)}
                 placeholder="Enter lookup name"
+                readOnly={isView}
                 {...interactionProps("name")}
                 style={fieldStyle("name")}
               />
@@ -481,6 +560,7 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
               <select
                 id="popupRole"
                 value={role}
+                disabled={isView}
                 onChange={(event) =>
                   setRole(
                     event.target.value === "" ? "" : Number(event.target.value),
@@ -511,6 +591,7 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
               <select
                 id="popupDesignation"
                 value={designation}
+                disabled={isView}
                 onChange={(event) =>
                   setDesignation(
                     event.target.value === "" ? "" : Number(event.target.value),
@@ -541,6 +622,7 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
               <select
                 id="popupStatus"
                 value={status}
+                disabled={isView}
                 onChange={(event) =>
                   setStatus(
                     event.target.value === "" ? "" : Number(event.target.value),
@@ -576,21 +658,25 @@ export function LookupTypePopup({ open, onClose, onSubmit }) {
                 ...(focused === "cancel" ? styles.buttonFocus : {}),
               }}
             >
-              Cancel
+              {isView ? "Close" : "Cancel"}
             </button>
 
-            <button
-              type="submit"
-              {...interactionProps("submit")}
-              style={{
-                ...styles.buttonBase,
-                ...styles.submitButton,
-                ...(hovered === "submit" ? styles.submitButtonHover : {}),
-                ...(focused === "submit" ? styles.buttonFocus : {}),
-              }}
-            >
-              Submit
-            </button>
+            {!isView && (
+              <button
+                type="submit"
+                disabled={submitting}
+                {...interactionProps("submit")}
+                style={{
+                  ...styles.buttonBase,
+                  ...styles.submitButton,
+                  ...(hovered === "submit" ? styles.submitButtonHover : {}),
+                  ...(focused === "submit" ? styles.buttonFocus : {}),
+                  ...(submitting ? styles.submitButtonDisabled : {}),
+                }}
+              >
+                {config.submitLabel}
+              </button>
+            )}
           </div>
         </form>
       </div>

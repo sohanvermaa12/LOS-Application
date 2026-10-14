@@ -1,4 +1,3 @@
-
 export const initialLookupData = [
 //   Uncomment these objects if you want sample data.
 //   {
