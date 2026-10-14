@@ -422,10 +422,10 @@ export default function UserForm({ mode = 'add', initialData = null }) {
             type="button"
             className="secondary-button"
             onClick={() => router.push('/user_management')}
+            aria-label="Back to User Management"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
             <ArrowLeft size={16} />
-            Back to User Management
           </button>
         }
       />
@@ -479,8 +479,8 @@ export default function UserForm({ mode = 'add', initialData = null }) {
               >
                 <option value="">Select title</option>
                 <option value="Mr.">Mr.</option>
+                <option value="Mrs.">Mrs.</option>
                 <option value="Ms.">Ms.</option>
-                <option value="Miss">Miss</option>
               </select>
             </div>
 
