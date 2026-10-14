@@ -46,6 +46,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
 
   const [form, setForm] = useState({
     empNo: initialData?.empNo || initialData?.employeeId || '',
+    title: initialData?.title || '',
     firstName: initialData?.firstName || initialData?.name?.split(' ')[0] || '',
     middleName: initialData?.middleName || '',
     lastName: initialData?.lastName || initialData?.name?.split(' ').slice(1).join(' ') || '',
@@ -351,6 +352,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       ...(initialData || {}),
       empNo: String(form.empNo).trim(),
       employeeId: String(form.empNo).trim(),
+      title: form.title,
       name: fullName,
       fullName,
       firstName: String(form.firstName).trim(),
@@ -420,10 +422,10 @@ export default function UserForm({ mode = 'add', initialData = null }) {
             type="button"
             className="secondary-button"
             onClick={() => router.push('/user_management')}
+            aria-label="Back to User Management"
             style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
             <ArrowLeft size={16} />
-            Back to User Management
           </button>
         }
       />
@@ -462,6 +464,24 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                   Unique employee identifier (e.g. EMP001).
                 </span>
               )}
+            </div>
+
+            <div>
+              <label className="form-label" htmlFor="field-title">
+                Title
+              </label>
+              <select
+                id="field-title"
+                name="title"
+                className="form-input"
+                value={form.title}
+                onChange={handleChange}
+              >
+                <option value="">Select title</option>
+                <option value="Mr.">Mr.</option>
+                <option value="Mrs.">Mrs.</option>
+                <option value="Ms.">Ms.</option>
+              </select>
             </div>
 
             <div>

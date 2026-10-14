@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '../../../../components/AppShell';
 import UserForm from '../../../../components/UserForm';
@@ -8,22 +8,10 @@ import Card from '../../../../components/Card';
 import { getEmployeeById } from '../../../../services/employeeService';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 
-export default function EditUserPage({ params: paramsPromise }) {
+export default function EditUserPage() {
   const router = useRouter();
   const routeParams = useParams();
-  
-  // Resolve id safely from params promise or useParams()
-  let resolvedId = null;
-  if (paramsPromise && typeof paramsPromise.then === 'function') {
-    try {
-      const unwrapped = use(paramsPromise);
-      resolvedId = unwrapped?.id;
-    } catch {
-      resolvedId = routeParams?.id;
-    }
-  } else {
-    resolvedId = paramsPromise?.id || routeParams?.id;
-  }
+  const resolvedId = routeParams?.id;
 
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,4 +80,3 @@ export default function EditUserPage({ params: paramsPromise }) {
     </AppShell>
   );
 }
-

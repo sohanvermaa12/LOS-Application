@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import AppShell from '../../../../components/AppShell';
 import PageHeader from '../../../../components/PageHeader';
@@ -23,21 +23,10 @@ import {
   XCircle
 } from 'lucide-react';
 
-export default function ViewUserPage({ params: paramsPromise }) {
+export default function ViewUserPage() {
   const router = useRouter();
   const routeParams = useParams();
-
-  let resolvedId = null;
-  if (paramsPromise && typeof paramsPromise.then === 'function') {
-    try {
-      const unwrapped = use(paramsPromise);
-      resolvedId = unwrapped?.id;
-    } catch {
-      resolvedId = routeParams?.id;
-    }
-  } else {
-    resolvedId = paramsPromise?.id || routeParams?.id;
-  }
+  const resolvedId = routeParams?.id;
 
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -380,13 +369,12 @@ export default function ViewUserPage({ params: paramsPromise }) {
           type="button"
           className="secondary-button"
           onClick={() => router.push('/user_management')}
+          aria-label="Back to User Management"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0 20px' }}
         >
           <ArrowLeft size={16} />
-          Back to User Management
         </button>
       </div>
     </AppShell>
   );
 }
-
