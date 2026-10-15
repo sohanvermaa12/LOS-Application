@@ -1,195 +1,112 @@
-"use client";
+ "use client";
 
 import { useEffect, useState } from "react";
 import {
-  Building2,
-  ContactRound,
-  Check,
-  KeyRound,
-  Pencil,
-  ShieldCheck,
-  X,
-  UserRound,
+  Building2, ContactRound, Check, KeyRound, Pencil, ShieldCheck, X, UserRound,
 } from "lucide-react";
 import { getUserProfile, updateUserProfile } from "../services/user_profile";
 
 const profileSections = [
   {
-    title: "Personal information",
-    icon: UserRound,
-    className: "personal",
+    title: "Employee and Personal Information", icon: UserRound, className: "personal",
     fields: [
-      { label: "Full name", keys: ["fullName", "name"] },
-      { label: "First name", keys: ["first_name"] },
-      { label: "Middle name", keys: ["middle_name"] },
-      { label: "Last name", keys: ["last_name"] },
-      { label: "Date of birth", keys: ["dob", "date_of_birth"], date: true },
+      { label: "Full Name", keys: ["fullName", "name"] },
+      { label: "First Name", keys: ["first_name"] },
+      { label: "Middle Name", keys: ["middle_name"] },
+      { label: "Last Name", keys: ["last_name"] },
+      { label: "Mobile Number", keys: ["mobile", "mobile_number", "phone", "phone_number"], editable: true },
+      { label: "Date of Birth", keys: ["dob", "date_of_birth", "dateOfBirth"], date: true },
       { label: "Gender", keys: ["gender"] },
+      // { label: "Designation", keys: ["designation"] },
+    ],
+  },
+  {
+    title: "Login Information", icon: KeyRound, className: "login",
+    fields: [
+      { label: "User Name", keys: ["username", "user_name"] },
+      { label: "Email Address", keys: ["email", "email_address"], editable: true },
+      { label: "Password", keys: ["password"], password: true },
+      { label: "Account State", keys: ["status", "account_state", "account_status"] },
+    ],
+  },
+  {
+    title: "Role and Access Information", icon: ShieldCheck, className: "access",
+    fields: [
       { label: "Designation", keys: ["designation"] },
+      { label: "User Role", keys: ["user_role", "role", "role_name"] },
+      { label: "System Role", keys: ["system_role"] },
+      { label: "Login Branch", keys: ["login_branch", "login_branch_name", "branch", "branch_name"] },
+      { label: "Branch ID", keys: ["login_branch_id", "branch_id"] },
+      { label: "Allow MultiBranch", keys: ["allow_multibranch", "allow_multi_branch"], boolean: true },
+      { label: "Allow Login On Holidays", keys: ["login_on_holidays", "holiday_login", "allow_login_in_holidays"], boolean: true },
     ],
   },
   {
-    title: "Contact",
-    icon: ContactRound,
-    className: "contact",
+    title: "Session and Login Settings", icon: ContactRound, className: "session",
     fields: [
-      { label: "Email", keys: ["email"], link: "mailto:", editable: true },
-      { label: "Mobile", keys: ["mobile"], link: "tel:", editable: true },
+      { label: "Permitted Login Time", keys: ["login_time", "permitted_login_time"] },
+      { label: "Permitted Logout Time", keys: ["logout_time", "permitted_logout_time"] },
+      { label: "Last Login Date", keys: ["last_login_date", "lastlogindate", "lastLoginDate"], date: true },
+      { label: "Last Login Time", keys: ["last_login_time", "lastlogintime", "lastLoginTime"] },
+      { label: "Session Timeout (Seconds)", keys: ["inactive_session_timeout", "session_timeout", "session_timeout_seconds", "idle_timeout_seconds"] },
     ],
   },
   {
-    title: "Organization",
-    icon: Building2,
-    className: "organization",
+    title: "Organization Information", icon: Building2, className: "organization",
     fields: [
-      { label: "Organization name", keys: ["organization_name"] },
-      { label: "Organization code", keys: ["organization_code"] },
-      { label: "Employee no.", keys: ["employee_id", "emp_no"] },
-    ],
-  },
-  {
-    title: "Account and access",
-    icon: ShieldCheck,
-    className: "access",
-    fields: [
-      { label: "Username", keys: ["username"] },
-      { label: "Role", keys: ["role", "role_name"] },
-    ],
-  },
-  {
-    title: "Login details",
-    icon: KeyRound,
-    className: "login",
-    fields: [
-      {
-        label: "Login branch",
-        keys: ["login_branch", "login_branch_name"],
-      },
-      { label: "Branch ID", keys: ["login_branch_id"] },
-      { label: "Login time", keys: ["login_time"] },
-      { label: "Logout time", keys: ["logout_time"] },
-      {
-        label: "Last login date",
-        keys: ["last_login_date", "lastlogindate"],
-        date: true,
-      },
-      { label: "Last login time", keys: ["last_login_time"] },
-      {
-        label: "Login on holidays",
-        keys: ["login_on_holidays", "holiday_login", "allow_login_in_holidays"],
-        boolean: true,
-      },
-      {
-        label: "Session timeout (seconds)",
-        keys: ["inactive_session_timeout"],
-      },
+      { label: "Organization Name", keys: ["organization_name"] },
+      { label: "Organization Code", keys: ["organization_code"] },
+      { label: "Employee Number", keys: ["employee_id", "emp_no", "employee_no", "employee_number"] },
     ],
   },
 ];
 
 function getFieldValue(profile, keys) {
-  const availableKeys = keys.filter((candidate) =>
-    Object.prototype.hasOwnProperty.call(profile, candidate),
-  );
-  const key =
-    availableKeys.find(
-      (candidate) =>
-        profile[candidate] !== null &&
-        profile[candidate] !== undefined &&
-        profile[candidate] !== "",
-    ) || availableKeys[0];
-
+  const available = keys.filter((key) => Object.prototype.hasOwnProperty.call(profile || {}, key));
+  const key = available.find((candidate) => profile[candidate] !== null && profile[candidate] !== undefined && profile[candidate] !== "") || available[0];
   return key ? { key, value: profile[key] } : null;
 }
 
-function formatDate(value, includeTime) {
+function formatDate(value) {
   if (!value) return "Not added";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    ...(includeTime
-      ? { hour: "2-digit", minute: "2-digit", hour12: false }
-      : {}),
-  });
+  return date.toLocaleDateString("en-CA");
 }
 
 function formatValue(value, field) {
-  if (value === null || value === undefined || value === "") {
-    return "Not added";
+  if (value === null || value === undefined || value === "") return "Not added";
+  if (field.boolean) {
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    if (value === 1 || value === "1" || String(value).toLowerCase() === "true") return "Yes";
+    if (value === 0 || value === "0" || ["false", "no", "disabled"].includes(String(value).toLowerCase())) return "No";
+    if (["true", "yes", "enabled"].includes(String(value).toLowerCase())) return "Yes";
   }
-
-  if (field.boolean && typeof value === "boolean") {
-    return value ? "Enabled" : "Disabled";
-  }
-
-  if (field.date || field.dateTime) {
-    return formatDate(value, field.dateTime);
-  }
-
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-
+  if (field.date) return formatDate(value);
+  if (field.password) return "••••••••••";
+  if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
 
-function toTitleCase(value) {
-  return String(value || "")
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
 function ProfileField({ field, profile, isEditing, draftProfile, onDraftChange }) {
-  const result =
-    getFieldValue(profile, field.keys) ||
-    (field.editable ? { key: field.keys[0], value: "" } : null);
+  const result = getFieldValue(profile, field.keys) || (field.editable ? { key: field.keys[0], value: "" } : null);
   if (!result) return null;
-
-  const { value } = result;
-  const draftValue = draftProfile[result.key] ?? "";
-  const displayValue = formatValue(
-    isEditing && field.editable ? draftValue : value,
-    field,
-  );
-  const isMissing = value === "";
-  const isEnabled = field.boolean && value === true;
-
+  const draftValue = draftProfile[result.key] ?? (result.value == null ? "" : String(result.value));
+  const shownValue = formatValue(isEditing && field.editable ? draftValue : result.value, field);
   return (
-    <div className={`user-profile-field${isEditing && field.editable ? " is-editing" : ""}`}>
-      <span className="user-profile-field-label">{field.label}</span>
+    <div className="profile-row">
+      <span className="profile-label">{field.label}</span>
       {isEditing && field.editable ? (
-        <div className="user-profile-edit-value">
-          <input
-            aria-label={field.label}
-            className="user-profile-field-input"
-            onChange={(event) => onDraftChange(result.key, event.target.value)}
-            type={field.label === "Email" ? "email" : "text"}
-            value={draftValue}
-          />
-          <Pencil aria-hidden="true" className="user-profile-edit-pencil" size={13} />
-        </div>
-      ) : field.link && value ? (
-        <a className="user-profile-field-value" href={`${field.link}${value}`}>
-          {displayValue}
-        </a>
+        <input
+          aria-label={field.label}
+          className="profile-input"
+          type={field.label.toLowerCase().includes("email") ? "email" : "text"}
+          value={draftValue}
+          onChange={(event) => onDraftChange(result.key, event.target.value)}
+        />
       ) : (
-        <strong
-          className={[
-            "user-profile-field-value",
-            field.boolean ? "is-boolean" : "",
-            field.boolean && !isEnabled ? "is-disabled" : "",
-            isMissing ? "is-missing" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          {displayValue}
+        <strong className={`profile-value${field.boolean && shownValue === "No" ? " muted" : ""}`}>
+          {shownValue}
         </strong>
       )}
     </div>
@@ -206,49 +123,32 @@ export default function UserProfile() {
   const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
-    let isCurrent = true;
-
+    let active = true;
     async function loadProfile() {
       try {
-        const userProfile = await getUserProfile();
-        if (isCurrent) setProfile(userProfile);
-      } catch (requestError) {
-        if (isCurrent) {
-          setError(requestError.message || "Unable to load the user profile.");
-        }
+        const data = await getUserProfile();
+        if (active) setProfile(data);
+      } catch (err) {
+        if (active) setError(err?.message || "Unable to load the user profile.");
       } finally {
-        if (isCurrent) setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     }
-
     loadProfile();
-    return () => {
-      isCurrent = false;
-    };
+    return () => { active = false; };
   }, []);
 
-  const profileName = profile?.fullName || profile?.name || "";
-  const initials = profileName
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-  const employeeNumber = getFieldValue(profile || {}, ["employee_id", "emp_no"]);
-  const organization = profile?.organization_name;
+  const name = profile?.fullName || profile?.full_name || profile?.name || profile?.username || profile?.user_name || "User Profile";
+  const initials = name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const employee = getFieldValue(profile || {}, ["employee_id", "emp_no", "employee_no", "employee_number"]);
 
   function startEditing() {
-    const editableFields = profileSections.flatMap((section) => section.fields)
-      .filter((field) => field.editable);
     const draft = {};
-
-    editableFields.forEach((field) => {
+    profileSections.flatMap((section) => section.fields).filter((field) => field.editable).forEach((field) => {
       const result = getFieldValue(profile || {}, field.keys);
       const key = result?.key || field.keys[0];
       draft[key] = result?.value == null ? "" : String(result.value);
     });
-
     setDraftProfile(draft);
     setSaveError("");
     setIsEditing(true);
@@ -263,611 +163,205 @@ export default function UserProfile() {
   async function saveProfile() {
     setIsSaving(true);
     setSaveError("");
-
     try {
-      const updatedProfile = await updateUserProfile(draftProfile);
-      setProfile((currentProfile) => ({
-        ...currentProfile,
-        ...draftProfile,
-        ...(updatedProfile || {}),
-      }));
+      const updated = await updateUserProfile(draftProfile);
+      setProfile((current) => ({ ...current, ...draftProfile, ...(updated || {}) }));
       setDraftProfile({});
       setIsEditing(false);
-    } catch (requestError) {
-      setSaveError(requestError.message || "Unable to update the user profile.");
+    } catch (err) {
+      setSaveError(err?.message || "Unable to update the user profile.");
     } finally {
       setIsSaving(false);
     }
   }
 
   return (
-    <main className="user-profile">
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link
-        rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossOrigin="anonymous"
-      />
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap"
-      />
-      {isLoading ? (
-        <div className="user-profile-message" role="status">
-          Loading user profile…
-        </div>
-      ) : error ? (
-        <div className="user-profile-message is-error" role="alert">
-          {error}
-        </div>
-      ) : (
-        <>
-          <section className="user-profile-summary" aria-label="User summary">
-            <div className="user-profile-identity">
-              <div className="user-profile-avatar" aria-hidden="true">
-                {initials || "U"}
-              </div>
-              <div className="user-profile-identity-copy">
-                <h1>{toTitleCase(profileName) || "User profile"}</h1>
-                <p>
-                  {employeeNumber
-                    ? `Employee ${employeeNumber.value}`
-                    : null}
-                  {employeeNumber && organization ? " · " : null}
-                  {organization || null}
-                  {!employeeNumber && !organization ? "Account details" : null}
-                </p>
-              </div>
-            </div>
-            <div className="user-profile-actions">
-              {isEditing ? (
-                <>
-                  <button
-                    className="user-profile-action is-cancel"
-                    disabled={isSaving}
-                    onClick={cancelEditing}
-                    type="button"
-                  >
-                    <X aria-hidden="true" size={15} />
-                    Cancel
-                  </button>
-                  <button
-                    className="user-profile-action is-save"
-                    disabled={isSaving}
-                    onClick={saveProfile}
-                    type="button"
-                  >
-                    <Check aria-hidden="true" size={15} />
-                    {isSaving ? "Saving…" : "Save"}
-                  </button>
-                </>
-              ) : (
-                <button
-                  aria-label="Edit profile"
-                  className="user-profile-action is-edit"
-                  onClick={startEditing}
-                  type="button"
-                >
-                  <Pencil aria-hidden="true" size={15} />
-                  Edit
-                </button>
-              )}
-            </div>
-          </section>
-
-          {saveError ? (
-            <div className="user-profile-message is-error" role="alert">
-              {saveError}
-            </div>
-          ) : null}
-
-          <div className="user-profile-grid">
-            {profileSections.map((section) => {
-              const SectionIcon = section.icon;
-              return (
-                <section
-                  className={`user-profile-card is-${section.className}`}
-                  key={section.title}
-                >
-                  <h2 className="user-profile-card-heading">
-                    <SectionIcon
-                      className="user-profile-section-icon"
-                      aria-hidden="true"
-                      size={17}
-                    />
-                    {section.title}
-                  </h2>
-                  <div className="user-profile-fields">
-                    {section.fields.map((field) => (
-                      <ProfileField
-                        key={field.label}
-                        field={field}
-                        profile={profile}
-                        isEditing={isEditing}
-                        draftProfile={draftProfile}
-                        onDraftChange={(key, value) =>
-                          setDraftProfile((current) => ({ ...current, [key]: value }))
-                        }
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+    <main className="user-profile-page">
+      <header className="profile-summary">
+        <div className="profile-identity">
+          <div className="profile-avatar" aria-hidden="true">{initials || "U"}</div>
+          <div>
+            <h1>{name}</h1>
+            <p>{employee ? `Employee: ${employee.value}` : "User account details"}</p>
           </div>
-        </>
-      )}
+        </div>
+        <div className="profile-actions">
+          {isEditing ? (
+            <>
+              <button className="profile-button cancel" type="button" onClick={cancelEditing} disabled={isSaving}><X size={15} /> Cancel</button>
+              <button className="profile-button save" type="button" onClick={saveProfile} disabled={isSaving}><Check size={15} />{isSaving ? "Saving..." : "Save"}</button>
+            </>
+          ) : (
+            <button className="profile-button edit" type="button" onClick={startEditing}><Pencil size={15} /> Edit Profile</button>
+          )}
+        </div>
+      </header>
+
+      {isLoading ? <div className="profile-message">Loading user profile...</div> :
+        error ? <div className="profile-message error" role="alert">{error}</div> : (
+          <>
+            {saveError && <div className="profile-message error" role="alert">{saveError}</div>}
+            <div className="profile-grid">
+              <div className="profile-column">
+                {profileSections.filter((section) => section.className === "personal").map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <section className={`profile-card ${section.className}`} key={section.title}>
+                      <h2><Icon size={18} aria-hidden="true" />{section.title}</h2>
+                      <div className="profile-fields">
+                        {section.fields.map((field) => (
+                          <ProfileField
+                            key={`${section.title}-${field.label}`}
+                            field={field}
+                            profile={profile || {}}
+                            isEditing={isEditing}
+                            draftProfile={draftProfile}
+                            onDraftChange={(key, value) => setDraftProfile((current) => ({ ...current, [key]: value }))}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+              <div className="profile-column">
+                {profileSections.filter((section) => section.className === "login" || section.className === "session").map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <section className={`profile-card ${section.className}`} key={section.title}>
+                      <h2><Icon size={18} aria-hidden="true" />{section.title}</h2>
+                      <div className="profile-fields">
+                        {section.fields.map((field) => (
+                          <ProfileField
+                            key={`${section.title}-${field.label}`}
+                            field={field}
+                            profile={profile || {}}
+                            isEditing={isEditing}
+                            draftProfile={draftProfile}
+                            onDraftChange={(key, value) => setDraftProfile((current) => ({ ...current, [key]: value }))}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+              <div className="profile-column">
+                {profileSections.filter((section) => section.className === "access" || section.className === "organization").map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <section className={`profile-card ${section.className}`} key={section.title}>
+                      <h2><Icon size={18} aria-hidden="true" />{section.title}</h2>
+                      <div className="profile-fields">
+                        {section.fields.map((field) => (
+                          <ProfileField
+                            key={`${section.title}-${field.label}`}
+                            field={field}
+                            profile={profile || {}}
+                            isEditing={isEditing}
+                            draftProfile={draftProfile}
+                            onDraftChange={(key, value) => setDraftProfile((current) => ({ ...current, [key]: value }))}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
       <style>{`
-        .user-profile {
-          --profile-ink: #111827;
-          --profile-muted: #687386;
-          --profile-line: #e2e5e9;
-          --profile-green: #188638;
+        .user-profile-page {
+          --ink: #07344a;
+          --muted: #66808d;
+          --line: #e0e7e9;
+          --teal: #008b8b;
           width: 100%;
-          max-width: 1120px;
+          max-width: 1320px;
           margin: 0 auto;
-          color: var(--profile-ink);
-          font-family: "Google Sans", Arial, sans-serif;
-          font-synthesis: none;
+          padding: 10px 12px 20px;
+          color: var(--ink);
+          font-family: Arial, Helvetica, sans-serif;
+          box-sizing: border-box;
         }
-
-        .user-profile-summary,
-        .user-profile-card,
-        .user-profile-message {
-          border: 1px solid var(--profile-line);
-          border-radius: 12px;
-          background: #fff;
+        .user-profile-page * { box-sizing: border-box; }
+        .profile-summary {
+          display: flex; align-items: center; justify-content: space-between; gap: 18px;
+          min-height: 64px; padding: 10px 16px; margin-bottom: 14px;
+          border: 1px solid var(--line); border-radius: 11px; background: #fff;
+          box-shadow: 0 2px 7px rgba(13, 48, 60, .035);
         }
-
-        .user-profile-summary {
-          display: flex;
-          min-height: 68px;
-          align-items: center;
-          gap: 16px;
-          padding: 9px 16px;
-          margin-bottom: 10px;
+        .profile-identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+        .profile-avatar {
+          display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 42px;
+          border-radius: 50%; background: #dff1ee; color: #007e7e; font-size: 15px; font-weight: 700;
         }
-
-        .user-profile-actions {
-          display: flex;
-          flex: 0 0 auto;
-          align-items: center;
-          gap: 8px;
+        .profile-identity h1 { margin: 0 0 5px; font-size: 18px; line-height: 1.3; font-weight: 700; color: #07344a; }
+        .profile-identity p { margin: 0; color: var(--muted); font-size: 12px; }
+        .profile-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .profile-button {
+          display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+          min-height: 32px; padding: 6px 10px; border: 1px solid #d4e1e4; border-radius: 7px;
+          background: #fff; color: #17616d; font-size: 13px; font-weight: 600; cursor: pointer;
         }
-
-        .user-profile-action {
-          display: inline-flex;
-          min-height: 34px;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          padding: 6px 11px;
-          border: 1px solid transparent;
-          border-radius: 7px;
-          background: #fff;
-          cursor: pointer;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 600;
+        .profile-button.edit { border-color: #c9e0e0; color: #007f83; }
+        .profile-button.save { color: white; background: #008b8b; border-color: #008b8b; }
+        .profile-button.cancel { color: #566b73; }
+        .profile-button:disabled { opacity: .6; cursor: wait; }
+        .profile-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.95fr) minmax(0, 1.1fr); gap: 12px; align-items: start; }
+        .profile-column { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+        /* Stack Session under Login, and Organization under Role, without large empty grid gaps. */
+        .profile-card {
+          min-width: 0; padding: 14px 15px 11px; background: #fff; border: 1px solid var(--line);
+          border-radius: 9px; box-shadow: 0 1px 4px rgba(13, 48, 60, .03);
         }
-
-        .user-profile-action.is-save {
-          border-color: #2463bd;
-          background: #2463bd;
-          color: #fff;
+        .profile-card h2 {
+          display: flex; align-items: center; gap: 8px; margin: 0 0 8px; padding-bottom: 9px;
+          border-bottom: 1px solid #edf1f2; color: #07344a; font-size: 13px; font-weight: 700; line-height: 1.35;
         }
-
-        .user-profile-action.is-edit {
-          border-color: #d3e1f4;
-          color: #2463bd;
+        .profile-card h2 svg { flex: 0 0 auto; color: var(--teal); stroke-width: 1.8; }
+        .profile-fields { display: flex; flex-direction: column; width: 100%; }
+        .profile-row {
+          display: flex; align-items: center; justify-content: space-between; gap: 7px;
+          min-width: 0; min-height: 42px; padding: 9px 0; border-bottom: 1px solid #edf1f2;
         }
-
-        .user-profile-action.is-edit:hover {
-          background: #f1f6ff;
+        .profile-row:last-child { border-bottom: 0; }
+        .profile-label { flex: 1 1 45%; min-width: 0; color: #708893; font-size: 12px; line-height: 1.4; }
+        .profile-value {
+          flex: 0 1 55%; min-width: 0; overflow-wrap: anywhere; text-align: right;
+          color: #07344a; font-size: 12px; font-weight: 700; line-height: 1.4;
         }
-
-        .user-profile-action.is-save:hover:not(:disabled) {
-          border-color: #194f9e;
-          background: #194f9e;
+        .profile-value.muted { color: #708893; font-weight: 500; }
+        .profile-input {
+          flex: 0 1 60%; width: 60%; min-width: 0; padding: 5px 7px; border: 1px solid #b7d7d8;
+          border-radius: 5px; outline: none; color: #07344a; font: inherit; font-size: 12px; text-align: right;
         }
-
-        .user-profile-action.is-cancel {
-          border-color: #d5d9e0;
-          color: #384152;
+        .profile-input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(0,139,139,.1); }
+        /* Grid placement is reset at smaller widths below. */
+        /* Keep the avatar as a simple profile image/initials circle; no status dot or overlay. */
+        .profile-avatar::before, .profile-avatar::after { content: none !important; display: none !important; }
+        .profile-message { padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--muted); }
+        .profile-message.error { border-color: #f0c7c7; color: #a52e2e; }
+        @media (max-width: 1050px) {
+          .profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+          .profile-column { gap: 12px; }
+          .profile-card { padding: 13px 14px 10px; }
+          .profile-fields { display: flex; flex-direction: column; }
         }
-
-        .user-profile-action.is-cancel:hover:not(:disabled) {
-          background: #f4f6f8;
-        }
-
-        .user-profile-action:disabled {
-          cursor: wait;
-          opacity: 0.65;
-        }
-
-        .user-profile-identity {
-          display: flex;
-          min-width: 200px;
-          flex: 1 1 auto;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .user-profile-avatar {
-          display: grid;
-          width: 44px;
-          height: 44px;
-          flex: 0 0 44px;
-          place-items: center;
-          border-radius: 50%;
-          background: #ccebd0;
-          color: #087b2b;
-          font-size: 15px;
-          font-weight: 700;
-        }
-
-        .user-profile-identity-copy {
-          min-width: 0;
-        }
-
-        .user-profile-identity-copy h1 {
-          overflow-wrap: anywhere;
-          margin: 0 0 2px;
-          color: #111827;
-          font-size: 20px;
-          font-weight: 700;
-          line-height: 1.25;
-        }
-
-        .user-profile-identity-copy p {
-          overflow-wrap: anywhere;
-          margin: 0;
-          color: #384152;
-          font-size: 14px;
-          line-height: 1.3;
-        }
-
-        .user-profile-badges {
-          display: flex;
-          flex: 0 1 auto;
-          align-items: center;
-          justify-content: flex-end;
-          flex-wrap: wrap;
-          gap: 6px;
-        }
-
-        .user-profile-badge {
-          display: inline-flex;
-          min-height: 19px;
-          align-items: center;
-          justify-content: center;
-          padding: 2px 9px;
-          border-radius: 7px;
-          font-size: 12px;
-          font-weight: 600;
-          line-height: 1.2;
-          white-space: nowrap;
-        }
-
-        .user-profile-badge.is-green {
-          background: #ccebd0;
-          color: #087b2b;
-        }
-
-        .user-profile-badge.is-blue {
-          background: #d2e3ff;
-          color: #1555ad;
-        }
-
-        .user-profile-badge.is-muted {
-          background: #eef0f3;
-          color: #687386;
-        }
-
-        .user-profile-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          align-items: stretch;
-          gap: 10px 12px;
-        }
-
-        .user-profile-card {
-          min-width: 0;
-          padding: 11px 16px 12px;
-        }
-
-        .user-profile-card.is-login {
-          grid-column: 1 / -1;
-        }
-
-        .user-profile-card-heading {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin: 0 0 8px;
-          color: #111827;
-          font-size: 16px;
-          font-weight: 700;
-          line-height: 1.3;
-        }
-
-        .user-profile-section-icon {
-          flex: 0 0 auto;
-          color: var(--profile-green);
-          stroke-width: 2;
-        }
-
-        .user-profile-card.is-contact .user-profile-section-icon,
-        .user-profile-card.is-organization .user-profile-section-icon {
-          color: #2463bd;
-        }
-
-        .user-profile-card.is-access .user-profile-section-icon,
-        .user-profile-card.is-login .user-profile-section-icon {
-          color: #a66b00;
-        }
-
-        .user-profile-fields {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          align-content: start;
-          overflow: hidden;
-          border: 1px solid #c9cdd2;
-          border-radius: 8px;
-          background: #fff;
-        }
-
-        .user-profile-card.is-login .user-profile-fields {
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-        }
-
-        .user-profile-field {
-          display: grid;
-          min-width: 0;
-          align-content: start;
-          gap: 2px;
-          padding: 7px 10px;
-          background: #fff;
-          border-right: 1px solid #c9cdd2;
-          border-bottom: 1px solid #c9cdd2;
-        }
-
-        .user-profile-field.is-editing {
-          gap: 4px;
-        }
-
-        .user-profile-edit-value {
-          display: flex;
-          min-width: 0;
-          align-items: center;
-          gap: 5px;
-          border-bottom: 1px solid #2463bd;
-        }
-
-        .user-profile-field-input {
-          width: 100%;
-          min-width: 0;
-          padding: 1px 0 3px;
-          border: 0;
-          outline: 0;
-          background: transparent;
-          color: #111827;
-          font: inherit;
-          font-size: 14px;
-          font-weight: 600;
-          line-height: 1.3;
-        }
-
-        .user-profile-field-input:focus-visible {
-          box-shadow: 0 1px 0 #2463bd;
-        }
-
-        .user-profile-edit-pencil {
-          flex: 0 0 auto;
-          color: #2463bd;
-        }
-
-        .user-profile-fields > .user-profile-field:nth-child(2n) {
-          border-right: 0;
-        }
-
-        .user-profile-fields > .user-profile-field:nth-last-child(-n + 2) {
-          border-bottom: 0;
-        }
-
-        .user-profile-card.is-login
-          .user-profile-fields
-          > .user-profile-field:nth-child(2n) {
-          border-right: 1px solid #c9cdd2;
-        }
-
-        .user-profile-card.is-login
-          .user-profile-fields
-          > .user-profile-field:nth-child(4n) {
-          border-right: 0;
-        }
-
-        .user-profile-card.is-login
-          .user-profile-fields
-          > .user-profile-field:nth-last-child(-n + 4) {
-          border-bottom: 0;
-        }
-
-        .user-profile-field-label {
-          overflow-wrap: anywhere;
-          color: #384152;
-          font-size: 13px;
-          line-height: 1.25;
-        }
-
-        .user-profile-field-value {
-          overflow-wrap: anywhere;
-          color: #111827;
-          font-size: 14px;
-          font-weight: 600;
-          line-height: 1.3;
-          text-decoration: none;
-        }
-
-        a.user-profile-field-value:hover {
-          color: #176a36;
-          text-decoration: underline;
-          text-underline-offset: 2px;
-        }
-
-        .user-profile-field-value.is-boolean {
-          display: inline-flex;
-          width: fit-content;
-          align-items: center;
-          padding: 1px 8px;
-          border-radius: 7px;
-          background: #ccebd0;
-          color: #087b2b;
-          font-size: 11px;
-          font-weight: 500;
-        }
-
-        .user-profile-field-value.is-boolean.is-disabled {
-          background: #eef0f3;
-          color: #687386;
-        }
-
-        .user-profile-field-value.is-missing {
-          color: #7b8492;
-          font-weight: 400;
-        }
-
-        .user-profile-message {
-          padding: 18px;
-          color: var(--profile-muted);
-          font-size: 15px;
-        }
-
-        .user-profile-message.is-error {
-          border-color: #f1c5c5;
-          color: #a12c2c;
-        }
-
-        @media (min-width: 761px) and (max-height: 760px) {
-          .user-profile-summary {
-            min-height: 58px;
-            margin-bottom: 8px;
-          }
-
-          .user-profile-card {
-            padding-top: 8px;
-            padding-bottom: 9px;
-          }
-
-          .user-profile-fields {
-            row-gap: 1px;
-          }
-
-          .user-profile-grid {
-            gap: 8px 10px;
-          }
-        }
-
-        @media (max-width: 760px) {
-          .user-profile-summary {
-            align-items: center;
-            padding: 13px;
-          }
-
-          .user-profile-identity {
-            min-width: 0;
-          }
-
-          .user-profile-badges {
-            justify-content: flex-start;
-            padding-left: 56px;
-          }
-
-          .user-profile-card.is-login .user-profile-fields {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          .user-profile-card.is-login
-            .user-profile-fields
-            > .user-profile-field:nth-child(4n) {
-            border-right: 1px solid #c9cdd2;
-          }
-
-          .user-profile-card.is-login
-            .user-profile-fields
-            > .user-profile-field:nth-child(2n) {
-            border-right: 0;
-          }
-
-          .user-profile-card.is-login
-            .user-profile-fields
-            > .user-profile-field:nth-last-child(-n + 4) {
-            border-bottom: 1px solid #c9cdd2;
-          }
-
-          .user-profile-card.is-login
-            .user-profile-fields
-            > .user-profile-field:nth-last-child(-n + 2) {
-            border-bottom: 0;
-          }
-        }
-
-        @media (max-width: 560px) {
-          .user-profile-grid {
-            grid-template-columns: minmax(0, 1fr);
-          }
-
-          .user-profile-card.is-login {
-            grid-column: auto;
-          }
-        }
-
-        @media (max-width: 380px) {
-          .user-profile-summary {
-            padding: 12px;
-          }
-
-          .user-profile-action {
-            min-height: 32px;
-            padding-right: 8px;
-            padding-left: 8px;
-          }
-
-          .user-profile-identity {
-            min-width: 0;
-            gap: 10px;
-          }
-
-          .user-profile-avatar {
-            width: 40px;
-            height: 40px;
-            flex-basis: 40px;
-          }
-
-          .user-profile-badges {
-            padding-left: 50px;
-          }
-
-          .user-profile-fields,
-          .user-profile-card.is-login .user-profile-fields {
-            grid-template-columns: minmax(0, 1fr);
-          }
-
-          .user-profile-fields > .user-profile-field,
-          .user-profile-card.is-login
-            .user-profile-fields
-            > .user-profile-field {
-            border-right: 0;
-            border-bottom: 1px solid #c9cdd2;
-          }
-
-          .user-profile-fields > .user-profile-field:last-child,
-          .user-profile-card.is-login
-            .user-profile-fields
-            > .user-profile-field:last-child {
-            border-bottom: 0;
-          }
+        @media (max-width: 650px) {
+          .user-profile-page { padding: 4px 0 18px; }
+          .profile-summary { align-items: flex-start; padding: 14px; margin-bottom: 14px; }
+          .profile-identity { gap: 9px; }
+          .profile-avatar { width: 40px; height: 40px; flex-basis: 40px; }
+          .profile-identity h1 { font-size: 16px; }
+          .profile-actions { gap: 5px; }
+          .profile-button { padding: 7px 9px; font-size: 12px; }
+          .profile-grid { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+          .profile-column { gap: 12px; }
+          .profile-card { padding: 12px 13px 9px; }
+          .profile-fields { display: flex; flex-direction: column; }
         }
       `}</style>
     </main>
