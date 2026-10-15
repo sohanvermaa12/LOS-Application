@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import { useState } from 'react';
@@ -104,8 +104,9 @@ const createPreviousEmployment = () => ({
   dateOfRelieving: ''
 });
 
-const createDocument = (name) => ({
+const createDocument = (name, required = false) => ({
   name,
+  required,
   file: null,
   expiryDate: '',
   remarks: ''
@@ -175,10 +176,12 @@ const createInitialForm = () => ({
   formNo16: null,
   taxReturns: createTaxReturns(),
   documents: [
-    createDocument('PAN Card'),
-    createDocument('Aadhaar Card'),
-    createDocument('Salary Certificate'),
-    createDocument('Bank Statement')
+    createDocument('PAN Card', true),
+    createDocument('Identity Proof (Aadhaar / Passport / Voter ID)', true),
+    createDocument('Address Proof', true),
+    createDocument('Passport-size Photograph', true),
+    createDocument('Recent Bank Statements (6 months)', true),
+    createDocument('Income Proof (Salary Slips / ITR)', true)
   ],
   loanHistory: []
 });
@@ -570,6 +573,9 @@ const validateStep = (stepIndex, values) => {
 
   if (stepIndex === 4) {
     values.documents.forEach((document, index) => {
+      if (document.required && !document.file) {
+        errors[`documents.${index}.file`] = `${document.name || 'This document'} is required.`;
+      }
       if (document.name && !/^[A-Za-z0-9 .,'&()/-]+$/.test(document.name)) {
         errors[`documents.${index}.name`] = 'Document name contains unsupported characters.';
       }
@@ -1922,6 +1928,7 @@ export default function LoanApplicationPage() {
                               placeholder="Document Name"
                               error={currentStepErrors[`documents.${index}.name`]}
                             />
+                            {row.required && <span className="loan-doc-required">Required document</span>}
                           </td>
 
                           <td>
@@ -1930,6 +1937,7 @@ export default function LoanApplicationPage() {
                               <input
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                aria-required={row.required || undefined}
                                 onChange={(event) => {
                                   updateDocumentFile(
                                     index,
@@ -1938,7 +1946,7 @@ export default function LoanApplicationPage() {
                                   event.target.value = '';
                                 }}
                               />
-                              <span>{row.file?.name || 'Upload'}</span>
+                              <span>{row.file?.name || (row.required ? 'Upload required *' : 'Upload')}</span>
                             </label>
                             <FieldError message={fileError} />
                           </td>
@@ -2011,6 +2019,8 @@ export default function LoanApplicationPage() {
                                 type="button"
                                 className="loan-inline-button danger"
                                 onClick={() => removeDocument(index)}
+                                disabled={row.required}
+                                title={row.required ? 'Required document cannot be removed' : 'Remove document'}
                                 aria-label={`Delete ${row.name || 'document'}`}
                               >
                                 <Trash2 size={14} /> Delete

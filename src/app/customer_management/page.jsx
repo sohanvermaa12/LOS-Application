@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Eye, Mail, Plus, Search, UserRound, UsersRound, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Eye, Mail, Pencil, Search, Trash2, UserRound, UsersRound, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
@@ -9,15 +9,38 @@ import Modal from '../../components/Modal';
 import { api } from '../../services/api.js';
 
 const getInitials = (name) => name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+const CUSTOMER_STORAGE_KEY = 'los_customer_management_records';
+
+function readCustomers() {
+  try {
+    const stored = window.localStorage.getItem(CUSTOMER_STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : null;
+    return Array.isArray(parsed) ? parsed : api.customers;
+  } catch {
+    return api.customers;
+  }
+}
 
 export default function CustomerManagementPage() {
   const [customers, setCustomers] = useState(api.customers);
   const [search, setSearch] = useState('');
   const [kycFilter, setKycFilter] = useState('All');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [deleteCustomer, setDeleteCustomer] = useState(null);
   const [formError, setFormError] = useState('');
-  const [form, setForm] = useState({ name: '', phone: '', email: '', type: 'Individual' });
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', type: 'Individual', kyc: 'Pending' });
+
+  useEffect(() => setCustomers(readCustomers()), []);
+
+  const storeCustomers = (nextCustomers) => {
+    setCustomers(nextCustomers);
+    try {
+      window.localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(nextCustomers));
+    } catch {
+      setFormError('Changes could not be saved in this browser.');
+    }
+  };
 
   const filteredCustomers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -28,37 +51,56 @@ export default function CustomerManagementPage() {
     });
   }, [customers, search, kycFilter]);
 
-  const createCustomer = (event) => {
+  const openEditor = (customer) => {
+    setEditForm({
+      name: customer.name || '',
+      phone: customer.phone || '',
+      email: customer.email || '',
+      type: customer.type || 'Individual',
+      kyc: customer.kyc || 'Pending'
+    });
+    setFormError('');
+    setEditingCustomer(customer);
+  };
+
+  const updateCustomer = (event) => {
     event.preventDefault();
-    const normalizedPhone = form.phone.trim();
-    if (customers.some((customer) => customer.phone === normalizedPhone)) {
+    const name = editForm.name.trim();
+    const phone = editForm.phone.trim();
+    const email = editForm.email.trim();
+    if (name.length < 2) {
+      setFormError('Enter a customer name with at least 2 characters.');
+      return;
+    }
+    if (!phone) {
+      setFormError('Phone number is required.');
+      return;
+    }
+    if (customers.some((customer) => customer.id !== editingCustomer.id && customer.phone === phone)) {
       setFormError('A customer with this phone number already exists.');
       return;
     }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setFormError('Enter a valid email address.');
+      return;
+    }
 
-    const customerName = form.name.trim();
-    const customer = {
-      id: `CUS-2026-${String(customers.length + 1).padStart(5, '0')}`,
-      name: customerName,
-      initials: getInitials(customerName),
-      type: form.type,
-      phone: normalizedPhone,
-      email: form.email.trim(),
-      kyc: 'Pending',
-      activeLoans: 0
-    };
-
-    setCustomers((current) => [customer, ...current]);
-    setSearch('');
-    setKycFilter('All');
-    setForm({ name: '', phone: '', email: '', type: 'Individual' });
+    storeCustomers(customers.map((customer) => customer.id === editingCustomer.id
+      ? { ...customer, ...editForm, name, phone, email, initials: getInitials(name) }
+      : customer));
     setFormError('');
-    setShowCreateModal(false);
+    setEditingCustomer(null);
   };
 
-  const closeCreateModal = () => {
-    setShowCreateModal(false);
+  const closeEditor = () => {
+    setEditingCustomer(null);
     setFormError('');
+  };
+
+  const confirmDelete = () => {
+    storeCustomers(customers.filter((customer) => customer.id !== deleteCustomer.id));
+    if (selectedCustomer?.id === deleteCustomer.id) setSelectedCustomer(null);
+    setDeleteCustomer(null);
   };
 
   const verifiedCount = customers.filter((customer) => customer.kyc === 'Verified').length;
@@ -71,7 +113,6 @@ export default function CustomerManagementPage() {
         eyebrow="CUSTOMERS"
         title="Customer Management"
         description="Review customer profiles, KYC status, and active lending relationships."
-        action={<button className="primary-button" onClick={() => setShowCreateModal(true)}><Plus size={16} /> Add customer</button>}
       />
 
       <div className="metric-grid">
@@ -103,7 +144,11 @@ export default function CustomerManagementPage() {
                   <td>{customer.phone}</td>
                   <td><span className={`status ${customer.kyc === 'Verified' ? 'status-green' : 'status-amber'}`}>{customer.kyc}</span></td>
                   <td>{customer.activeLoans}</td>
-                  <td><button className="secondary-button" type="button" onClick={() => setSelectedCustomer(customer)}><Eye size={15} /> View</button></td>
+                  <td><div className="customer-row-actions">
+                    <button className="icon-button" type="button" onClick={() => setSelectedCustomer(customer)} aria-label={`View ${customer.name}`} title="View customer"><Eye size={16} /></button>
+                    <button className="icon-button" type="button" onClick={() => openEditor(customer)} aria-label={`Edit ${customer.name}`} title="Edit customer"><Pencil size={15} /></button>
+                    <button className="icon-button customer-delete" type="button" onClick={() => setDeleteCustomer(customer)} aria-label={`Delete ${customer.name}`} title="Delete customer"><Trash2 size={15} /></button>
+                  </div></td>
                 </tr>
               ))}
               {filteredCustomers.length === 0 && <tr><td colSpan="6">No customers match these filters.</td></tr>}
@@ -132,27 +177,40 @@ export default function CustomerManagementPage() {
         </Modal>
       )}
 
-      {showCreateModal && (
-        <Modal onClose={closeCreateModal}>
-          <form onSubmit={createCustomer}>
+      {editingCustomer && (
+        <Modal onClose={closeEditor}>
+          <form onSubmit={updateCustomer}>
             <div className="modal-header">
-              <div><div className="eyebrow">CUSTOMERS</div><h2>Add customer</h2></div>
-              <button className="icon-button" type="button" onClick={closeCreateModal} aria-label="Close add customer form"><X size={18} /></button>
+              <div><div className="eyebrow">CUSTOMER PROFILE</div><h2>Edit customer</h2></div>
+              <button className="icon-button" type="button" onClick={closeEditor} aria-label="Close edit customer form"><X size={18} /></button>
             </div>
             <div className="modal-body">
-              <p className="modal-copy">Create a customer profile. KYC will start as pending.</p>
               <div className="form-grid">
-                <label>Full name<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required /></label>
-                <label>Customer type<select value={form.type} onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}><option>Individual</option><option>Proprietorship</option><option>Partnership</option><option>Company</option></select></label>
-                <label>Phone number<input type="tel" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} required /></label>
-                <label>Email address<input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} /></label>
+                <label>Full name<input value={editForm.name} onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} required minLength={2} maxLength={100} /></label>
+                <label>Customer type<select value={editForm.type} onChange={(event) => setEditForm((current) => ({ ...current, type: event.target.value }))}><option>Individual</option><option>Proprietorship</option><option>Partnership</option><option>Company</option></select></label>
+                <label>Phone number<input type="tel" value={editForm.phone} onChange={(event) => setEditForm((current) => ({ ...current, phone: event.target.value }))} required /></label>
+                <label>Email address<input type="email" value={editForm.email} onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))} /></label>
+                <label>KYC status<select value={editForm.kyc} onChange={(event) => setEditForm((current) => ({ ...current, kyc: event.target.value }))}><option>Pending</option><option>Verified</option><option>Rejected</option></select></label>
               </div>
               {formError && <p role="alert" className="form-error">{formError}</p>}
             </div>
-            <div className="modal-footer"><button className="secondary-button" type="button" onClick={closeCreateModal}>Cancel</button><button className="primary-button" type="submit"><Plus size={15} /> Create customer</button></div>
+            <div className="modal-footer"><button className="secondary-button" type="button" onClick={closeEditor}>Cancel</button><button className="primary-button" type="submit">Save changes</button></div>
           </form>
         </Modal>
       )}
+
+      {deleteCustomer && (
+        <Modal onClose={() => setDeleteCustomer(null)}>
+          <div className="modal-header">
+            <div><div className="eyebrow">CUSTOMER DIRECTORY</div><h2>Delete customer?</h2></div>
+            <button className="icon-button" type="button" onClick={() => setDeleteCustomer(null)} aria-label="Cancel customer deletion"><X size={18} /></button>
+          </div>
+          <div className="modal-body"><p className="modal-copy">Delete {deleteCustomer.name} ({deleteCustomer.id}) from the customer directory? This action cannot be undone.</p></div>
+          <div className="modal-footer"><button className="secondary-button" type="button" onClick={() => setDeleteCustomer(null)}>Cancel</button><button className="primary-button customer-delete-confirm" type="button" onClick={confirmDelete}><Trash2 size={15} /> Delete customer</button></div>
+        </Modal>
+      )}
+
+      <style>{`.customer-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px}.customer-row-actions .icon-button{width:34px;height:34px;border:1px solid transparent}.customer-row-actions .icon-button:hover{border-color:var(--line);background:#f2f8f6;color:var(--teal)}.customer-row-actions .customer-delete:hover,.customer-delete-confirm{border-color:#b83b3b;background:#b83b3b;color:#fff}.customer-row-actions .customer-delete:hover,.customer-delete-confirm:hover{background:#992d2d;color:#fff}`}</style>
     </AppShell>
   );
 }
