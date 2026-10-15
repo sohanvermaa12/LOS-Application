@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Eye, LoaderCircle, Package, Pencil, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react';
+import { Check, Eye, LoaderCircle, Package, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
 import { saveProductManagementProduct } from '../../services/productManagement';
@@ -17,6 +17,7 @@ const fieldList = [
   ['minTenure', 'Min. Tenure'], ['maxTenure', 'Max. Tenure'], ['minAmount', 'Min. Amount'], ['maxAmount', 'Max. Amount'],
   ['penalty', 'Penalty'], ['penaltyPercent', 'Penalty %'], ['interestFrequency', 'Interest Calculation Frequency'], ['calculationMode', 'Interest Calculation Mode']
 ];
+const directoryFieldList = fieldList.slice(0, 8);
 
 function readProducts() {
   try {
@@ -64,6 +65,7 @@ const styles = `
 .pm-search-group{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.pm-search-group .pm-search{width:min(100%,430px);height:44px}.pm-reset-search{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 11px;border:1px solid #cad8d6;border-radius:5px;background:#fff;color:#50696b;font-size:11px;font-weight:700;white-space:nowrap}.pm-reset-search:hover:not(:disabled){background:#f2f8f6;color:#176e67}.pm-reset-search:disabled{opacity:.5;cursor:not-allowed}.pm-dialog{width:min(1040px,100%)}.pm-form{padding:26px}.pm-grid{gap:19px 24px}.pm-field input,.pm-field select{height:44px;font-size:13px}.pm-field{font-size:12px}.pm-dialog-head{padding:19px 23px}.pm-dialog-head h2{font-size:18px}.pm-table{min-width:1380px}.pm-table th:first-child,.pm-table td:first-child{width:145px}.pm-table th:nth-child(2),.pm-table td:nth-child(2){width:190px}.pm-table th:last-child,.pm-table td:last-child{width:132px}.pm-table th,.pm-table td{height:56px;padding:10px 13px;font-size:13px}.pm-table th{height:44px;font-size:11px}.pm-list-head{padding:17px 20px}.pm-list-head h2{font-size:17px}.pm-count{font-size:12px}
 @media(max-width:760px){.pm-form{padding:22px}.pm-grid{gap:16px 20px}}
 @media(max-width:540px){.pm-search-group{width:100%;flex-wrap:wrap}.pm-search-group .pm-search{flex:1;width:auto;min-width:180px}.pm-reset-search{height:44px}.pm-table{min-width:0}.pm-table th:first-child,.pm-table td:first-child,.pm-table th:nth-child(2),.pm-table td:nth-child(2){width:100%}.pm-table th,.pm-table td{font-size:13px}.pm-table td:before{font-size:11px}.pm-form{padding:18px 16px}}
+.pm-wrap{color:var(--ink);font-family:inherit}.pm-list,.pm-dialog{border-color:var(--line)}.pm-list-head h2,.pm-dialog-head h2{color:var(--ink)}.pm-count,.pm-dialog-head p,.pm-detail-item span{color:var(--muted)}.pm-add,.pm-submit{border-color:var(--teal);background:var(--teal)}.pm-add:hover,.pm-submit:hover{background:var(--teal-dark)}.pm-field input,.pm-field select{font-family:inherit}.pm-search-group{width:min(100%,430px)}.pm-search-group .pm-search{width:100%;height:44px}.pm-table{min-width:1180px}.pm-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:17px 18px}.pm-dialog{width:min(980px,100%)}@media(max-width:900px){.pm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:540px){.pm-search-group{width:100%}.pm-table{min-width:0}.pm-grid{grid-template-columns:1fr}}
 `;
 
 export default function ProductManagementPage() {
@@ -169,7 +171,6 @@ export default function ProductManagementPage() {
         <div className="pm-toolbar">
           <div className="pm-search-group">
             <label className="pm-search" htmlFor="pm-search"><Search size={16} aria-hidden="true" /><input id="pm-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product code or name" /></label>
-            <button type="button" className="pm-reset-search" onClick={() => setSearch('')} disabled={!search} title="Reset search"><RotateCcw size={14} /><span>Reset search</span></button>
           </div>
           <button type="button" className="pm-add" onClick={openCreate}><Plus size={16} /> Add new product</button>
         </div>
@@ -179,11 +180,11 @@ export default function ProductManagementPage() {
           <div className="pm-list-head"><h2 id="pm-list-heading">Product directory</h2><span className="pm-count">{filteredProducts.length} of {products.length} products</span></div>
           <div className="pm-table-wrap">
             <table className="pm-table">
-              <thead><tr>{fieldList.map(([, label]) => <th scope="col" key={label}>{label}</th>)}<th scope="col">Actions</th></tr></thead>
+              <thead><tr>{directoryFieldList.map(([, label]) => <th scope="col" key={label}>{label}</th>)}<th scope="col">Actions</th></tr></thead>
               <tbody>
                 {filteredProducts.map((product) => (
                   <tr key={product.id}>
-                    {fieldList.map(([field, label]) => {
+                    {directoryFieldList.map(([field, label]) => {
                       const value = product[field];
                       const displayValue = value
                         ? `${value}${field === 'penaltyPercent' ? '%' : ''}${['minTenure', 'maxTenure'].includes(field) ? ' months' : ''}`
@@ -197,7 +198,7 @@ export default function ProductManagementPage() {
                     </div></td>
                   </tr>
                 ))}
-                {filteredProducts.length === 0 && <tr><td className="pm-empty" colSpan={fieldList.length + 1}><div className="pm-empty-icon"><Package size={20} /></div><strong>{search ? 'No matching products' : 'No products yet'}</strong><span>{search ? 'Try a different product code or name.' : 'Add your first loan product to start building the directory.'}</span></td></tr>}
+                {filteredProducts.length === 0 && <tr><td className="pm-empty" colSpan={directoryFieldList.length + 1}><div className="pm-empty-icon"><Package size={20} /></div><strong>{search ? 'No matching products' : 'No products yet'}</strong><span>{search ? 'Try a different product code or name.' : 'Add your first loan product to start building the directory.'}</span></td></tr>}
               </tbody>
             </table>
           </div>
