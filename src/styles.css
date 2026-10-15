@@ -36,7 +36,7 @@
 .loan-field{display:flex;flex-direction:column;gap:8px;color:#304b59;font-size:13px;font-weight:600}
 .loan-field span{display:block}
 .loan-field input, .loan-field select, .loan-field textarea{width:100%;min-height:46px;border:1px solid #d7e2e5;border-radius:8px;background:#f7fafb;padding:0 12px;color:#1b3541;outline:none;transition:border-color .15s ease, box-shadow .15s ease}
-.loan-field input:focus, .loan-field select:focus, .loan-field textarea:focus{border-color:#7aa7d8;box-shadow:0 0 0 3px rgba(93,144,214,.08)}
+.loan-field input:focus, .loan-field select:focus, .loan-field textarea:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(23,126,122,.1)}
 .loan-field input::placeholder{color:#8b9ca3}
 .loan-field select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#4d6975 50%),linear-gradient(135deg,#4d6975 50%,transparent 50%);background-position:calc(100% - 18px) calc(50% - 2px),calc(100% - 12px) calc(50% - 2px);background-size:6px 6px;background-repeat:no-repeat;padding-right:30px}
 .loan-upload-row{grid-column:1 / -1}
@@ -107,8 +107,8 @@
 .loan-step{display:flex;align-items:center;gap:9px;position:relative;color:#6f8b94;font-size:12px;font-weight:600;opacity:.85}
 .loan-step:not(:last-child)::after{content:'';display:block;width:28px;height:1px;background:#c8d6da;margin-left:8px}
 .loan-step-bubble{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#ebf2f4;border:1px solid #d8e3e8;color:#5c7580;font-size:11px;font-weight:700}
-.loan-step.active .loan-step-bubble{background:#1f66d6;border-color:#1f66d6;color:#fff;box-shadow:0 0 0 4px rgba(31,102,214,.12)}
-.loan-step.active{color:#1f66d6}
+.loan-step.active .loan-step-bubble{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 0 0 4px rgba(23,126,122,.12)}
+.loan-step.active{color:var(--teal)}
 .loan-step.done .loan-step-bubble{background:#1f8f72;border-color:#1f8f72;color:#fff}
 .loan-step-text{white-space:nowrap}
 .loan-form-section{padding-top:8px}
@@ -211,13 +211,13 @@
 .loan-form-actions{display:flex;align-items:center;justify-content:space-between;padding-top:28px;gap:20px}
 .loan-back-button,.loan-continue-button{height:46px;border-radius:8px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:transform .15s ease, box-shadow .2s ease}
 .loan-back-button{min-width:130px;background:#f7f9fa;border:1px solid #d2dfe2;color:#1d3b48}
-.loan-continue-button{min-width:170px;background:#1f66d6;border:1px solid #1f66d6;color:#fff;box-shadow:0 6px 18px rgba(31,102,214,.18)}
+.loan-continue-button{min-width:170px;background:var(--teal);border:1px solid var(--teal);color:#fff;box-shadow:0 6px 18px rgba(23,126,122,.18)}
 .loan-back-button:hover,.loan-continue-button:hover{transform:translateY(-1px)}
 .loan-back-button:disabled{opacity:.5;cursor:not-allowed;transform:none}
 @media (max-width: 920px){
   .loan-application-card{padding:18px 18px 24px}
   .loan-stepper{gap:8px}
-  .two-col,.three-col{grid-template-columns:1fr}
+  .two-col,.three-col{grid-template-columns:repeat(2,minmax(0,1fr))}
   .name-four-col{grid-template-columns:repeat(2,minmax(0,1fr))}
   .loan-application-header h1{font-size:28px}
   .loan-form-actions{flex-direction:column-reverse}
@@ -231,10 +231,18 @@
   .loan-form-section h2{font-size:22px}
   .loan-form-section h3{font-size:18px}
   .field-grid{gap:12px}
+  .two-col,.three-col{grid-template-columns:1fr}
   .name-four-col{grid-template-columns:1fr}
   .review-row{display:grid;grid-template-columns:1fr;gap:4px}
   .review-row strong{text-align:left}
 }
+
+.loan-data-table-wrap{max-width:100%;overflow-x:auto}
+.loan-doc-required{color:#b33737;font-weight:700}
+.loan-inline-button:focus-visible,.loan-back-button:focus-visible,.loan-continue-button:focus-visible{outline:3px solid rgba(23,126,122,.25);outline-offset:2px}
+.loan-continue-button:hover{background:var(--teal-dark);border-color:var(--teal-dark)}
+.loan-data-table-wrap .loan-file-input{max-width:220px}
+.loan-file-input span{max-width:170px}
 
 .app-shell{height:100vh;height:100dvh;min-height:0;overflow:hidden}
 .sidebar{position:sticky;top:0;height:100vh;height:100dvh;overflow-y:auto;overscroll-behavior:contain}
@@ -506,3 +514,23 @@
 @media(max-width:900px){.lead-step-nav{max-height:calc(88dvh - 110px)}}
 @media(max-width:720px){.lead-step-layout{align-items:stretch}.lead-step-nav{top:0;z-index:4;max-height:none;overflow:visible;background:#fff}.lead-table th:first-child,.lead-table td:first-child{position:static}.lead-detail-actions{gap:6px}.lead-detail-edit,.lead-detail-back{padding:7px 9px;font-size:11px}}
 @media(max-width:420px){.lead-detail-header h2{flex-direction:column;align-items:flex-start;gap:3px}.lead-detail-actions{flex-wrap:wrap;justify-content:flex-end}.lead-row-action{padding:0 7px}.lead-row-action span{display:none}}
+
+.lead-detail-modal{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-family:'DM Sans',sans-serif;box-shadow:0 24px 70px rgba(16,45,53,.24)}
+.lead-detail-header{padding:18px 22px;border-bottom:1px solid var(--line);background:#fff;color:var(--ink)}
+.lead-detail-eyebrow{color:var(--teal);letter-spacing:.08em}
+.lead-detail-header h2{color:var(--ink);font-family:Manrope,sans-serif}
+.lead-detail-header h2 span{border-radius:4px;background:#edf5f3;color:var(--teal)}
+.lead-detail-edit{border-color:var(--teal);background:var(--teal);color:#fff}
+.lead-detail-edit:hover{border-color:var(--teal-dark);background:var(--teal-dark);color:#fff}
+.lead-detail-back{border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--muted)}
+.lead-detail-back:hover{background:#f4f8f7;color:var(--ink)}
+.lead-detail-modal .detail-panel{border:1px solid var(--line);border-radius:6px;background:#fff;box-shadow:none}
+.lead-detail-modal .detail-panel h3,.lead-detail-section h3{color:var(--ink);font-family:Manrope,sans-serif}
+.lead-detail-modal .detail-tabs{border-bottom:1px solid var(--line)}
+.lead-detail-modal .detail-tab{color:var(--muted)}
+.lead-detail-modal .detail-tab.active{border-color:var(--teal);color:var(--teal)}
+.lead-detail-modal .detail-row{border-bottom-color:#edf1f0}
+.lead-detail-modal .detail-row>span{color:var(--muted)}
+.lead-detail-modal .detail-row>em{color:var(--ink)}
+.lead-detail-modal .detail-empty-state{color:var(--muted)}
+@media(max-width:720px){.lead-detail-header{padding:14px 16px}.lead-detail-body{padding:14px}}

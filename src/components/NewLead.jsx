@@ -264,8 +264,9 @@ const newLeadInlineStyles = `
 .lead-modal-backdrop .lead-income-grid .lead-income-employer{grid-column:span 2}
 .lead-modal-backdrop .lead-income-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .lead-modal-backdrop .lead-income-actions button{min-height:42px;padding:7px;border:1px solid #d8e4e1;border-radius:5px;background:#f7faf9;color:#53696b;font-size:10px;font-weight:650;line-height:1.3}
-.lead-modal-backdrop .lead-referral-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:14px 16px}
+.lead-modal-backdrop .lead-referral-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:14px 16px}
 .lead-modal-backdrop .lead-referral-grid .lead-field input,.lead-modal-backdrop .lead-referral-grid .lead-field select{width:100%;min-height:39px;padding:0 10px;border:1px solid #cbd9d6;border-radius:5px;background:#fff;color:#263f41;font-size:12px}
+.lead-modal-backdrop .lead-referral-grid .lead-referral-date input[type=date]{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding:0 8px}
 .lead-modal-backdrop .lead-assignment-section{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border:1px solid #dfe8e6;border-radius:5px;background:#f8faf9}
 .lead-modal-backdrop .lead-assignment-heading{grid-column:1/-1}
 .lead-modal-backdrop .lead-assignment-heading h4{margin:0;color:#315356;font-size:12px}
@@ -275,7 +276,7 @@ const newLeadInlineStyles = `
 .lead-modal-backdrop .lead-save-btn{border-color:#177e7a;background:#177e7a;color:#fff}
 .lead-modal-backdrop .lead-save-btn:hover{border-color:#0c6662;background:#0c6662}
 .lead-modal-backdrop .lead-cancel-btn:hover,.lead-modal-backdrop .lead-previous-btn:hover{background:#f2f7f5}
-@media(max-width:760px){.lead-modal-backdrop{padding:10px}.lead-modal-backdrop .lead-modal{width:96vw;height:94dvh;max-height:94dvh}.lead-modal-backdrop .lead-modal-header{padding:15px 16px}.lead-modal-backdrop .lead-form{padding:15px 16px}.lead-modal-backdrop .lead-step-layout{grid-template-columns:1fr;gap:16px}.lead-modal-backdrop .lead-step-nav{position:static;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-height:none;overflow:visible;padding:0 0 11px;border-right:0;border-bottom:1px solid #e6edeb}.lead-modal-backdrop .lead-step-item{min-height:58px;flex-direction:column;justify-content:center;gap:4px;padding:5px 2px;text-align:center;font-size:9px}.lead-modal-backdrop .lead-step-panel{padding:0}.lead-modal-backdrop .lead-personal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:minmax(0,1.2fr) minmax(65px,.5fr) minmax(0,1fr);gap:10px}.lead-modal-backdrop .lead-income-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-modal-backdrop .lead-income-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.lead-modal-backdrop{padding:10px}.lead-modal-backdrop .lead-modal{width:96vw;height:94dvh;max-height:94dvh}.lead-modal-backdrop .lead-modal-header{padding:15px 16px}.lead-modal-backdrop .lead-form{padding:15px 16px}.lead-modal-backdrop .lead-step-layout{grid-template-columns:1fr;gap:16px}.lead-modal-backdrop .lead-step-nav{position:static;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-height:none;overflow:visible;padding:0 0 11px;border-right:0;border-bottom:1px solid #e6edeb}.lead-modal-backdrop .lead-step-item{min-height:58px;flex-direction:column;justify-content:center;gap:4px;padding:5px 2px;text-align:center;font-size:9px}.lead-modal-backdrop .lead-step-panel{padding:0}.lead-modal-backdrop .lead-personal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:minmax(0,1.2fr) minmax(65px,.5fr) minmax(0,1fr);gap:10px}.lead-modal-backdrop .lead-income-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-modal-backdrop .lead-referral-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-modal-backdrop .lead-income-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.lead-modal-backdrop .lead-personal-grid,.lead-modal-backdrop .lead-referral-grid,.lead-modal-backdrop .lead-income-grid{grid-template-columns:1fr}.lead-modal-backdrop .lead-name-combo{grid-template-columns:70px minmax(0,1fr)}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:1fr;width:100%}.lead-modal-backdrop .lead-personal-demographics,.lead-modal-backdrop .lead-identity-field{grid-column:1}.lead-modal-backdrop .lead-personal-actions{grid-column:1;justify-content:stretch}.lead-modal-backdrop .lead-personal-actions button{flex:1}.lead-modal-backdrop .lead-income-grid .lead-income-employer{grid-column:auto}.lead-modal-backdrop .lead-referral-grid .lead-assignment-section{grid-column:1}.lead-modal-backdrop .lead-assignment-section{grid-template-columns:1fr}.lead-modal-backdrop .lead-assignment-heading{grid-column:1}.lead-modal-backdrop .lead-modal-footer{flex-wrap:wrap}.lead-modal-backdrop .lead-save-btn,.lead-modal-backdrop .lead-cancel-btn,.lead-modal-backdrop .lead-previous-btn{flex:1}.lead-modal-backdrop .lead-mobile-field,.lead-modal-backdrop .lead-identity-field,.lead-modal-backdrop .lead-otp-field{grid-template-columns:1fr}.lead-modal-backdrop .lead-verify-button,.lead-modal-backdrop .lead-otp-verify{width:100%}}
 `;
 
@@ -294,7 +295,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     if (!open) return undefined;
 
     setForm(getLeadFormValues(initialData));
-    setActiveStep(0);
+    setActiveStep(initialData ? steps.length - 1 : 0);
     setOtpMessage('');
     setMobileMessage('');
     setAadhaarMessage('');
@@ -378,6 +379,9 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     setForm((current) => ({
       ...current,
       [name]: normalizedValue,
+      ...(name === 'acquisitionChannel' && !['Bank Generated', 'Branch'].includes(normalizedValue)
+        ? { referralDate: '', partnerId: '', partnerName: '', employeeId: '', employeeName: '' }
+        : {}),
       ...(name === 'employmentType' && value === 'Self-Employed' ? { designation: '' } : {}),
       ...(name === 'loanProductType'
         ? { interestRate: String(loanProducts.find((product) => product.name === value)?.annualInterestRate ?? '') }
@@ -800,7 +804,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         return <>
       <label className="lead-field lead-referral-channel">
         <span>Lead Acquisition Channel <em>*</em></span>
-        <select name="acquisitionChannel" value={form.acquisitionChannel} onChange={handleChange} required style={{ minHeight: '42px' }}>
+        <select name="acquisitionChannel" value={form.acquisitionChannel} onChange={handleChange} required>
           <option value="">Select channel</option>
           <option value="Bank Generated">Bank Generated</option>
           <option value="Branch">Branch</option>
@@ -815,27 +819,27 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <label className="lead-field lead-referral-date">
         <span>Date</span>
-        <input type="date" name="referralDate" value={form.referralDate} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <input type="date" name="referralDate" value={form.referralDate} onChange={handleChange} disabled={!referralEnabled} />
       </label>
 
       <label className="lead-field lead-referral-partner-id">
         <span>Sourcing Agent / Partner ID</span>
-        <input name="partnerId" value={form.partnerId} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <input name="partnerId" value={form.partnerId} onChange={handleChange} disabled={!referralEnabled} />
       </label>
 
       <label className="lead-field lead-referral-partner-name">
         <span>Agent / Partner Name</span>
-        <input name="partnerName" value={form.partnerName} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <input name="partnerName" value={form.partnerName} onChange={handleChange} disabled={!referralEnabled} />
       </label>
 
       <label className="lead-field lead-referral-employee-id">
         <span>Emp ID</span>
-        <input name="employeeId" value={form.employeeId} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <input name="employeeId" value={form.employeeId} onChange={handleChange} disabled={!referralEnabled} />
       </label>
 
       <label className="lead-field lead-referral-employee-name">
         <span>Emp Name</span>
-        <input name="employeeName" value={form.employeeName} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <input name="employeeName" value={form.employeeName} onChange={handleChange} disabled={!referralEnabled} />
       </label>
 
       <div className="lead-assignment-section">
