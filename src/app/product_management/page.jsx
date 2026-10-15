@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Check, LoaderCircle, Package, RotateCcw, Save } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Eye, LoaderCircle, Package, Pencil, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
 import { saveProductManagementProduct } from '../../services/productManagement';
 
+const STORAGE_KEY = 'los_product_management_records';
 const initialForm = {
   productCode: '', productName: '', emi: '', emiType: '', minTenure: '', maxTenure: '',
   minAmount: '', maxAmount: '', penalty: '', penaltyPercent: '', interestFrequency: '', calculationMode: ''
@@ -17,12 +18,32 @@ const fieldList = [
   ['penalty', 'Penalty'], ['penaltyPercent', 'Penalty %'], ['interestFrequency', 'Interest Calculation Frequency'], ['calculationMode', 'Interest Calculation Mode']
 ];
 
-function validate(form) {
+function readProducts() {
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistProducts(products) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+function validate(form, products, editingId) {
   const errors = {};
   const required = ['productCode', 'productName', 'emi', 'emiType', 'minTenure', 'maxTenure', 'minAmount', 'maxAmount', 'penalty', 'penaltyPercent', 'interestFrequency', 'calculationMode'];
   required.forEach((field) => { if (!String(form[field]).trim()) errors[field] = 'This field is required.'; });
   if (form.productCode && !/^[A-Z0-9][A-Z0-9_-]{1,19}$/i.test(form.productCode.trim())) errors.productCode = 'Use 2–20 letters, numbers, hyphens, or underscores.';
   if (form.productName && (form.productName.trim().length < 2 || form.productName.trim().length > 100)) errors.productName = 'Enter a product name between 2 and 100 characters.';
+  if (form.productCode && products.some((product) => product.id !== editingId && product.productCode.toLowerCase() === form.productCode.trim().toLowerCase())) errors.productCode = 'A product with this code already exists.';
   for (const field of ['emi', 'minAmount', 'maxAmount', 'penalty']) {
     if (form[field] && (!/^\d+(\.\d{1,2})?$/.test(form[field]) || Number(form[field]) < 0)) errors[field] = 'Enter a valid non-negative amount with up to 2 decimal places.';
   }
@@ -36,16 +57,49 @@ function validate(form) {
 }
 
 const styles = `
-.pm-wrap{max-width:1320px;margin:0 auto;color:#263b3d}.pm-card{overflow:hidden;border:1px solid #dce6e3;border-radius:8px;background:#fff;box-shadow:0 6px 22px #193a6210}.pm-title{margin:0;padding:16px 22px;border-bottom:1px solid #e5ecea;background:#f8fbfa;color:#1c4847;text-align:center;font:700 19px Georgia,serif;text-decoration:underline}.pm-form{padding:24px 7% 22px}.pm-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 24px;align-items:start}.pm-field{display:grid;gap:7px;min-width:0;color:#30494b;font-size:12px;font-weight:700}.pm-field>span{line-height:1.35}.pm-field input,.pm-field select{width:100%;height:40px;padding:0 10px;border:1px solid #b8caca;border-radius:4px;background:#fbfdfc;color:#243c3e;font:400 13px Arial,sans-serif;outline:none}.pm-field input:focus,.pm-field select:focus{border-color:#177e7a;box-shadow:0 0 0 3px #177e7a19}.pm-field [aria-invalid=true]{border-color:#b83b3b;background:#fffafa}.pm-field-error{color:#b33737;font-size:10px;font-weight:500;line-height:1.4}.pm-wide{grid-column:span 2}.pm-name{grid-column:span 2}.pm-actions{display:flex;justify-content:center;gap:12px;margin-top:34px;padding-top:18px;border-top:1px solid #e7eeec}.pm-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:39px;padding:0 16px;border:1px solid #d0ddda;border-radius:5px;background:#fff;color:#41585a;font-size:12px;font-weight:700}.pm-btn:hover{background:#f4f8f7}.pm-submit{border-color:#177e7a;background:#177e7a;color:white}.pm-submit:hover{background:#0c6662}.pm-submit:disabled{opacity:.7;cursor:wait}.pm-status{display:flex;align-items:flex-start;gap:8px;margin:0 0 15px;padding:12px 14px;border:1px solid #c0dfd1;border-radius:6px;background:#f0faf5;color:#286c50;font-size:12px;line-height:1.5}.pm-alert{border-color:#e8cbcb;background:#fff7f7;color:#a43838}.pm-spin{animation:pm-rotate .9s linear infinite}@keyframes pm-rotate{to{transform:rotate(360deg)}}
-@media(max-width:900px){.pm-form{padding:22px}.pm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.pm-name{grid-column:span 2}}
-@media(max-width:520px){.pm-form{padding:18px 15px}.pm-grid{grid-template-columns:1fr;gap:14px}.pm-name,.pm-wide{grid-column:auto}.pm-title{font-size:17px}.pm-actions{display:grid;grid-template-columns:1fr 1fr}.pm-btn{padding:0 10px}}
+.pm-wrap{max-width:1320px;margin:0 auto;color:#263b3d}.pm-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:4px 0 16px}.pm-search{display:flex;align-items:center;gap:9px;width:min(100%,390px);height:40px;padding:0 12px;border:1px solid #cad8d6;border-radius:5px;background:#fff;color:#718486}.pm-search:focus-within{border-color:#177e7a;box-shadow:0 0 0 3px #177e7a19}.pm-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:#243c3e;font-size:12px}.pm-add{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid #177e7a;border-radius:5px;background:#177e7a;color:#fff;font-size:12px;font-weight:700;white-space:nowrap}.pm-add:hover{background:#0c6662}.pm-status{display:flex;align-items:flex-start;gap:8px;margin:0 0 14px;padding:11px 13px;border:1px solid #c0dfd1;border-radius:5px;background:#f0faf5;color:#286c50;font-size:12px;line-height:1.5}.pm-status.info{border-color:#d7e4e5;background:#f5f9f9;color:#47666a}.pm-status.error{border-color:#e8cbcb;background:#fff7f7;color:#a43838}.pm-list{overflow:hidden;border:1px solid #dce6e3;border-radius:7px;background:#fff;box-shadow:0 5px 18px #193a620c}.pm-list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;border-bottom:1px solid #e5ecea}.pm-list-head h2{margin:0;color:#1d4143;font-size:15px;font-weight:750}.pm-count{color:#758789;font-size:11px}.pm-table-wrap{overflow:auto;max-width:100%}.pm-table{width:100%;border-collapse:collapse;table-layout:fixed}.pm-table th,.pm-table td{height:52px;padding:9px 16px;border-bottom:1px solid #edf1f0;text-align:left;font-size:12px}.pm-table th{height:40px;background:#f6f9f8;color:#607577;font-size:10px;font-weight:800;text-transform:uppercase}.pm-table tbody tr:hover{background:#fbfdfc}.pm-table tbody tr:last-child td{border-bottom:0}.pm-table td{color:#354d4f}.pm-table th:first-child,.pm-table td:first-child{width:27%}.pm-table th:last-child,.pm-table td:last-child{width:146px;text-align:right}.pm-code{color:#176e67!important;font-weight:750}.pm-actions{display:flex;justify-content:flex-end;gap:5px}.pm-icon{display:grid;place-items:center;width:32px;height:32px;border:1px solid transparent;border-radius:4px;color:#4c686a}.pm-icon:hover{border-color:#cfdfdc;background:#f2f8f6;color:#176e67}.pm-icon.danger:hover{border-color:#efd0d0;background:#fff5f5;color:#b33737}.pm-empty{padding:52px 18px!important;text-align:center!important;color:#718284!important}.pm-empty-icon{display:grid;place-items:center;width:42px;height:42px;margin:0 auto 12px;border-radius:50%;background:#edf5f3;color:#327b73}.pm-empty strong{display:block;color:#355356;font-size:13px}.pm-empty span{display:block;margin-top:5px;color:#7c8d8f;font-size:11px}.pm-overlay{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:#102d35a6}.pm-dialog{display:flex;flex-direction:column;width:min(900px,100%);max-height:min(92vh,900px);overflow:hidden;border:1px solid #dce6e3;border-radius:8px;background:#fff;box-shadow:0 24px 70px #0d262d40;animation:pm-enter .18s ease-out}.pm-dialog.narrow{width:min(560px,100%)}.pm-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 21px;border-bottom:1px solid #e5ecea;background:#f8fbfa}.pm-dialog-head h2{margin:0;color:#1c4847;font-size:17px}.pm-dialog-head p{margin:4px 0 0;color:#718486;font-size:11px}.pm-close{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:1px solid #dce6e3;border-radius:5px;color:#526a6c}.pm-close:hover{background:#eef5f3}.pm-form{overflow:auto;padding:21px}.pm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 20px;align-items:start}.pm-field{display:grid;gap:7px;min-width:0;color:#30494b;font-size:11px;font-weight:700}.pm-field>span{line-height:1.35}.pm-field em{color:#b24545;font-style:normal}.pm-field input,.pm-field select{width:100%;height:40px;padding:0 10px;border:1px solid #b8caca;border-radius:4px;background:#fbfdfc;color:#243c3e;font-size:12px;outline:none}.pm-field input:focus,.pm-field select:focus{border-color:#177e7a;box-shadow:0 0 0 3px #177e7a19}.pm-field [aria-invalid=true]{border-color:#b83b3b;background:#fffafa}.pm-field-error{color:#b33737;font-size:10px;font-weight:500;line-height:1.4}.pm-wide{grid-column:span 2}.pm-name{grid-column:span 2}.pm-dialog-actions{display:flex;justify-content:flex-end;gap:9px;padding:14px 21px;border-top:1px solid #e7eeec}.pm-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 13px;border:1px solid #d0ddda;border-radius:5px;background:#fff;color:#41585a;font-size:11px;font-weight:700}.pm-btn:hover{background:#f4f8f7}.pm-submit{border-color:#177e7a;background:#177e7a;color:#fff}.pm-submit:hover{background:#0c6662}.pm-submit:disabled{opacity:.7;cursor:wait}.pm-detail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:5px 21px 18px}.pm-detail-item{padding:13px 8px;border-bottom:1px solid #edf1f0}.pm-detail-item span{display:block;margin-bottom:5px;color:#7a8b8d;font-size:10px}.pm-detail-item strong{color:#29474a;font-size:12px;overflow-wrap:anywhere}.pm-spin{animation:pm-rotate .9s linear infinite}@keyframes pm-rotate{to{transform:rotate(360deg)}}@keyframes pm-enter{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:760px){.pm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.pm-detail{grid-template-columns:repeat(2,minmax(0,1fr))}.pm-table th,.pm-table td{padding:9px 12px}}
+@media(max-width:540px){.pm-toolbar{align-items:stretch;flex-direction:column}.pm-search{width:100%}.pm-add{width:100%}.pm-list-head{align-items:flex-start;flex-direction:column}.pm-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.pm-table,.pm-table tbody,.pm-table tr,.pm-table td{display:block;width:100%}.pm-table tr{padding:7px 13px;border-bottom:1px solid #e8efed}.pm-table tr:last-child{border-bottom:0}.pm-table td{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%!important;height:auto;min-height:37px;padding:7px 0;border:0;text-align:right!important;white-space:normal}.pm-table td:before{content:attr(data-label);color:#7a8b8d;font-size:10px;font-weight:700;text-align:left}.pm-table td:last-child{padding-top:5px}.pm-actions{gap:7px}.pm-dialog{max-height:96vh}.pm-dialog-head{padding:14px 15px}.pm-form{padding:16px 15px}.pm-grid{grid-template-columns:1fr;gap:13px}.pm-name,.pm-wide{grid-column:auto}.pm-dialog-actions{padding:12px 15px}.pm-dialog-actions .pm-btn{flex:1}.pm-detail{grid-template-columns:1fr 1fr;padding:4px 15px 12px}.pm-detail-item{padding:11px 5px}}
+@media(prefers-reduced-motion:reduce){.pm-dialog{animation:none}.pm-spin{animation-duration:2s}}
+.pm-search-group{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.pm-search-group .pm-search{width:min(100%,430px);height:44px}.pm-reset-search{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 11px;border:1px solid #cad8d6;border-radius:5px;background:#fff;color:#50696b;font-size:11px;font-weight:700;white-space:nowrap}.pm-reset-search:hover:not(:disabled){background:#f2f8f6;color:#176e67}.pm-reset-search:disabled{opacity:.5;cursor:not-allowed}.pm-dialog{width:min(1040px,100%)}.pm-form{padding:26px}.pm-grid{gap:19px 24px}.pm-field input,.pm-field select{height:44px;font-size:13px}.pm-field{font-size:12px}.pm-dialog-head{padding:19px 23px}.pm-dialog-head h2{font-size:18px}.pm-table{min-width:1380px}.pm-table th:first-child,.pm-table td:first-child{width:145px}.pm-table th:nth-child(2),.pm-table td:nth-child(2){width:190px}.pm-table th:last-child,.pm-table td:last-child{width:132px}.pm-table th,.pm-table td{height:56px;padding:10px 13px;font-size:13px}.pm-table th{height:44px;font-size:11px}.pm-list-head{padding:17px 20px}.pm-list-head h2{font-size:17px}.pm-count{font-size:12px}
+@media(max-width:760px){.pm-form{padding:22px}.pm-grid{gap:16px 20px}}
+@media(max-width:540px){.pm-search-group{width:100%;flex-wrap:wrap}.pm-search-group .pm-search{flex:1;width:auto;min-width:180px}.pm-reset-search{height:44px}.pm-table{min-width:0}.pm-table th:first-child,.pm-table td:first-child,.pm-table th:nth-child(2),.pm-table td:nth-child(2){width:100%}.pm-table th,.pm-table td{font-size:13px}.pm-table td:before{font-size:11px}.pm-form{padding:18px 16px}}
 `;
 
 export default function ProductManagementPage() {
+  const [products, setProducts] = useState([]);
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null);
+  const [dialog, setDialog] = useState(null);
+
+  useEffect(() => setProducts(readProducts()), []);
+
+  const filteredProducts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return products.filter((product) => `${product.productCode} ${product.productName}`.toLowerCase().includes(query));
+  }, [products, search]);
+
+  function storeProducts(nextProducts) {
+    setProducts(nextProducts);
+    if (!persistProducts(nextProducts)) setStatus({ type: 'info', text: 'Changes are available for this session but could not be saved to browser storage.' });
+  }
+
+  function openCreate() {
+    setForm(initialForm);
+    setErrors({});
+    setStatus(null);
+    setDialog({ type: 'form' });
+  }
+
+  function openEdit(product) {
+    setForm(Object.fromEntries(Object.keys(initialForm).map((field) => [field, String(product[field] ?? '')])));
+    setErrors({});
+    setStatus(null);
+    setDialog({ type: 'form', product });
+  }
 
   function change(field, value) {
     setForm((current) => ({ ...current, [field]: field === 'productCode' ? value.toUpperCase() : value }));
@@ -55,22 +109,45 @@ export default function ProductManagementPage() {
 
   async function submit(event) {
     event.preventDefault();
-    const nextErrors = validate(form);
+    const editingProduct = dialog?.product;
+    const nextErrors = validate(form, products, editingProduct?.id);
     setErrors(nextErrors);
     const invalid = Object.keys(nextErrors)[0];
     if (invalid) {
       document.getElementById(`pm-${invalid}`)?.focus();
       return;
     }
+
+    const record = {
+      ...form,
+      productCode: form.productCode.trim(),
+      productName: form.productName.trim(),
+      id: editingProduct?.id || (globalThis.crypto?.randomUUID?.() ?? `product-${Date.now()}`),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (editingProduct) {
+      storeProducts(products.map((product) => product.id === editingProduct.id ? record : product));
+      setStatus({ type: 'success', text: 'Product updated.' });
+      setDialog(null);
+      return;
+    }
+
     setSaving(true);
     try {
       const result = await saveProductManagementProduct({
-        product_code: form.productCode.trim(), product_name: form.productName.trim(), emi: Number(form.emi), emi_type: form.emiType,
+        product_code: record.productCode, product_name: record.productName, emi: Number(form.emi), emi_type: form.emiType,
         min_tenure_months: Number(form.minTenure), max_tenure_months: Number(form.maxTenure), min_amount: Number(form.minAmount),
         max_amount: Number(form.maxAmount), penalty: Number(form.penalty), penalty_percent: Number(form.penaltyPercent),
         interest_calculation_frequency: form.interestFrequency, interest_calculation_mode: form.calculationMode
       });
-      setStatus({ type: result.configured ? 'success' : 'info', text: result.configured ? result.result?.message || 'Product saved successfully.' : 'All fields are valid. The Java product API endpoint is not configured yet.' });
+      storeProducts([record, ...products]);
+      setSearch('');
+      setDialog(null);
+      setStatus({
+        type: result.configured ? 'success' : 'info',
+        text: result.configured ? result.result?.message || 'Product saved successfully.' : 'Product saved in this browser. The product API endpoint is not configured.'
+      });
     } catch (error) {
       setStatus({ type: 'error', text: error.message || 'Unable to save product.' });
     } finally {
@@ -78,55 +155,112 @@ export default function ProductManagementPage() {
     }
   }
 
-  function reset() {
-    setForm(initialForm);
-    setErrors({});
-    setStatus(null);
+  function deleteProduct(product) {
+    storeProducts(products.filter((item) => item.id !== product.id));
+    setDialog(null);
+    setStatus({ type: 'success', text: `${product.productName} deleted.` });
   }
 
   return (
     <AppShell title="Product Management">
       <style>{styles}</style>
       <main className="pm-wrap">
-        <PageHeader eyebrow="PRODUCTS" title="Product Management" description="Configure loan product terms, charges, and repayment calculations." />
-        {status && <div className={`pm-status${status.type === 'error' ? ' pm-alert' : ''}`} role={status.type === 'error' ? 'alert' : 'status'}>{status.type === 'success' ? <Check size={16} /> : null}{status.text}</div>}
-        <section className="pm-card" aria-labelledby="pm-heading">
-          <h2 className="pm-title" id="pm-heading">Product Management</h2>
-          <form className="pm-form" onSubmit={submit} noValidate>
-            <div className="pm-grid">
-              {fieldList.map(([field, label]) => {
-                const choices = field === 'emiType'
-                  ? [['Fixed', 'Fixed'], ['Floating', 'Floating']]
-                  : field === 'interestFrequency'
-                    ? [['Monthly', 'Monthly'], ['Quarterly', 'Quarterly'], ['Half-yearly', 'Half-yearly'], ['Yearly', 'Yearly']]
-                    : field === 'calculationMode'
-                      ? [['Reducing balance', 'Reducing balance'], ['Flat rate', 'Flat rate']]
-                      : null;
-                const numeric = ['emi', 'minTenure', 'maxTenure', 'minAmount', 'maxAmount', 'penalty', 'penaltyPercent'].includes(field);
-                const wide = ['productName', 'interestFrequency', 'calculationMode'].includes(field);
-                return (
-                  <label className={`pm-field${wide ? ' pm-wide' : ''}${field === 'productName' ? ' pm-name' : ''}`} key={field} htmlFor={`pm-${field}`}>
-                    <span>{label} <em aria-hidden="true">*</em></span>
-                    {choices ? (
-                      <select id={`pm-${field}`} value={form[field]} onChange={(event) => change(field, event.target.value)} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined}>
-                        <option value="">Select {label.toLowerCase()}</option>
-                        {choices.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
-                      </select>
-                    ) : (
-                      <input id={`pm-${field}`} name={field} value={form[field]} onChange={(event) => change(field, event.target.value)} type={numeric ? 'number' : 'text'} min={numeric ? '0' : undefined} step={['minTenure', 'maxTenure'].includes(field) ? '1' : '0.01'} max={field === 'penaltyPercent' ? '100' : undefined} maxLength={!numeric ? (field === 'productCode' ? 20 : 100) : undefined} inputMode={numeric ? 'decimal' : undefined} autoComplete="off" aria-required="true" aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined} />
-                    )}
-                    {errors[field] && <small className="pm-field-error" id={`pm-${field}-error`}>{errors[field]}</small>}
-                  </label>
-                );
-              })}
-            </div>
-            <div className="pm-actions">
-              <button className="pm-btn" type="button" onClick={reset}><RotateCcw size={15} /> Cancel</button>
-              <button className="pm-btn pm-submit" type="submit" disabled={saving}>{saving ? <LoaderCircle className="pm-spin" size={15} /> : <Save size={15} />}{saving ? 'Submitting...' : 'Submit'}</button>
-            </div>
-          </form>
+        <PageHeader eyebrow="PRODUCTS" title="Product Management" description="Configure and maintain loan product terms, charges, and repayment calculations." />
+        <div className="pm-toolbar">
+          <div className="pm-search-group">
+            <label className="pm-search" htmlFor="pm-search"><Search size={16} aria-hidden="true" /><input id="pm-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product code or name" /></label>
+            <button type="button" className="pm-reset-search" onClick={() => setSearch('')} disabled={!search} title="Reset search"><RotateCcw size={14} /><span>Reset search</span></button>
+          </div>
+          <button type="button" className="pm-add" onClick={openCreate}><Plus size={16} /> Add new product</button>
+        </div>
+        {status && !dialog && <div className={`pm-status ${status.type}`} role={status.type === 'error' ? 'alert' : 'status'}>{status.type === 'success' ? <Check size={16} /> : null}{status.text}</div>}
+
+        <section className="pm-list" aria-labelledby="pm-list-heading">
+          <div className="pm-list-head"><h2 id="pm-list-heading">Product directory</h2><span className="pm-count">{filteredProducts.length} of {products.length} products</span></div>
+          <div className="pm-table-wrap">
+            <table className="pm-table">
+              <thead><tr>{fieldList.map(([, label]) => <th scope="col" key={label}>{label}</th>)}<th scope="col">Actions</th></tr></thead>
+              <tbody>
+                {filteredProducts.map((product) => (
+                  <tr key={product.id}>
+                    {fieldList.map(([field, label]) => {
+                      const value = product[field];
+                      const displayValue = value
+                        ? `${value}${field === 'penaltyPercent' ? '%' : ''}${['minTenure', 'maxTenure'].includes(field) ? ' months' : ''}`
+                        : '—';
+                      return <td className={field === 'productCode' ? 'pm-code' : undefined} data-label={label} key={field}>{displayValue}</td>;
+                    })}
+                    <td data-label="Actions"><div className="pm-actions">
+                      <button type="button" className="pm-icon" onClick={() => setDialog({ type: 'view', product })} aria-label={`View ${product.productName}`} title="View"><Eye size={16} /></button>
+                      <button type="button" className="pm-icon" onClick={() => openEdit(product)} aria-label={`Edit ${product.productName}`} title="Edit"><Pencil size={15} /></button>
+                      <button type="button" className="pm-icon danger" onClick={() => setDialog({ type: 'delete', product })} aria-label={`Delete ${product.productName}`} title="Delete"><Trash2 size={15} /></button>
+                    </div></td>
+                  </tr>
+                ))}
+                {filteredProducts.length === 0 && <tr><td className="pm-empty" colSpan={fieldList.length + 1}><div className="pm-empty-icon"><Package size={20} /></div><strong>{search ? 'No matching products' : 'No products yet'}</strong><span>{search ? 'Try a different product code or name.' : 'Add your first loan product to start building the directory.'}</span></td></tr>}
+              </tbody>
+            </table>
+          </div>
         </section>
       </main>
+
+      {dialog?.type === 'form' && (
+        <div className="pm-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setDialog(null); }}>
+          <section className="pm-dialog" role="dialog" aria-modal="true" aria-labelledby="pm-dialog-title">
+            <header className="pm-dialog-head"><div><h2 id="pm-dialog-title">{dialog.product ? 'Edit product' : 'Add new product'}</h2><p>Set the product details and repayment terms.</p></div><button type="button" className="pm-close" onClick={() => setDialog(null)} disabled={saving} aria-label="Close form"><X size={18} /></button></header>
+            {status?.type === 'error' && <div className="pm-status error" role="alert">{status.text}</div>}
+            <form className="pm-form" onSubmit={submit} noValidate>
+              <div className="pm-grid">
+                {fieldList.map(([field, label]) => {
+                  const choices = field === 'emiType'
+                    ? [['Fixed', 'Fixed'], ['Floating', 'Floating']]
+                    : field === 'interestFrequency'
+                      ? [['Monthly', 'Monthly'], ['Quarterly', 'Quarterly'], ['Half-yearly', 'Half-yearly'], ['Yearly', 'Yearly']]
+                      : field === 'calculationMode'
+                        ? [['Reducing balance', 'Reducing balance'], ['Flat rate', 'Flat rate']]
+                        : null;
+                  const numeric = ['emi', 'minTenure', 'maxTenure', 'minAmount', 'maxAmount', 'penalty', 'penaltyPercent'].includes(field);
+                  const wide = ['productName', 'interestFrequency', 'calculationMode'].includes(field);
+                  return (
+                    <label className={`pm-field${wide ? ' pm-wide' : ''}${field === 'productName' ? ' pm-name' : ''}`} key={field} htmlFor={`pm-${field}`}>
+                      <span>{label} <em aria-hidden="true">*</em></span>
+                      {choices ? (
+                        <select id={`pm-${field}`} value={form[field]} onChange={(event) => change(field, event.target.value)} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined}>
+                          <option value="">Select {label.toLowerCase()}</option>
+                          {choices.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
+                        </select>
+                      ) : (
+                        <input id={`pm-${field}`} name={field} value={form[field]} onChange={(event) => change(field, event.target.value)} type={numeric ? 'number' : 'text'} min={numeric ? '0' : undefined} step={['minTenure', 'maxTenure'].includes(field) ? '1' : '0.01'} max={field === 'penaltyPercent' ? '100' : undefined} maxLength={!numeric ? (field === 'productCode' ? 20 : 100) : undefined} inputMode={numeric ? 'decimal' : undefined} autoComplete="off" aria-required="true" aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined} />
+                      )}
+                      {errors[field] && <small className="pm-field-error" id={`pm-${field}-error`}>{errors[field]}</small>}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="pm-dialog-actions"><button className="pm-btn" type="button" onClick={() => setDialog(null)} disabled={saving}>Cancel</button><button className="pm-btn pm-submit" type="submit" disabled={saving}>{saving ? <LoaderCircle className="pm-spin" size={15} /> : null}{saving ? 'Saving...' : dialog.product ? 'Save changes' : 'Create product'}</button></div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {dialog?.type === 'view' && (
+        <div className="pm-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }}>
+          <section className="pm-dialog" role="dialog" aria-modal="true" aria-labelledby="pm-view-title">
+            <header className="pm-dialog-head"><div><h2 id="pm-view-title">{dialog.product.productName}</h2><p>Product details</p></div><button type="button" className="pm-close" onClick={() => setDialog(null)} aria-label="Close product details"><X size={18} /></button></header>
+            <div className="pm-detail">{fieldList.map(([field, label]) => <div className="pm-detail-item" key={field}><span>{label}</span><strong>{dialog.product[field] || '—'}{field === 'penaltyPercent' ? '%' : ''}{['minTenure', 'maxTenure'].includes(field) ? ' months' : ''}</strong></div>)}</div>
+            <footer className="pm-dialog-actions"><button className="pm-btn" type="button" onClick={() => setDialog(null)}>Close</button></footer>
+          </section>
+        </div>
+      )}
+
+      {dialog?.type === 'delete' && (
+        <div className="pm-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }}>
+          <section className="pm-dialog narrow" role="alertdialog" aria-modal="true" aria-labelledby="pm-delete-title" aria-describedby="pm-delete-copy">
+            <header className="pm-dialog-head"><div><h2 id="pm-delete-title">Delete product?</h2><p id="pm-delete-copy">This will remove {dialog.product.productName} from this product directory.</p></div><button type="button" className="pm-close" onClick={() => setDialog(null)} aria-label="Cancel deletion"><X size={18} /></button></header>
+            <footer className="pm-dialog-actions"><button className="pm-btn" type="button" onClick={() => setDialog(null)}>Cancel</button><button className="pm-btn pm-submit" type="button" onClick={() => deleteProduct(dialog.product)}><Trash2 size={15} /> Delete product</button></footer>
+          </section>
+        </div>
+      )}
     </AppShell>
   );
 }
