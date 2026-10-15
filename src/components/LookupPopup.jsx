@@ -43,7 +43,7 @@ const MODE_CONFIG = {
   view: {
     title: "Lookup Type Management",
     subtitle: "View lookup type details",
-    submitLabel: null, // no submit button in view mode
+    submitLabel: null,
   },
 };
 
@@ -70,7 +70,8 @@ const styles = {
     position: "relative",
     width: "100%",
     maxWidth: "620px",
-    overflow: "hidden",
+    maxHeight: "100%",
+    overflowY: "auto",
     borderRadius: "16px",
     border: "1px solid #E2E6EE",
     backgroundColor: "#FFFFFF",
@@ -149,6 +150,7 @@ const styles = {
   },
 
   field: {
+    fontFamily: "inherit",
     height: "44px",
     width: "100%",
     boxSizing: "border-box",
@@ -168,9 +170,16 @@ const styles = {
     backgroundColor: "#F7F9FC",
   },
 
-  // Applied to every field in view mode
+  // Applied to disabled / view-mode fields
+  fieldDisabled: {
+    backgroundColor: "#F7F9FC",
+    color: "#98A2B3",
+    cursor: "not-allowed",
+  },
+
   fieldViewMode: {
     backgroundColor: "#F7F9FC",
+    color: "#172033",
     cursor: "default",
   },
 
@@ -181,6 +190,104 @@ const styles = {
   fieldFocus: {
     borderColor: "#213B7A",
     boxShadow: "0 0 0 2px rgba(33, 59, 122, 0.1)",
+  },
+
+  /* ----- Selection section (Role / Designation / Status) ----- */
+
+  selectionBox: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "14px",
+    borderRadius: "12px",
+    border: "1px solid #E2E6EE",
+    backgroundColor: "#FBFCFE",
+    padding: "16px",
+  },
+
+  selectionHeader: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+  },
+
+  selectionTitle: {
+    margin: 0,
+    fontSize: "13px",
+    fontWeight: 600,
+    color: "#172033",
+  },
+
+  selectionHint: {
+    margin: 0,
+    fontSize: "12px",
+    color: "#667085",
+  },
+
+  optionRow: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    borderRadius: "10px",
+    border: "1px solid #E2E6EE",
+    backgroundColor: "#FFFFFF",
+    padding: "12px",
+    transition: "all 150ms ease",
+  },
+
+  optionRowActive: {
+    borderColor: "#213B7A",
+    boxShadow: "0 0 0 2px rgba(33, 59, 122, 0.08)",
+  },
+
+  optionRowDisabled: {
+    backgroundColor: "#F7F9FC",
+  },
+
+  optionTop: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+  },
+
+  checkLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "10px",
+    fontSize: "14px",
+    fontWeight: 600,
+    color: "#172033",
+    cursor: "pointer",
+    userSelect: "none",
+  },
+
+  checkLabelDisabled: {
+    cursor: "default",
+  },
+
+  checkbox: {
+    width: "16px",
+    height: "16px",
+    margin: 0,
+    accentColor: "#213B7A",
+    cursor: "inherit",
+  },
+
+  optionState: {
+    fontSize: "12px",
+    fontWeight: 500,
+    color: "#98A2B3",
+  },
+
+  optionStateActive: {
+    color: "#213B7A",
+  },
+
+  errorText: {
+    margin: 0,
+    fontSize: "12px",
+    fontWeight: 500,
+    color: "#D92D20",
   },
 
   footer: {
@@ -194,6 +301,7 @@ const styles = {
   },
 
   buttonBase: {
+    fontFamily: "inherit",
     display: "inline-flex",
     height: "40px",
     minWidth: "92px",
@@ -260,10 +368,6 @@ async function dummyLookupTypeApi(data, mode) {
   console.log("Request Payload:");
   console.log(data);
 
-  console.log("Role sent as number:", data.role);
-  console.log("Designation sent as number:", data.designation);
-  console.log("Status sent as number:", data.status);
-
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -292,6 +396,9 @@ async function dummyLookupTypeApi(data, mode) {
  *  - initialData: { lookupCode, lookupName, role, designation, status } | null
  *  - onClose: () => void
  *  - onSubmit: (data) => void           (called on create + update)
+ *
+ * Role / Designation / Status are optional individually, but at least
+ * one of them must be ticked and selected. Unticked ones are sent as null.
  */
 export function LookupTypePopup({
   open,
@@ -307,6 +414,14 @@ export function LookupTypePopup({
   const [designation, setDesignation] = useState("");
   const [status, setStatus] = useState("");
 
+  // Which of the three are switched on
+  const [enabled, setEnabled] = useState({
+    role: false,
+    designation: false,
+    status: false,
+  });
+
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Hover / focus tracking (inline styles can't use :hover / :focus)
@@ -316,6 +431,8 @@ export function LookupTypePopup({
   const isView = mode === "view";
   const config = MODE_CONFIG[mode] || MODE_CONFIG.create;
 
+  const hasValue = (v) => v !== "" && v !== null && v !== undefined;
+
   /* =========================
      Prefill when opened
      (must run before the early return below)
@@ -324,12 +441,21 @@ export function LookupTypePopup({
   useEffect(() => {
     if (!open) return;
 
+    setError("");
+
     if (initialData) {
       setLookupCode(initialData.lookupCode ?? "");
       setLookupName(initialData.lookupName ?? "");
       setRole(initialData.role ?? "");
       setDesignation(initialData.designation ?? "");
       setStatus(initialData.status ?? "");
+
+      // Tick only the ones that already have a value
+      setEnabled({
+        role: hasValue(initialData.role),
+        designation: hasValue(initialData.designation),
+        status: hasValue(initialData.status),
+      });
     } else {
       resetForm();
     }
@@ -346,6 +472,22 @@ export function LookupTypePopup({
     setRole("");
     setDesignation("");
     setStatus("");
+    setEnabled({ role: false, designation: false, status: false });
+    setError("");
+  }
+
+  /* Tick / untick one of the three */
+  function toggleOption(name, setter) {
+    if (isView) return;
+
+    setEnabled((current) => {
+      const next = !current[name];
+      // Unticking clears the chosen value so it is never sent
+      if (!next) setter("");
+      return { ...current, [name]: next };
+    });
+
+    setError("");
   }
 
   /* Helpers to attach hover/focus handlers and merge styles */
@@ -369,6 +511,14 @@ export function LookupTypePopup({
     };
   }
 
+  // Select style: greyed out when the option is not ticked
+  function selectStyle(id, isOn) {
+    return {
+      ...fieldStyle(id),
+      ...(!isOn && !isView ? styles.fieldDisabled : {}),
+    };
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -381,50 +531,56 @@ export function LookupTypePopup({
 
     const trimmedLookupCode = lookupCode.trim();
     const trimmedLookupName = lookupName.trim();
-    const trimmedRole = role.toString().trim();
-    const trimmedDesignation = designation.toString().trim();
-    const trimmedStatus = status.toString().trim();
 
     if (!trimmedLookupCode) {
-      console.log("Lookup Code is required");
+      setError("Lookup Code is required");
       return;
     }
 
     if (!trimmedLookupName) {
-      console.log("Lookup Name is required");
+      setError("Lookup Name is required");
       return;
     }
 
-    if (!trimmedRole) {
-      console.log("Role is required");
+    // At least one of the three must be ticked
+    if (!enabled.role && !enabled.designation && !enabled.status) {
+      setError("Please select at least one of Role, Designation or Status");
       return;
     }
 
-    if (!trimmedDesignation) {
-      console.log("Designation is required");
+    // Every ticked one must have a value chosen
+    if (enabled.role && !hasValue(role)) {
+      setError("Please choose a Role or untick it");
       return;
     }
 
-    if (!trimmedStatus) {
-      console.log("Status is required");
+    if (enabled.designation && !hasValue(designation)) {
+      setError("Please choose a Designation or untick it");
       return;
     }
+
+    if (enabled.status && !hasValue(status)) {
+      setError("Please choose a Status or untick it");
+      return;
+    }
+
+    setError("");
 
     /* =========================
        Final Payload
 
-       IMPORTANT:
        Dropdown displays key
        Payload sends numeric value
+       Unticked options are sent as null
     ========================= */
 
     const data = {
       lookupCode: trimmedLookupCode,
       lookupName: trimmedLookupName,
 
-      role: Number(role),
-      designation: Number(designation),
-      status: Number(status),
+      role: enabled.role ? Number(role) : null,
+      designation: enabled.designation ? Number(designation) : null,
+      status: enabled.status ? Number(status) : null,
     };
 
     console.log("=================================");
@@ -460,6 +616,77 @@ export function LookupTypePopup({
   function handleCancel() {
     resetForm();
     onClose();
+  }
+
+  /* =========================
+     One selectable option block
+     (checkbox + dropdown)
+  ========================= */
+
+  function renderOption({ name, label, value, setValue, options }) {
+    const isOn = enabled[name];
+    const inputId = `popup-${name}`;
+
+    return (
+      <div
+        style={{
+          ...styles.optionRow,
+          ...(isOn ? styles.optionRowActive : {}),
+          ...(!isOn && !isView ? styles.optionRowDisabled : {}),
+        }}
+      >
+        <div style={styles.optionTop}>
+          <label
+            htmlFor={`${inputId}-check`}
+            style={{
+              ...styles.checkLabel,
+              ...(isView ? styles.checkLabelDisabled : {}),
+            }}
+          >
+            <input
+              id={`${inputId}-check`}
+              type="checkbox"
+              checked={isOn}
+              disabled={isView}
+              onChange={() => toggleOption(name, setValue)}
+              style={styles.checkbox}
+            />
+            {label}
+          </label>
+
+          <span
+            style={{
+              ...styles.optionState,
+              ...(isOn ? styles.optionStateActive : {}),
+            }}
+          >
+            {isOn ? "Selected" : "Not used"}
+          </span>
+        </div>
+
+        <select
+          id={inputId}
+          value={value}
+          disabled={isView || !isOn}
+          onChange={(event) => {
+            setValue(
+              event.target.value === "" ? "" : Number(event.target.value),
+            );
+            setError("");
+          }}
+          {...interactionProps(name)}
+          style={selectStyle(name, isOn)}
+        >
+          <option value="">{`Select ${label}`}</option>
+
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.key}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
   }
 
   return (
@@ -515,7 +742,10 @@ export function LookupTypePopup({
                 id="popupLookupCode"
                 type="text"
                 value={lookupCode}
-                onChange={(event) => setLookupCode(event.target.value)}
+                onChange={(event) => {
+                  setLookupCode(event.target.value);
+                  setError("");
+                }}
                 placeholder="Enter lookup code"
                 readOnly={isView}
                 onFocus={() => setFocused("code")}
@@ -540,7 +770,10 @@ export function LookupTypePopup({
                 id="popupLookupName"
                 type="text"
                 value={lookupName}
-                onChange={(event) => setLookupName(event.target.value)}
+                onChange={(event) => {
+                  setLookupName(event.target.value);
+                  setError("");
+                }}
                 placeholder="Enter lookup name"
                 readOnly={isView}
                 {...interactionProps("name")}
@@ -549,96 +782,45 @@ export function LookupTypePopup({
             </div>
 
             {/* =========================
-                Role
+                Role / Designation / Status
+                (tick what you want to use)
             ========================= */}
 
-            <div style={styles.fieldGroup}>
-              <label htmlFor="popupRole" style={styles.label}>
-                Role
-              </label>
+            <div style={styles.selectionBox}>
+              <div style={styles.selectionHeader}>
+                <p style={styles.selectionTitle}>Select what applies</p>
+                <p style={styles.selectionHint}>
+                  {isView
+                    ? "Options used by this lookup"
+                    : "Tick one or more. Unticked options stay disabled and are not sent."}
+                </p>
+              </div>
 
-              <select
-                id="popupRole"
-                value={role}
-                disabled={isView}
-                onChange={(event) =>
-                  setRole(
-                    event.target.value === "" ? "" : Number(event.target.value),
-                  )
-                }
-                {...interactionProps("role")}
-                style={fieldStyle("role")}
-              >
-                <option value="">Select Role</option>
+              {renderOption({
+                name: "role",
+                label: "Role",
+                value: role,
+                setValue: setRole,
+                options: ROLE_OPTIONS,
+              })}
 
-                {ROLE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.key}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {renderOption({
+                name: "designation",
+                label: "Designation",
+                value: designation,
+                setValue: setDesignation,
+                options: DESIGNATION_OPTIONS,
+              })}
 
-            {/* =========================
-                Designation
-            ========================= */}
+              {renderOption({
+                name: "status",
+                label: "Status",
+                value: status,
+                setValue: setStatus,
+                options: STATUS_OPTIONS,
+              })}
 
-            <div style={styles.fieldGroup}>
-              <label htmlFor="popupDesignation" style={styles.label}>
-                Designation
-              </label>
-
-              <select
-                id="popupDesignation"
-                value={designation}
-                disabled={isView}
-                onChange={(event) =>
-                  setDesignation(
-                    event.target.value === "" ? "" : Number(event.target.value),
-                  )
-                }
-                {...interactionProps("designation")}
-                style={fieldStyle("designation")}
-              >
-                <option value="">Select Designation</option>
-
-                {DESIGNATION_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.key}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* =========================
-                Status
-            ========================= */}
-
-            <div style={styles.fieldGroup}>
-              <label htmlFor="popupStatus" style={styles.label}>
-                Status
-              </label>
-
-              <select
-                id="popupStatus"
-                value={status}
-                disabled={isView}
-                onChange={(event) =>
-                  setStatus(
-                    event.target.value === "" ? "" : Number(event.target.value),
-                  )
-                }
-                {...interactionProps("status")}
-                style={fieldStyle("status")}
-              >
-                <option value="">Select Status</option>
-
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.key}
-                  </option>
-                ))}
-              </select>
+              {error && <p style={styles.errorText}>{error}</p>}
             </div>
           </div>
 
