@@ -182,7 +182,7 @@ export default function LoginForm() {
           >
             <h2
               style={{
-                margin: "0",
+               margin: "12px 0 0",
                 color: "#202938",
                 fontSize: "30px",
                 fontWeight: "700",
@@ -207,7 +207,19 @@ export default function LoginForm() {
               {showForgotPassword
                 ? "Enter your email address and we will send you a password reset link."
                   : otpStep
-                    ? `Enter the OTP to continue${email ? `, ${email}` : ""}.`
+                   ? (
+  <>
+    Enter the 6-digit OTP sent to{" "}
+    <span
+      style={{
+        color: "#2563EB",
+        fontWeight: "400",
+      }}
+    >
+      {email}
+    </span>
+  </>
+)
                     : "Login to your account to continue with your loan application."}
             </p>
           </div>

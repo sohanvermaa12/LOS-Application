@@ -191,7 +191,7 @@ export default function DashboardPage() {
         <section className="dashboard-card recent-card">
           <div className="card-heading">
             <h2>Recent applications</h2>
-            <Link href="/lead_managenet" className="view-all">View all</Link>
+            <Link href="/customer_management" className="view-all">View all</Link>
           </div>
           <div className="recent-table-wrap">
             <table className="recent-table">
