@@ -19,8 +19,6 @@ import {
   Phone,
   Mail,
   ShieldCheck,
-  CheckCircle2,
-  XCircle
 } from 'lucide-react';
 
 export default function ViewUserPage() {
@@ -258,6 +256,7 @@ export default function ViewUserPage() {
               <span style={{ fontSize: '13px', color: '#88999a', letterSpacing: '2px' }}>••••••••••••</span>
             </div>
 
+            {/* Hidden as requested:
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f4' }}>
               <span style={{ fontSize: '12px', color: '#6a7e82' }}>Allow 2FA Login</span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: employee.allow2FA || employee.twoFAEnabled === 'Y' ? '#2c956d' : '#88999a' }}>
@@ -272,6 +271,7 @@ export default function ViewUserPage() {
                 )}
               </span>
             </div>
+            */}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
               <span style={{ fontSize: '12px', color: '#6a7e82' }}>Account State</span>
@@ -332,19 +332,23 @@ export default function ViewUserPage() {
           </div>
 
           <div style={{ display: 'grid', gap: '14px' }}>
+            {/* Hidden as requested:
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f4' }}>
               <span style={{ fontSize: '12px', color: '#6a7e82' }}>Idle Timeout In (Secs)</span>
               <strong style={{ fontSize: '13px', color: '#173e46' }}>
                 {employee.idleTimeout || employee.inactiveSessionTimeout || 900} seconds
               </strong>
             </div>
+            */}
 
+            {/* Hidden as requested:
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f4' }}>
               <span style={{ fontSize: '12px', color: '#6a7e82' }}>No. of Bad Login Attempts</span>
               <strong style={{ fontSize: '13px', color: '#173e46' }}>
                 {employee.badLogins ?? 3} allowed
               </strong>
             </div>
+            */}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f1f5f4' }}>
               <span style={{ fontSize: '12px', color: '#6a7e82' }}>Permitted Login Time</span>

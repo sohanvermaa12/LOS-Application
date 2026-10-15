@@ -95,6 +95,12 @@ export default function UserForm({ mode = 'add', initialData = null }) {
         }
         break;
 
+      case 'title':
+        if (!value || !['Mr.', 'Mrs.', 'Ms.'].includes(value)) {
+          err = 'Please select a Title.';
+        }
+        break;
+
       case 'firstName':
         if (!value || !String(value).trim()) {
           err = 'First Name is required.';
@@ -294,6 +300,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
     const newErrors = {};
     const fieldsToValidate = [
       'empNo',
+      'title',
       'firstName',
       'lastName',
       'userName',
@@ -468,20 +475,23 @@ export default function UserForm({ mode = 'add', initialData = null }) {
 
             <div>
               <label className="form-label" htmlFor="field-title">
-                Title
+                Title <span>*</span>
               </label>
               <select
                 id="field-title"
                 name="title"
-                className="form-input"
+                aria-invalid={Boolean(errors.title)}
+                className={`form-input ${errors.title ? 'has-error' : ''}`}
                 value={form.title}
                 onChange={handleChange}
+                onBlur={handleBlur}
               >
                 <option value="">Select title</option>
                 <option value="Mr.">Mr.</option>
                 <option value="Mrs.">Mrs.</option>
                 <option value="Ms.">Ms.</option>
               </select>
+              {errors.title && <span className="field-error-text">{errors.title}</span>}
             </div>
 
             <div>
@@ -711,7 +721,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
             </div>
           </div>
 
-          <div style={{ marginTop: '20px' }}>
+          {/* <div style={{ marginTop: '20px' }}>
             <label className="form-switch">
               <input
                 type="checkbox"
@@ -724,7 +734,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
             <p style={{ margin: '4px 0 0 28px', fontSize: '11px', color: '#7a8e91' }}>
               Enforces two-factor authentication security during user login.
             </p>
-          </div>
+          </div> */}
         </div>
 
         {/* ====================================================
@@ -904,7 +914,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
-            <div>
+            {/* <div>
               <label className="form-label" htmlFor="field-idleTimeout">
                 Idle Timeout In (Secs) <span>*</span>
               </label>
@@ -929,9 +939,9 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                   Duration of inactivity before session auto-expires (60 - 86,400s).
                 </span>
               )}
-            </div>
+            </div> */}
 
-            <div>
+            {/* <div>
               <label className="form-label" htmlFor="field-badLogins">
                 No. of Bad Login <span>*</span>
               </label>
@@ -956,7 +966,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                   Maximum failed password attempts before account lockout (0 - 10).
                 </span>
               )}
-            </div>
+            </div> */}
 
             <div>
               <label className="form-label" htmlFor="field-loginTime">
