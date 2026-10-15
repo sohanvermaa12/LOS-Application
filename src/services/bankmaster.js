@@ -26,13 +26,6 @@ function getOrganizationContext() {
 
 function toApiPayload(form) {
   return {
-    bank_code: form.bankCode.trim().toUpperCase(),
-    bank_name: form.bankName.trim(),
-    bank_type: form.bankType.trim(),
-    license_number: form.licenseNumber.trim().toUpperCase(),
-    PAN: form.pan.trim().toUpperCase(),
-    gst_number: form.gstNumber.trim().toUpperCase(),
-    number_of_branches: form.branchCount === '' ? null : Number(form.branchCount),
     address_type: form.addressType.trim(),
     pincode: form.pincode.trim(),
     unit_gala_name_and_number: form.address.trim(),

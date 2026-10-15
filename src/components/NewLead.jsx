@@ -182,20 +182,20 @@ const steps = [
     { name: 'mobileNumber', label: 'Mobile Number', inputMode: 'numeric', maxLength: 10, required: true },
     { name: 'email', label: 'Email ID', type: 'email', maxLength: 254 },
     { name: 'otpNumber', label: 'OTP Number', inputMode: 'numeric', maxLength: 6 },
-    { name: 'panCard', label: 'PAN Card', pattern: '[A-Z]{5}[0-9]{4}[A-Z]', maxLength: 10 },
-    { name: 'aadhaarCard', label: 'Aadhar Card', inputMode: 'numeric', pattern: '[0-9]{12}', maxLength: 12 },
+    { name: 'panCard', label: 'PAN Card', pattern: '[A-Z]{5}[0-9]{4}[A-Z]', maxLength: 10, required: true },
+    { name: 'aadhaarCard', label: 'Aadhaar Card', inputMode: 'numeric', pattern: '[0-9]{12}', maxLength: 12, required: true },
     { name: 'residentialStatus', label: 'Residential Status', type: 'select', options: ['Resident', 'Non-Resident'] },
-    { name: 'gender', label: 'Gender', type: 'select', options: ['Female', 'Male', 'Other', 'Prefer not to say'] },
-    { name: 'maritalStatus', label: 'Marital Status', type: 'select', options: ['Single', 'Married', 'Divorced', 'other'] },
+    { name: 'gender', label: 'Gender', type: 'select', options: ['Female', 'Male', 'Other', 'Prefer not to say'], required: true },
+    { name: 'maritalStatus', label: 'Marital Status', type: 'select', options: ['Single', 'Married', 'Divorced', 'Other'], required: true },
     { name: 'dependents', label: 'No. of Dependents', type: 'number', min: 0, step: 1 },
   ] },
   { title: 'Loan Details', fields: [
     { name: 'loanProductType', label: 'Loan Product Type', type: 'select', options: ['Personal Loan', 'Home Loan', 'Business Loan', 'Vehicle Loan', 'Education Loan'], required: true },
     { name: 'loanAmount', label: 'Loan Amount', type: 'number', min: 1, step: 1, required: true },
-    { name: 'loanPurpose', label: 'Purpose of Loan', type: 'select', options: ['Home purchase', 'Home renovation', 'Medical expenses', 'Education', 'Business expansion', 'Debt consolidation', 'Vehicle purchase', 'Other'] },
+    { name: 'loanPurpose', label: 'Purpose of Loan', type: 'select', options: ['Home purchase', 'Home renovation', 'Medical expenses', 'Education', 'Business expansion', 'Debt consolidation', 'Vehicle purchase', 'Other'], required: true },
     { name: 'tenure', label: 'Tenure', type: 'number', min: 1, step: 1, required: true },
     { name: 'instalments', label: 'No. of Instalments', type: 'number', min: 1, step: 1 },
-    { name: 'collateral', label: 'Down Payment / Collateral', type: 'number', min: 0, step: 1 },
+    { name: 'collateral', label: 'Down Payment / Collateral', type: 'number', min: 0, step: 1, required: true },
   ] },
   { title: 'Income Profile', fields: [
     { name: 'employmentType', label: 'Employment Type', type: 'select', options: ['Salaried', 'Self-Employed', 'Corporate Employee', 'Business Owner', 'Other'], required: true },
@@ -214,6 +214,70 @@ const steps = [
     { name: 'employeeName', label: 'Emp Name' },
   ] },
 ];
+
+const newLeadInlineStyles = `
+.lead-modal-backdrop{position:fixed;z-index:1200;inset:0;display:grid;place-items:center;padding:22px;background:rgba(18,39,45,.58);backdrop-filter:blur(3px)}
+.lead-modal-backdrop .lead-modal{display:flex;flex-direction:column;width:min(1160px,96vw);height:min(850px,92vh);height:min(850px,92dvh);max-height:92vh;max-height:92dvh;overflow:hidden;border:1px solid #d8e4e1;border-radius:8px;background:#fff;box-shadow:0 28px 80px rgba(15,39,43,.28)}
+.lead-modal-backdrop .lead-modal-header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:19px 24px;border-bottom:1px solid #e4ece9;background:#fff}
+.lead-modal-backdrop .lead-modal-header h2{margin:0;color:#193f42;font-size:19px;font-weight:750}
+.lead-modal-backdrop .lead-modal-header p{margin:5px 0 0;color:#718284;font-size:11px;line-height:1.5}
+.lead-modal-backdrop .lead-modal-close{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid #dbe5e2;border-radius:5px;background:#fff;color:#53696b;cursor:pointer}
+.lead-modal-backdrop .lead-modal-close:hover{background:#f2f7f5;color:#176e67}
+.lead-modal-backdrop .lead-form{display:flex;flex:1;min-height:0;flex-direction:column;overflow:auto;padding:18px 22px 20px}
+.lead-modal-backdrop .lead-step-layout{display:grid;grid-template-columns:210px minmax(0,1fr);align-items:start;gap:26px;min-height:100%}
+.lead-modal-backdrop .lead-step-nav{position:sticky;top:0;display:flex;flex-direction:column;gap:6px;max-height:calc(92dvh - 150px);overflow:auto;padding:3px 16px 3px 0;border-right:1px solid #e6edeb}
+.lead-modal-backdrop .lead-step-item{display:flex;align-items:center;gap:10px;min-height:43px;padding:7px 9px;border:1px solid transparent;border-radius:5px;background:#fff;color:#627678;text-align:left;font-size:11px;font-weight:650;cursor:pointer}
+.lead-modal-backdrop .lead-step-item:hover:not(:disabled){background:#f5f9f7}
+.lead-modal-backdrop .lead-step-item:disabled{cursor:not-allowed;opacity:.5}
+.lead-modal-backdrop .lead-step-item.active{border-color:#c8ded8;background:#eef7f4;color:#176e67}
+.lead-modal-backdrop .lead-step-item.complete{color:#26745f}
+.lead-modal-backdrop .lead-step-number{display:grid;place-items:center;flex:none;width:25px;height:25px;border:1px solid #d5e0de;border-radius:50%;background:#fff;color:#52696b;font-size:10px;font-weight:700}
+.lead-modal-backdrop .lead-step-item.active .lead-step-number{border-color:#177e7a;background:#177e7a;color:#fff}
+.lead-modal-backdrop .lead-step-item.complete .lead-step-number{border-color:#b8dfd3;background:#e5f5ef;color:#26745f}
+.lead-modal-backdrop .lead-step-panel{min-width:0;padding:1px 0 0}
+.lead-modal-backdrop .lead-step-heading{margin:0 0 19px;padding-bottom:14px;border-bottom:1px solid #e8eeec}
+.lead-modal-backdrop .lead-step-heading>span{color:#177e7a;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.lead-modal-backdrop .lead-step-heading h3{margin:4px 0 0;color:#1e4548;font-size:17px;font-weight:750}
+.lead-modal-backdrop .lead-personal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:15px 16px}
+.lead-modal-backdrop .lead-name-combo{display:grid;grid-template-columns:76px minmax(0,1fr);align-items:end;gap:8px;min-width:0}
+.lead-modal-backdrop .lead-personal-demographics{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,.42fr) minmax(0,1fr);gap:15px;width:min(100%,780px)}
+.lead-modal-backdrop .lead-personal-actions{grid-column:1/-1;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.lead-modal-backdrop .lead-field{display:flex;min-width:0;flex-direction:column;gap:6px;color:#3a5557;font-size:10px;font-weight:700}
+.lead-modal-backdrop .lead-field span em{color:#bb4646;font-style:normal}
+.lead-modal-backdrop .lead-step-panel input,.lead-modal-backdrop .lead-step-panel select{width:100%;min-width:0;height:39px;min-height:39px;padding:0 10px;border:1px solid #cbd9d6;border-radius:5px;background:#fff;color:#263f41;font:inherit;font-size:12px;outline:none}
+.lead-modal-backdrop .lead-step-panel input:focus,.lead-modal-backdrop .lead-step-panel select:focus{border-color:#568e88;box-shadow:0 0 0 3px rgba(23,126,122,.1)}
+.lead-modal-backdrop .lead-step-panel input:disabled,.lead-modal-backdrop .lead-step-panel select:disabled{background:#f1f5f4;color:#839291;cursor:not-allowed;opacity:1}
+.lead-modal-backdrop .lead-step-panel input[aria-invalid=true]{border-color:#bd4848;background:#fffafa}
+.lead-modal-backdrop .lead-step-panel input[readonly]{background:#f4f7f6;color:#66797a}
+.lead-modal-backdrop .lead-computed-field{background:#f4f7f6!important}
+.lead-modal-backdrop .lead-personal-demographics input{height:37px}
+.lead-modal-backdrop .lead-personal-actions button,.lead-modal-backdrop .lead-verify-button,.lead-modal-backdrop .lead-otp-verify,.lead-modal-backdrop .lead-income-consent{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 11px;border:1px solid #cbded9;border-radius:5px;background:#f3f8f6;color:#226b62;font-size:10px;font-weight:700;cursor:pointer}
+.lead-modal-backdrop .lead-personal-actions button:hover,.lead-modal-backdrop .lead-verify-button:hover,.lead-modal-backdrop .lead-otp-verify:hover,.lead-modal-backdrop .lead-income-consent:hover{background:#e7f2ee}
+.lead-modal-backdrop .lead-mobile-field,.lead-modal-backdrop .lead-identity-field,.lead-modal-backdrop .lead-otp-field{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:8px;min-width:0}
+.lead-modal-backdrop .lead-inline-hint,.lead-modal-backdrop .lead-mobile-message,.lead-modal-backdrop .lead-otp-message{grid-column:1/-1;margin:0;color:#718284;font-size:10px;font-weight:500;line-height:1.45}
+.lead-modal-backdrop .lead-inline-hint-error{color:#aa3b3b}
+.lead-modal-backdrop .lead-otp-field{grid-template-columns:minmax(0,1fr) auto}
+.lead-modal-backdrop .lead-otp-verify:disabled{cursor:not-allowed;opacity:.55}
+.lead-modal-backdrop .lead-step-panel>div[style*="grid-template-columns"]{gap:15px 16px!important}
+.lead-modal-backdrop .lead-income-content{display:grid;gap:18px}
+.lead-modal-backdrop .lead-income-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:14px}
+.lead-modal-backdrop .lead-income-grid .lead-income-employer{grid-column:span 2}
+.lead-modal-backdrop .lead-income-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lead-modal-backdrop .lead-income-actions button{min-height:42px;padding:7px;border:1px solid #d8e4e1;border-radius:5px;background:#f7faf9;color:#53696b;font-size:10px;font-weight:650;line-height:1.3}
+.lead-modal-backdrop .lead-referral-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:14px 16px}
+.lead-modal-backdrop .lead-referral-grid .lead-field input,.lead-modal-backdrop .lead-referral-grid .lead-field select{width:100%;min-height:39px;padding:0 10px;border:1px solid #cbd9d6;border-radius:5px;background:#fff;color:#263f41;font-size:12px}
+.lead-modal-backdrop .lead-assignment-section{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border:1px solid #dfe8e6;border-radius:5px;background:#f8faf9}
+.lead-modal-backdrop .lead-assignment-heading{grid-column:1/-1}
+.lead-modal-backdrop .lead-assignment-heading h4{margin:0;color:#315356;font-size:12px}
+.lead-modal-backdrop .lead-assignment-heading p,.lead-modal-backdrop .lead-assignment-hint{margin:4px 0 0;color:#718284;font-size:10px;line-height:1.45}
+.lead-modal-backdrop .lead-modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:auto;padding-top:18px}
+.lead-modal-backdrop .lead-save-btn,.lead-modal-backdrop .lead-cancel-btn,.lead-modal-backdrop .lead-previous-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:96px;min-height:37px;padding:0 12px;border:1px solid #d2dfdc;border-radius:5px;background:#fff;color:#52696b;font-size:11px;font-weight:700;cursor:pointer}
+.lead-modal-backdrop .lead-save-btn{border-color:#177e7a;background:#177e7a;color:#fff}
+.lead-modal-backdrop .lead-save-btn:hover{border-color:#0c6662;background:#0c6662}
+.lead-modal-backdrop .lead-cancel-btn:hover,.lead-modal-backdrop .lead-previous-btn:hover{background:#f2f7f5}
+@media(max-width:760px){.lead-modal-backdrop{padding:10px}.lead-modal-backdrop .lead-modal{width:96vw;height:94dvh;max-height:94dvh}.lead-modal-backdrop .lead-modal-header{padding:15px 16px}.lead-modal-backdrop .lead-form{padding:15px 16px}.lead-modal-backdrop .lead-step-layout{grid-template-columns:1fr;gap:16px}.lead-modal-backdrop .lead-step-nav{position:static;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-height:none;overflow:visible;padding:0 0 11px;border-right:0;border-bottom:1px solid #e6edeb}.lead-modal-backdrop .lead-step-item{min-height:58px;flex-direction:column;justify-content:center;gap:4px;padding:5px 2px;text-align:center;font-size:9px}.lead-modal-backdrop .lead-step-panel{padding:0}.lead-modal-backdrop .lead-personal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:minmax(0,1.2fr) minmax(65px,.5fr) minmax(0,1fr);gap:10px}.lead-modal-backdrop .lead-income-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-modal-backdrop .lead-income-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.lead-modal-backdrop .lead-personal-grid,.lead-modal-backdrop .lead-referral-grid,.lead-modal-backdrop .lead-income-grid{grid-template-columns:1fr}.lead-modal-backdrop .lead-name-combo{grid-template-columns:70px minmax(0,1fr)}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:1fr;width:100%}.lead-modal-backdrop .lead-personal-demographics,.lead-modal-backdrop .lead-identity-field{grid-column:1}.lead-modal-backdrop .lead-personal-actions{grid-column:1;justify-content:stretch}.lead-modal-backdrop .lead-personal-actions button{flex:1}.lead-modal-backdrop .lead-income-grid .lead-income-employer{grid-column:auto}.lead-modal-backdrop .lead-referral-grid .lead-assignment-section{grid-column:1}.lead-modal-backdrop .lead-assignment-section{grid-template-columns:1fr}.lead-modal-backdrop .lead-assignment-heading{grid-column:1}.lead-modal-backdrop .lead-modal-footer{flex-wrap:wrap}.lead-modal-backdrop .lead-save-btn,.lead-modal-backdrop .lead-cancel-btn,.lead-modal-backdrop .lead-previous-btn{flex:1}.lead-modal-backdrop .lead-mobile-field,.lead-modal-backdrop .lead-identity-field,.lead-modal-backdrop .lead-otp-field{grid-template-columns:1fr}.lead-modal-backdrop .lead-verify-button,.lead-modal-backdrop .lead-otp-verify{width:100%}}
+`;
 
 export default function NewLead({ open, onClose, onCreate, onUpdate, initialData = null }) {
   const [form, setForm] = useState(initialForm);
@@ -300,6 +364,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     ? String(Math.round(principal + Number(computedTotalInterest)))
     : '';
   const todayInputDate = getTodayInputDate();
+  const aadhaarInputInvalid = Boolean(aadhaarMessage && /required|remaining|invalid|enter a valid/i.test(aadhaarMessage));
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -318,14 +383,17 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         ? { interestRate: String(loanProducts.find((product) => product.name === value)?.annualInterestRate ?? '') }
         : {}),
       ...(name === 'aadhaarCard' ? { otpSent: false, otpNumber: '' } : {}),
-      ...(name === 'acquisitionChannel' && !['Bank Generated', 'Branch'].includes(value)
-        ? { referralDate: '', partnerId: '', partnerName: '', employeeId: '', employeeName: '' }
-        : {}),
     }));
     if (name === 'aadhaarCard') {
       setAadhaarValidated(false);
       setOtpMessage('');
-      setAadhaarMessage('');
+      setAadhaarMessage(!normalizedValue
+        ? 'Aadhaar number is required.'
+        : normalizedValue.length < 12
+          ? `Enter all 12 digits. ${12 - normalizedValue.length} remaining.`
+          : hasValidAadhaarChecksum(normalizedValue)
+            ? '12-digit format and checksum are valid. Identity verification still requires an authorized service.'
+            : 'This 12-digit number has an invalid checksum. Check the Aadhaar number.');
     }
     if (name === 'mobileNumber') setMobileMessage('');
   };
@@ -355,8 +423,11 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     if (activeStep === 0) {
       const aadhaarField = document.querySelector('.lead-step-panel input[name="aadhaarCard"]');
       const aadhaar = form.aadhaarCard;
-      const invalidAadhaar = Boolean(aadhaar) && /^[0-9]{12}$/.test(aadhaar) && !hasValidAadhaarChecksum(aadhaar);
+      const invalidAadhaar = !/^[0-9]{12}$/.test(aadhaar) || !hasValidAadhaarChecksum(aadhaar);
       aadhaarField?.setCustomValidity(invalidAadhaar ? 'Enter a valid 12-digit Aadhaar number.' : '');
+      if (invalidAadhaar) {
+        setAadhaarMessage(!aadhaar ? 'Aadhaar number is required.' : 'Enter a valid 12-digit Aadhaar number with a valid checksum.');
+      }
     }
 
     const fields = Array.from(document.querySelectorAll('.lead-step-panel input, .lead-step-panel select'));
@@ -507,13 +578,13 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <div className="lead-identity-field">
         <label className="lead-field">
-          <span>Aadhaar Card</span>
-          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} title="Enter a valid 12-digit Aadhaar number without spaces." />
+          <span>Aadhaar Number <em>*</em></span>
+          <input name="aadhaarCard" value={form.aadhaarCard} onChange={handleChange} inputMode="numeric" autoComplete="off" pattern="[0-9]{12}" maxLength={12} required aria-invalid={aadhaarInputInvalid} aria-describedby="lead-aadhaar-hint" title="Enter a valid 12-digit Aadhaar number without spaces." />
         </label>
         <button type="button" onClick={handleValidateAndSendOtp} className="lead-verify-button">
           Validate &amp; Send OTP
         </button>
-        {aadhaarMessage ? <p role="status" style={{ gridColumn: '1 / -1', margin: 0, color: '#526b76', fontSize: '11px' }}>{aadhaarMessage}</p> : null}
+        <p id="lead-aadhaar-hint" role="status" className={`lead-inline-hint${aadhaarInputInvalid ? ' lead-inline-hint-error' : ''}`}>{aadhaarMessage || 'Enter the 12-digit Aadhaar number. Checksum validation does not confirm identity.'}</p>
       </div>
 
       <div className="lead-otp-field">
@@ -525,15 +596,10 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         {otpMessage ? <p className="lead-otp-message" role="status">{otpMessage}</p> : null}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'end', gap: '12px' }}>
-        <label className="lead-field">
-          <span>PAN Card</span>
-          <input name="panCard" value={form.panCard} onChange={handleChange} autoComplete="off" maxLength={10} pattern="[A-Z]{5}[0-9]{4}[A-Z]" title="Enter PAN in the format ABCDE1234F." />
-        </label>
-        <button type="button" className="lead-verify-button">
-          Validate
-        </button>
-      </div>
+      <label className="lead-field">
+          <span>PAN Card <em>*</em></span>
+          <input name="panCard" value={form.panCard} onChange={handleChange} autoComplete="off" maxLength={10} pattern="[A-Z]{5}[0-9]{4}[A-Z]" required title="Enter PAN in the format ABCDE1234F." />
+      </label>
 
       <label className="lead-field">
         <span>Residential Status</span>
@@ -545,8 +611,8 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       </label>
 
       <label className="lead-field">
-        <span>Gender</span>
-        <select name="gender" value={form.gender} onChange={handleChange}>
+          <span>Gender <em>*</em></span>
+          <select name="gender" value={form.gender} onChange={handleChange} required>
           <option value="">Select</option>
           <option value="Female">Female</option>
           <option value="Male">Male</option>
@@ -555,8 +621,8 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       </label>
 
       <label className="lead-field">
-        <span>Marital Status</span>
-        <select name="maritalStatus" value={form.maritalStatus} onChange={handleChange}>
+          <span>Marital Status <em>*</em></span>
+          <select name="maritalStatus" value={form.maritalStatus} onChange={handleChange} required>
           <option value="">Select</option>
           <option value="Single">Single</option>
           <option value="Married">Married</option>
@@ -595,7 +661,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Purpose of Loan</span>
-        <select name="loanPurpose" value={form.loanPurpose} onChange={handleChange} style={{ minHeight: '42px' }}>
+        <select name="loanPurpose" value={form.loanPurpose} onChange={handleChange} required style={{ minHeight: '42px' }}>
           <option value="">Select purpose</option>
           <option value="Home purchase">Home purchase</option>
           <option value="Home renovation">Home renovation</option>
@@ -609,8 +675,8 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       </label>
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <span>Down Payment</span>
-        <input name="collateral" type="number" min="0" value={form.collateral} onChange={handleChange} style={{ minHeight: '42px' }} />
+        <span>Down Payment <em>*</em></span>
+        <input name="collateral" type="number" min="0" value={form.collateral} onChange={handleChange} required style={{ minHeight: '42px' }} />
       </label>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '12px' }}>
@@ -680,8 +746,8 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         </label>
 
         <label className="lead-field lead-income-employer">
-          <span>{form.employmentType === 'Self-Employed' ? 'Business Name' : 'Employer Name'}</span>
-          <input name="employerName" value={form.employerName} onChange={handleChange} />
+          <span>{form.employmentType === 'Self-Employed' ? 'Business Name' : 'Employer / Business Name'}</span>
+          <input name="employerName" value={form.employerName} onChange={handleChange} disabled={form.employmentType === 'Employee'} />
         </label>
 
         <label className="lead-field">
@@ -749,27 +815,27 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <label className="lead-field lead-referral-date">
         <span>Date</span>
-        <input type="date" name="referralDate" value={form.referralDate} onChange={handleChange} disabled={!referralEnabled} style={{ minHeight: '42px' }} />
+        <input type="date" name="referralDate" value={form.referralDate} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
       <label className="lead-field lead-referral-partner-id">
         <span>Sourcing Agent / Partner ID</span>
-        <input name="partnerId" value={form.partnerId} onChange={handleChange} disabled={!referralEnabled} style={{ minHeight: '42px' }} />
+        <input name="partnerId" value={form.partnerId} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
       <label className="lead-field lead-referral-partner-name">
         <span>Agent / Partner Name</span>
-        <input name="partnerName" value={form.partnerName} onChange={handleChange} disabled={!referralEnabled} style={{ minHeight: '42px' }} />
+        <input name="partnerName" value={form.partnerName} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
       <label className="lead-field lead-referral-employee-id">
         <span>Emp ID</span>
-        <input name="employeeId" value={form.employeeId} onChange={handleChange} disabled={!referralEnabled} style={{ minHeight: '42px' }} />
+        <input name="employeeId" value={form.employeeId} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
       <label className="lead-field lead-referral-employee-name">
         <span>Emp Name</span>
-        <input name="employeeName" value={form.employeeName} onChange={handleChange} disabled={!referralEnabled} style={{ minHeight: '42px' }} />
+        <input name="employeeName" value={form.employeeName} onChange={handleChange} style={{ minHeight: '42px' }} />
       </label>
 
       <div className="lead-assignment-section">
@@ -806,7 +872,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
           {!assignmentUsers.length && <span className="lead-assignment-hint">No assignees are available from the user lookup.</span>}
         </label>
       </div>
-        </>;
+         </>;
       })()}
     </div>
   );
@@ -870,6 +936,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
   return (
     <div className="lead-modal-backdrop" onMouseDown={resetAndClose}>
+      <style>{newLeadInlineStyles}</style>
       <div className="lead-modal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="lead-modal-header">
           <div>
