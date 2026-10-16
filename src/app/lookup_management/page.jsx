@@ -10,12 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import AppShell from "../../components/AppShell";
-import {
-  LookupTypePopup,
-  ROLE_OPTIONS,
-  DESIGNATION_OPTIONS,
-  STATUS_OPTIONS,
-} from "../../components/LookupPopup";
+import { LookupTypePopup } from "../../components/LookupPopup";
 import { initialLookupData } from "../../lib/lookup-data";
 
 /* ---------- Constants ---------- */
@@ -34,24 +29,6 @@ const SEARCH_BY_OPTIONS = [
 ];
 
 /* ---------- Helpers ---------- */
-
-// Raw value (number OR label text) -> label to display
-function getLabel(options, raw) {
-  if (raw === undefined || raw === null || raw === "") return "";
-  const found = options.find(
-    (o) => String(o.value) === String(raw) || o.key === raw,
-  );
-  return found ? found.key : raw;
-}
-
-// Raw value (number OR label text) -> numeric value for dropdown
-function getValue(options, raw) {
-  if (raw === undefined || raw === null || raw === "") return "";
-  const found = options.find(
-    (o) => String(o.value) === String(raw) || o.key === raw,
-  );
-  return found ? found.value : "";
-}
 
 function getPageNumbers(current, total) {
   let end = Math.min(total, Math.max(1, current - 2) + 4);
@@ -232,7 +209,7 @@ const styles = {
 
   table: {
     width: "100%",
-    minWidth: "900px",
+    minWidth: "700px",
     borderCollapse: "separate",
     borderSpacing: 0,
   },
@@ -408,13 +385,9 @@ export default function LookupManagementPage() {
   /* Filters: "draft" = what user is typing, "applied" = used for filtering */
   const [searchBy, setSearchBy] = useState("all");
   const [searchText, setSearchText] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [applied, setApplied] = useState({
     searchBy: "all",
     searchText: "",
-    role: "",
-    status: "",
   });
 
   const [page, setPage] = useState(1);
@@ -442,29 +415,9 @@ export default function LookupManagementPage() {
       } else if (applied.searchBy === "lookupDescription") {
         haystack = String(item.lookupDescription ?? "");
       } else {
-        haystack = [
-          item.lookupCode,
-          item.lookupDescription,
-          getLabel(ROLE_OPTIONS, item.role),
-          getLabel(DESIGNATION_OPTIONS, item.designation),
-          getLabel(STATUS_OPTIONS, item.status),
-        ].join(" ");
+        haystack = [item.lookupCode, item.lookupDescription].join(" ");
       }
       if (!haystack.toLowerCase().includes(q)) return false;
-    }
-
-    if (
-      applied.role !== "" &&
-      Number(getValue(ROLE_OPTIONS, item.role)) !== Number(applied.role)
-    ) {
-      return false;
-    }
-
-    if (
-      applied.status !== "" &&
-      Number(getValue(STATUS_OPTIONS, item.status)) !== Number(applied.status)
-    ) {
-      return false;
     }
 
     return true;
@@ -484,8 +437,6 @@ export default function LookupManagementPage() {
     setApplied({
       searchBy,
       searchText,
-      role: roleFilter,
-      status: statusFilter,
     });
     setPage(1);
   }
@@ -546,9 +497,6 @@ export default function LookupManagementPage() {
                 ...row,
                 lookupCode: data.lookupCode,
                 lookupDescription: data.lookupName,
-                status: data.status,
-                role: data.role,
-                designation: data.designation,
               }
             : row,
         ),
@@ -563,9 +511,6 @@ export default function LookupManagementPage() {
         id: nextId,
         lookupCode: data.lookupCode,
         lookupDescription: data.lookupName,
-        status: data.status,
-        role: data.role,
-        designation: data.designation,
       };
 
       setLookupData((currentData) => [...currentData, newLookup]);
@@ -579,9 +524,6 @@ export default function LookupManagementPage() {
     ? {
         lookupCode: selectedLookup.lookupCode,
         lookupName: selectedLookup.lookupDescription,
-        role: getValue(ROLE_OPTIONS, selectedLookup.role),
-        designation: getValue(DESIGNATION_OPTIONS, selectedLookup.designation),
-        status: getValue(STATUS_OPTIONS, selectedLookup.status),
       }
     : null;
 
@@ -697,48 +639,6 @@ export default function LookupManagementPage() {
                 </div>
               </div>
 
-              {/* Role */}
-              <div style={{ ...styles.fieldGroup, width: "160px" }}>
-                <label htmlFor="roleFilter" style={styles.label}>
-                  Role
-                </label>
-                <select
-                  id="roleFilter"
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  {...ctlProps("role")}
-                  style={ctlStyle("role")}
-                >
-                  <option value="">All</option>
-                  {ROLE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.key}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Status */}
-              <div style={{ ...styles.fieldGroup, width: "160px" }}>
-                <label htmlFor="statusFilter" style={styles.label}>
-                  Status
-                </label>
-                <select
-                  id="statusFilter"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  {...ctlProps("status")}
-                  style={ctlStyle("status")}
-                >
-                  <option value="">All</option>
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.key}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Search button */}
               <button
                 type="submit"
@@ -767,9 +667,6 @@ export default function LookupManagementPage() {
                       Lookup Code
                     </th>
                     <th style={styles.th}>Lookup Description</th>
-                    <th style={styles.th}>Role</th>
-                    <th style={styles.th}>Designation</th>
-                    <th style={styles.th}>Status</th>
                     <th style={{ ...styles.th, ...styles.thSticky }}>
                       Actions
                     </th>
@@ -798,19 +695,6 @@ export default function LookupManagementPage() {
 
                         <td style={{ ...styles.td, ...styles.tdMuted }}>
                           {item.lookupDescription}
-                        </td>
-
-                        <td style={{ ...styles.td, ...styles.tdMuted }}>
-                          {getLabel(ROLE_OPTIONS, item.role) || "—"}
-                        </td>
-
-                        <td style={{ ...styles.td, ...styles.tdMuted }}>
-                          {getLabel(DESIGNATION_OPTIONS, item.designation) ||
-                            "—"}
-                        </td>
-
-                        <td style={{ ...styles.td, ...styles.tdMuted }}>
-                          {getLabel(STATUS_OPTIONS, item.status) || "—"}
                         </td>
 
                         {/* Actions (sticky right) */}
@@ -859,7 +743,7 @@ export default function LookupManagementPage() {
 
                   {pageRows.length === 0 && (
                     <tr>
-                      <td colSpan={7} style={styles.emptyCell}>
+                      <td colSpan={4} style={styles.emptyCell}>
                         No records found
                       </td>
                     </tr>
