@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { State } from 'country-state-city';
 import { getLoanProducts } from '../services/loanProducts';
 import { getUsers } from '../services/user_management';
+
+const indianStates = State.getStatesOfCountry('IN').map((state) => state.name);
 
 const verhoeffMultiplication = [
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -197,7 +200,7 @@ const steps = [
     { name: 'instalments', label: 'No. of Instalments', type: 'number', min: 1, step: 1 },
     { name: 'collateral', label: 'Down Payment / Collateral', type: 'number', min: 0, step: 1, required: true },
   ] },
-  { title: 'Income Profile', fields: [
+  { title: 'Income & Employment', fields: [
     { name: 'employmentType', label: 'Employment Type', type: 'select', options: ['Salaried', 'Self-Employed', 'Corporate Employee', 'Business Owner', 'Other'], required: true },
     { name: 'annualIncome', label: 'Annual Income', type: 'number', min: 1, step: 1, required: true },
     { name: 'designation', label: 'Designation' },
@@ -205,7 +208,7 @@ const steps = [
     { name: 'bankName', label: 'Bank Name' },
     { name: 'primaryBankAccount', label: 'Primary Bank Account', inputMode: 'numeric', pattern: '[0-9]{9,18}', maxLength: 18 },
   ] },
-  { title: 'Referral Details', fields: [
+  { title: 'Referral & Assignment', fields: [
     { name: 'acquisitionChannel', label: 'Lead Acquisition Channel', type: 'select', options: ['Bank Generated', 'Branch', 'Website', 'Mobile App', 'Customer Referral', 'Direct Sales', 'Partner / Agent', 'Other'], required: true },
     { name: 'referralDate', label: 'Date', type: 'date' },
     { name: 'partnerId', label: 'Sourcing Agent / Partner ID' },
@@ -267,6 +270,7 @@ const newLeadInlineStyles = `
 .lead-modal-backdrop .lead-referral-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:14px 16px}
 .lead-modal-backdrop .lead-referral-grid .lead-field input,.lead-modal-backdrop .lead-referral-grid .lead-field select{width:100%;min-height:39px;padding:0 10px;border:1px solid #cbd9d6;border-radius:5px;background:#fff;color:#263f41;font-size:12px}
 .lead-modal-backdrop .lead-referral-grid .lead-referral-date input[type=date]{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding:0 8px}
+.lead-modal-backdrop .lead-referral-partner-name{max-width:250px}
 .lead-modal-backdrop .lead-assignment-section{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border:1px solid #dfe8e6;border-radius:5px;background:#f8faf9}
 .lead-modal-backdrop .lead-assignment-heading{grid-column:1/-1}
 .lead-modal-backdrop .lead-assignment-heading h4{margin:0;color:#315356;font-size:12px}
@@ -761,7 +765,10 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
         <label className="lead-field">
           <span>State</span>
-          <input name="state" value={form.state} onChange={handleChange} />
+          <input name="state" value={form.state} onChange={handleChange} list="lead-indian-states" autoComplete="address-level1" />
+          <datalist id="lead-indian-states">
+            {indianStates.map((state) => <option key={state} value={state} />)}
+          </datalist>
         </label>
 
         <label className="lead-field">
@@ -770,7 +777,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         </label>
 
         <label className="lead-field">
-          <span>Deductions (EMI's payable)</span>
+          <span>Monthly Expenses (including EMIs)</span>
           <input name="deductions" type="number" min="0" value={form.deductions} onChange={handleChange} />
         </label>
 
@@ -971,9 +978,9 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
             </nav>
 
             <section className="lead-step-panel" aria-labelledby="lead-step-title">
-              <div className={`lead-step-heading${activeStep === 2 || activeStep === steps.length - 1 ? ' lead-referral-heading' : ''}`}>
-                {activeStep === 2 || activeStep === steps.length - 1 ? null : <span>Step {activeStep + 1} of {steps.length}</span>}
-                <h3 id="lead-step-title">{activeStep === 2 || activeStep === steps.length - 1 ? 'Lead Management' : steps[activeStep].title}</h3>
+              <div className="lead-step-heading">
+                <span>Step {activeStep + 1} of {steps.length}</span>
+                <h3 id="lead-step-title">{steps[activeStep].title}</h3>
               </div>
               {activeStep === 0 ? (
                 renderPersonalDetails()

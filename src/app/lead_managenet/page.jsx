@@ -99,35 +99,37 @@ export default function LeadManagementPage() {
   const [editingLead, setEditingLead] = useState(null);
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [assignedToFilter, setAssignedToFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
+    setLeads(getLeads());
+  }, []);
+
+  useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, assignedToFilter, fromDate, toDate]);
+  }, [searchQuery, statusFilter, fromDate, toDate]);
 
   const handleCreateLead = (form) => {
-    setLeads((current) => {
-      const nextId = Math.max(...current.map((lead) => Number(lead.id.replace(/\D/g, ''))), 0) + 1;
-      const today = new Date();
-      const date = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
-
-      return [{
-        ...form,
-        id: `LD${String(nextId).padStart(6, '0')}`,
-        name: form.customerName,
-        mobile: form.mobileNumber,
-        date,
-        status: form.assignedToId ? 'In Progress' : 'Pending',
-        statusKey: statusKeys[form.assignedToId ? 'In Progress' : 'Pending'],
-        branch: '',
-        product: form.loanProductType,
-        amount: Number(form.loanAmount).toLocaleString('en-IN'),
-        remarks: '',
-      }, ...current];
-    });
+    const nextId = Math.max(...leads.map((lead) => Number(String(lead.id || '').replace(/\D/g, ''))), 0) + 1;
+    const today = new Date();
+    const date = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+    const nextLeads = [{
+      ...form,
+      id: `LD${String(nextId).padStart(6, '0')}`,
+      name: form.customerName,
+      mobile: form.mobileNumber,
+      date,
+      status: form.assignedToId ? 'In Progress' : 'Pending',
+      statusKey: statusKeys[form.assignedToId ? 'In Progress' : 'Pending'],
+      branch: '',
+      product: form.loanProductType,
+      amount: Number(form.loanAmount).toLocaleString('en-IN'),
+      remarks: '',
+    }, ...leads];
+    setLeads(saveLeads(nextLeads));
   };
 
   const handleUpdateLead = (form) => {
@@ -162,27 +164,26 @@ export default function LeadManagementPage() {
   const clearFilters = () => {
     setSearchInput('');
     setSearchQuery('');
-    setAssignedToFilter('All');
+    setStatusFilter('All');
     setFromDate('');
     setToDate('');
   };
 
   const filteredLeads = leads.filter((lead) => {
-    const assignedToMatches = assignedToFilter === 'All' || leadFieldValue(lead, 'assignedToName') === assignedToFilter;
+    const leadStatus = lead.status === 'Pending' ? 'New' : lead.status || 'New';
+    const statusMatches = statusFilter === 'All' || leadStatus === statusFilter;
     const leadDate = toIsoDate(leadFieldValue(lead, 'date'));
     const fromMatches = !fromDate || Boolean(leadDate && leadDate >= fromDate);
     const toMatches = !toDate || Boolean(leadDate && leadDate <= toDate);
     const fieldValues = ['id', 'firstName', 'lastName', 'mobileNumber', 'assignedBy', 'assignedToName'].map((field) => leadFieldValue(lead, field));
     const searchMatches = !searchQuery || fieldValues.some((value) => String(value ?? '').toLowerCase().includes(searchQuery));
-    return assignedToMatches && fromMatches && toMatches && searchMatches;
+    return statusMatches && fromMatches && toMatches && searchMatches;
   });
   const pageCount = Math.max(1, Math.ceil(filteredLeads.length / LEADS_PER_PAGE));
   const visiblePage = Math.min(currentPage, pageCount);
   const pageStart = filteredLeads.length ? (visiblePage - 1) * LEADS_PER_PAGE : 0;
   const paginatedLeads = filteredLeads.slice(pageStart, pageStart + LEADS_PER_PAGE);
   const pageEnd = Math.min(pageStart + LEADS_PER_PAGE, filteredLeads.length);
-  const assignedUsers = [...new Set(leads.map((lead) => leadFieldValue(lead, 'assignedToName')).filter(Boolean))];
-
   return (
     <>
       <AppShell title="Lead Management">
@@ -197,15 +198,15 @@ export default function LeadManagementPage() {
             <label className="lm-filter lm-filter-search" htmlFor="lead-search-text">Search leads
               <span className="lm-search-box"><Search size={15} aria-hidden="true" /><input id="lead-search-text" type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') handleSearch(); }} onBlur={handleSearch} placeholder="Lead ID, name, mobile or assignee" /></span>
             </label>
-            <label className="lm-filter" htmlFor="lead-assigned-to">Assigned to
-              <select id="lead-assigned-to" value={assignedToFilter} onChange={(event) => setAssignedToFilter(event.target.value)}>
-                <option value="All">All assignees</option>
-                {assignedUsers.map((user) => <option key={user} value={user}>{user}</option>)}
+            <label className="lm-filter" htmlFor="lead-status-filter">Status
+              <select id="lead-status-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                <option value="All">All statuses</option>
+                {['New', 'In Progress', 'Contacted', 'Qualified', 'On Hold', 'Rejected', 'Converted'].map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
             </label>
             <label className="lm-filter" htmlFor="lead-from-date">Lead date from<input id="lead-from-date" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
             <label className="lm-filter" htmlFor="lead-to-date">Lead date to<input id="lead-to-date" type="date" min={fromDate || undefined} value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
-            {(searchInput || assignedToFilter !== 'All' || fromDate || toDate) && <button type="button" className="lm-reset" onClick={clearFilters}><X size={14} /> Clear filters</button>}
+            {(searchInput || statusFilter !== 'All' || fromDate || toDate) && <button type="button" className="lm-reset" onClick={clearFilters}><X size={14} /> Clear filters</button>}
           </section>
 
           <section className="lm-results" aria-label="Lead records">
@@ -219,7 +220,7 @@ export default function LeadManagementPage() {
                       {leadTableColumns.map(([field]) => (
                         <td key={field} className={field === 'id' ? 'lm-id' : undefined}>
                           {field === 'status'
-                            ? <span className={`lm-status status-${lead.statusKey || statusKeys[lead.status] || 'new'}`}>{lead.status || 'New'}</span>
+                            ? <span className={`lm-status status-${lead.statusKey || statusKeys[lead.status] || 'new'}`}>{lead.status === 'Pending' ? 'New' : lead.status || 'New'}</span>
                             : String(leadFieldValue(lead, field) ?? '—')}
                         </td>
                       ))}
