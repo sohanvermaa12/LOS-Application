@@ -1,26 +1,50 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-export const USER_ORGANIZATION_ID = 17;
-export const USER_ORGANIZATION_CODE = "SBI01";
-
 function getHeaders() {
   const headers = { "Content-Type": "application/json" };
   const storedAuthData = window.localStorage.getItem("authData");
 
   if (storedAuthData) {
-    const accessToken = JSON.parse(storedAuthData)?.accessToken;
+    let authData;
+    try {
+      authData = JSON.parse(storedAuthData);
+    } catch {
+      throw new Error("Your session is invalid. Please sign in again.");
+    }
+    const accessToken = authData?.accessToken;
     if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   }
 
   return headers;
 }
 
-async function request(path, options, defaultMessage) {
-  if (!API_BASE_URL) {
-    throw new Error("NEXT_PUBLIC_API_URL is not configured.");
+function getOrganizationId() {
+  const storedAuthData = window.localStorage.getItem("authData");
+  if (!storedAuthData) {
+    throw new Error("Your session is unavailable. Please sign in again.");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  let authData;
+  try {
+    authData = JSON.parse(storedAuthData);
+  } catch {
+    throw new Error("Your session is invalid. Please sign in again.");
+  }
+
+  const user = authData?.user || authData?.profile || authData?.employee || {};
+  const organizationId =
+    authData?.organizationId ??
+    authData?.organization_id ??
+    user.organizationId ??
+    user.organization_id;
+
+  if (organizationId === undefined || organizationId === null || organizationId === "") {
+    throw new Error("Organization ID is missing from your session. Please sign in again.");
+  }
+
+  return organizationId;
+}
+
+async function request(path, options, defaultMessage) {
+  const response = await fetch(path, {
     ...options,
     headers: getHeaders(),
   });
@@ -39,10 +63,10 @@ async function request(path, options, defaultMessage) {
   return result;
 }
 
-export async function getUsers(organizationId = USER_ORGANIZATION_ID) {
+export async function getUsers(organizationId = getOrganizationId()) {
   const query = new URLSearchParams({ organizationId: String(organizationId) });
   return request(
-    `/api/v1/administration/users?${query.toString()}`,
+    `/api/users?${query.toString()}`,
     { method: "GET" },
     "Unable to load users",
   );
@@ -50,7 +74,7 @@ export async function getUsers(organizationId = USER_ORGANIZATION_ID) {
 
 export async function createUser(user) {
   return request(
-    "/api/v1/administration/users/users",
+    "/api/users",
     {
       method: "POST",
       body: JSON.stringify(user),
