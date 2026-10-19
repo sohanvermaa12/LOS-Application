@@ -23,7 +23,7 @@ const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
   { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
-  { href: '/loan_application', label: 'Loan Application Management', icon: ClipboardList },
+  { href: '/loan_application', label: 'Individual Customer Onboarding', icon: ClipboardList },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
   { href: '/user_management', label: 'User Management', icon: UsersRound },
   { href: '/master_creation', label: 'Bank Master', icon: ClipboardList },

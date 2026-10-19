@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Eye, LoaderCircle, Package, Pencil, Plus, RotateCcw, Search, Trash2, X } from 'lucide-react';
+import { Check, Eye, LoaderCircle, Package, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
 import { saveProductManagementProduct } from '../../services/productManagement';
 
 const STORAGE_KEY = 'los_product_management_records';
 const initialForm = {
-  productCode: '', productName: '', emi: '', emiType: '', minTenure: '', maxTenure: '',
+  productCode: '', productName: '', emi: '', emiType: '', minTenure: '', minTenureUnit: 'Months', maxTenure: '', maxTenureUnit: 'Months',
   minAmount: '', maxAmount: '', penalty: '', penaltyPercent: '', interestFrequency: '', calculationMode: ''
 };
 
@@ -17,6 +17,26 @@ const fieldList = [
   ['minTenure', 'Min. Tenure'], ['maxTenure', 'Max. Tenure'], ['minAmount', 'Min. Amount'], ['maxAmount', 'Max. Amount'],
   ['penalty', 'Penalty'], ['penaltyPercent', 'Penalty %'], ['interestFrequency', 'Interest Calculation Frequency'], ['calculationMode', 'Interest Calculation Mode']
 ];
+const directoryFieldList = [
+  ['productCode', 'Product Code'], ['productName', 'Product Name'], ['emi', 'E.M.I.'], ['minTenure', 'Tenure'],
+  ['minAmount', 'Amount Range'], ['penalty', 'Penalty']
+];
+
+function tenureInMonths(value, unit) {
+  return Number(value) * (unit === 'Years' ? 12 : 1);
+}
+
+function formatTenure(value, unit) {
+  if (!value) return '';
+  const normalizedUnit = unit || 'Months';
+  return `${value} ${normalizedUnit.toLowerCase().replace(/s$/, '')}${Number(value) === 1 ? '' : 's'}`;
+}
+
+function normalizeYesNo(value) {
+  if (value === true || value === 'true' || value === 'Yes') return 'Yes';
+  if (value === false || value === 'false' || value === 'No' || value === '') return 'No';
+  return Number(value) > 0 ? 'Yes' : 'No';
+}
 
 function readProducts() {
   try {
@@ -39,18 +59,20 @@ function persistProducts(products) {
 
 function validate(form, products, editingId) {
   const errors = {};
-  const required = ['productCode', 'productName', 'emi', 'emiType', 'minTenure', 'maxTenure', 'minAmount', 'maxAmount', 'penalty', 'penaltyPercent', 'interestFrequency', 'calculationMode'];
+  const required = ['productCode', 'productName', 'emi', 'minTenure', 'maxTenure', 'minAmount', 'maxAmount', 'penalty', 'interestFrequency', 'calculationMode'];
+  if (form.emi === 'Yes') required.push('emiType');
+  if (form.penalty === 'Yes') required.push('penaltyPercent');
   required.forEach((field) => { if (!String(form[field]).trim()) errors[field] = 'This field is required.'; });
   if (form.productCode && !/^[A-Z0-9][A-Z0-9_-]{1,19}$/i.test(form.productCode.trim())) errors.productCode = 'Use 2–20 letters, numbers, hyphens, or underscores.';
   if (form.productName && (form.productName.trim().length < 2 || form.productName.trim().length > 100)) errors.productName = 'Enter a product name between 2 and 100 characters.';
   if (form.productCode && products.some((product) => product.id !== editingId && product.productCode.toLowerCase() === form.productCode.trim().toLowerCase())) errors.productCode = 'A product with this code already exists.';
-  for (const field of ['emi', 'minAmount', 'maxAmount', 'penalty']) {
+  for (const field of ['minAmount', 'maxAmount']) {
     if (form[field] && (!/^\d+(\.\d{1,2})?$/.test(form[field]) || Number(form[field]) < 0)) errors[field] = 'Enter a valid non-negative amount with up to 2 decimal places.';
   }
   for (const field of ['minTenure', 'maxTenure']) {
-    if (form[field] && (!/^\d+$/.test(form[field]) || Number(form[field]) < 1 || Number(form[field]) > 480)) errors[field] = 'Enter a whole number of months from 1 to 480.';
+    if (form[field] && (!/^\d+$/.test(form[field]) || Number(form[field]) < 1 || tenureInMonths(form[field], form[`${field}Unit`]) > 480)) errors[field] = 'Enter a whole number of months or years, up to 40 years.';
   }
-  if (form.minTenure && form.maxTenure && Number(form.minTenure) > Number(form.maxTenure)) errors.maxTenure = 'Maximum tenure must be at least the minimum tenure.';
+  if (form.minTenure && form.maxTenure && tenureInMonths(form.minTenure, form.minTenureUnit) > tenureInMonths(form.maxTenure, form.maxTenureUnit)) errors.maxTenure = 'Maximum tenure must be at least the minimum tenure.';
   if (form.minAmount && form.maxAmount && Number(form.minAmount) >= Number(form.maxAmount)) errors.maxAmount = 'Maximum amount must be greater than minimum amount.';
   if (form.penaltyPercent && (!/^\d+(\.\d{1,2})?$/.test(form.penaltyPercent) || Number(form.penaltyPercent) > 100)) errors.penaltyPercent = 'Enter a percentage between 0 and 100.';
   return errors;
@@ -64,6 +86,7 @@ const styles = `
 .pm-search-group{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.pm-search-group .pm-search{width:min(100%,430px);height:44px}.pm-reset-search{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 11px;border:1px solid #cad8d6;border-radius:5px;background:#fff;color:#50696b;font-size:11px;font-weight:700;white-space:nowrap}.pm-reset-search:hover:not(:disabled){background:#f2f8f6;color:#176e67}.pm-reset-search:disabled{opacity:.5;cursor:not-allowed}.pm-dialog{width:min(1040px,100%)}.pm-form{padding:26px}.pm-grid{gap:19px 24px}.pm-field input,.pm-field select{height:44px;font-size:13px}.pm-field{font-size:12px}.pm-dialog-head{padding:19px 23px}.pm-dialog-head h2{font-size:18px}.pm-table{min-width:1380px}.pm-table th:first-child,.pm-table td:first-child{width:145px}.pm-table th:nth-child(2),.pm-table td:nth-child(2){width:190px}.pm-table th:last-child,.pm-table td:last-child{width:132px}.pm-table th,.pm-table td{height:56px;padding:10px 13px;font-size:13px}.pm-table th{height:44px;font-size:11px}.pm-list-head{padding:17px 20px}.pm-list-head h2{font-size:17px}.pm-count{font-size:12px}
 @media(max-width:760px){.pm-form{padding:22px}.pm-grid{gap:16px 20px}}
 @media(max-width:540px){.pm-search-group{width:100%;flex-wrap:wrap}.pm-search-group .pm-search{flex:1;width:auto;min-width:180px}.pm-reset-search{height:44px}.pm-table{min-width:0}.pm-table th:first-child,.pm-table td:first-child,.pm-table th:nth-child(2),.pm-table td:nth-child(2){width:100%}.pm-table th,.pm-table td{font-size:13px}.pm-table td:before{font-size:11px}.pm-form{padding:18px 16px}}
+.pm-wrap{color:var(--ink);font-family:inherit}.pm-list,.pm-dialog{border-color:var(--line)}.pm-list-head h2,.pm-dialog-head h2{color:var(--ink)}.pm-count,.pm-dialog-head p,.pm-detail-item span{color:var(--muted)}.pm-add,.pm-submit{border-color:var(--teal);background:var(--teal)}.pm-add:hover,.pm-submit:hover{background:var(--teal-dark)}.pm-field input,.pm-field select{font-family:inherit}.pm-search-group{width:min(100%,430px)}.pm-search-group .pm-search{width:100%;height:44px}.pm-table{min-width:1180px}.pm-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:17px 18px}.pm-dialog{width:min(980px,100%)}@media(max-width:900px){.pm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:540px){.pm-search-group{width:100%}.pm-table{min-width:0}.pm-grid{grid-template-columns:1fr}}
 `;
 
 export default function ProductManagementPage() {
@@ -95,15 +118,25 @@ export default function ProductManagementPage() {
   }
 
   function openEdit(product) {
-    setForm(Object.fromEntries(Object.keys(initialForm).map((field) => [field, String(product[field] ?? '')])));
+    setForm({
+      ...initialForm,
+      ...Object.fromEntries(Object.keys(initialForm).map((field) => [field, String(product[field] ?? initialForm[field])])),
+      emi: normalizeYesNo(product.emi),
+      penalty: normalizeYesNo(product.penalty)
+    });
     setErrors({});
     setStatus(null);
     setDialog({ type: 'form', product });
   }
 
   function change(field, value) {
-    setForm((current) => ({ ...current, [field]: field === 'productCode' ? value.toUpperCase() : value }));
-    setErrors((current) => ({ ...current, [field]: '' }));
+    setForm((current) => ({
+      ...current,
+      [field]: field === 'productCode' ? value.toUpperCase() : value,
+      ...(field === 'emi' && value === 'No' ? { emiType: '' } : {}),
+      ...(field === 'penalty' && value === 'No' ? { penaltyPercent: '' } : {})
+    }));
+    setErrors((current) => ({ ...current, [field]: '', ...(field === 'emi' ? { emiType: '' } : {}), ...(field === 'penalty' ? { penaltyPercent: '' } : {}) }));
     setStatus(null);
   }
 
@@ -136,9 +169,9 @@ export default function ProductManagementPage() {
     setSaving(true);
     try {
       const result = await saveProductManagementProduct({
-        product_code: record.productCode, product_name: record.productName, emi: Number(form.emi), emi_type: form.emiType,
-        min_tenure_months: Number(form.minTenure), max_tenure_months: Number(form.maxTenure), min_amount: Number(form.minAmount),
-        max_amount: Number(form.maxAmount), penalty: Number(form.penalty), penalty_percent: Number(form.penaltyPercent),
+        product_code: record.productCode, product_name: record.productName, emi: form.emi === 'Yes', emi_type: form.emi === 'Yes' ? form.emiType : null,
+        min_tenure_months: tenureInMonths(form.minTenure, form.minTenureUnit), max_tenure_months: tenureInMonths(form.maxTenure, form.maxTenureUnit), min_amount: Number(form.minAmount),
+        max_amount: Number(form.maxAmount), penalty: form.penalty === 'Yes', penalty_percent: form.penalty === 'Yes' ? Number(form.penaltyPercent) : null,
         interest_calculation_frequency: form.interestFrequency, interest_calculation_mode: form.calculationMode
       });
       storeProducts([record, ...products]);
@@ -164,12 +197,25 @@ export default function ProductManagementPage() {
   return (
     <AppShell title="Product Management">
       <style>{styles}</style>
+      <style>{`
+        .pm-dialog{width:min(1160px,calc(100vw - 40px));max-height:calc(100vh - 48px);display:flex;flex-direction:column}
+        .pm-dialog-head{flex:none}
+        .pm-form{min-height:0;overflow-y:auto;padding:30px}
+        .pm-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 24px}
+        .pm-name,.pm-wide{grid-column:span 2}
+        .pm-field{min-width:0}
+        .pm-field input,.pm-field select{width:100%;min-width:0}
+        .pm-tenure-control{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:8px}
+        .pm-dialog-actions{flex:none}
+        .pm-table{min-width:940px}
+        @media(max-width:700px){.pm-dialog{width:calc(100vw - 24px);max-height:calc(100dvh - 24px)}.pm-form{padding:20px}.pm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.pm-name,.pm-wide{grid-column:span 2}}
+        @media(max-width:480px){.pm-form{padding:17px}.pm-grid{grid-template-columns:1fr;gap:15px}.pm-name,.pm-wide{grid-column:auto}.pm-tenure-control{grid-template-columns:minmax(0,1fr) 104px}}
+      `}</style>
       <main className="pm-wrap">
         <PageHeader eyebrow="PRODUCTS" title="Product Management" description="Configure and maintain loan product terms, charges, and repayment calculations." />
         <div className="pm-toolbar">
           <div className="pm-search-group">
             <label className="pm-search" htmlFor="pm-search"><Search size={16} aria-hidden="true" /><input id="pm-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product code or name" /></label>
-            <button type="button" className="pm-reset-search" onClick={() => setSearch('')} disabled={!search} title="Reset search"><RotateCcw size={14} /><span>Reset search</span></button>
           </div>
           <button type="button" className="pm-add" onClick={openCreate}><Plus size={16} /> Add new product</button>
         </div>
@@ -179,15 +225,19 @@ export default function ProductManagementPage() {
           <div className="pm-list-head"><h2 id="pm-list-heading">Product directory</h2><span className="pm-count">{filteredProducts.length} of {products.length} products</span></div>
           <div className="pm-table-wrap">
             <table className="pm-table">
-              <thead><tr>{fieldList.map(([, label]) => <th scope="col" key={label}>{label}</th>)}<th scope="col">Actions</th></tr></thead>
+              <thead><tr>{directoryFieldList.map(([, label]) => <th scope="col" key={label}>{label}</th>)}<th scope="col">Actions</th></tr></thead>
               <tbody>
                 {filteredProducts.map((product) => (
                   <tr key={product.id}>
-                    {fieldList.map(([field, label]) => {
+                    {directoryFieldList.map(([field, label]) => {
                       const value = product[field];
-                      const displayValue = value
-                        ? `${value}${field === 'penaltyPercent' ? '%' : ''}${['minTenure', 'maxTenure'].includes(field) ? ' months' : ''}`
-                        : '—';
+                      const displayValue = field === 'minTenure'
+                        ? `${formatTenure(product.minTenure, product.minTenureUnit) || '—'} – ${formatTenure(product.maxTenure, product.maxTenureUnit) || '—'}`
+                        : field === 'minAmount'
+                          ? `${product.minAmount ? `₹${Number(product.minAmount).toLocaleString('en-IN')}` : '—'} – ${product.maxAmount ? `₹${Number(product.maxAmount).toLocaleString('en-IN')}` : '—'}`
+                          : ['emi', 'penalty'].includes(field)
+                            ? normalizeYesNo(value)
+                            : value || '—';
                       return <td className={field === 'productCode' ? 'pm-code' : undefined} data-label={label} key={field}>{displayValue}</td>;
                     })}
                     <td data-label="Actions"><div className="pm-actions">
@@ -197,7 +247,7 @@ export default function ProductManagementPage() {
                     </div></td>
                   </tr>
                 ))}
-                {filteredProducts.length === 0 && <tr><td className="pm-empty" colSpan={fieldList.length + 1}><div className="pm-empty-icon"><Package size={20} /></div><strong>{search ? 'No matching products' : 'No products yet'}</strong><span>{search ? 'Try a different product code or name.' : 'Add your first loan product to start building the directory.'}</span></td></tr>}
+                {filteredProducts.length === 0 && <tr><td className="pm-empty" colSpan={directoryFieldList.length + 1}><div className="pm-empty-icon"><Package size={20} /></div><strong>{search ? 'No matching products' : 'No products yet'}</strong><span>{search ? 'Try a different product code or name.' : 'Add your first loan product to start building the directory.'}</span></td></tr>}
               </tbody>
             </table>
           </div>
@@ -212,28 +262,38 @@ export default function ProductManagementPage() {
             <form className="pm-form" onSubmit={submit} noValidate>
               <div className="pm-grid">
                 {fieldList.map(([field, label]) => {
-                  const choices = field === 'emiType'
+                  if ((field === 'emiType' && form.emi !== 'Yes') || (field === 'penaltyPercent' && form.penalty !== 'Yes')) return null;
+                  const choices = ['emi', 'penalty'].includes(field)
+                    ? [['Yes', 'Yes'], ['No', 'No']]
+                    : field === 'emiType'
                     ? [['Fixed', 'Fixed'], ['Floating', 'Floating']]
                     : field === 'interestFrequency'
                       ? [['Monthly', 'Monthly'], ['Quarterly', 'Quarterly'], ['Half-yearly', 'Half-yearly'], ['Yearly', 'Yearly']]
                       : field === 'calculationMode'
-                        ? [['Reducing balance', 'Reducing balance'], ['Flat rate', 'Flat rate']]
+                        ? [['Principal Outstanding', 'Principal Outstanding'], ['Principal Total', 'Principal Total']]
                         : null;
-                  const numeric = ['emi', 'minTenure', 'maxTenure', 'minAmount', 'maxAmount', 'penalty', 'penaltyPercent'].includes(field);
+                  const numeric = ['minTenure', 'maxTenure', 'minAmount', 'maxAmount', 'penaltyPercent'].includes(field);
                   const wide = ['productName', 'interestFrequency', 'calculationMode'].includes(field);
                   return (
-                    <label className={`pm-field${wide ? ' pm-wide' : ''}${field === 'productName' ? ' pm-name' : ''}`} key={field} htmlFor={`pm-${field}`}>
-                      <span>{label} <em aria-hidden="true">*</em></span>
+                    <div className={`pm-field${wide ? ' pm-wide' : ''}${field === 'productName' ? ' pm-name' : ''}`} key={field}>
+                      <label htmlFor={`pm-${field}`}><span>{label} <em aria-hidden="true">*</em></span></label>
                       {choices ? (
-                        <select id={`pm-${field}`} value={form[field]} onChange={(event) => change(field, event.target.value)} aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined}>
+                        <select id={`pm-${field}`} aria-label={label} value={form[field]} onChange={(event) => change(field, event.target.value)} aria-required="true" aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined}>
                           <option value="">Select {label.toLowerCase()}</option>
                           {choices.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
                         </select>
+                      ) : ['minTenure', 'maxTenure'].includes(field) ? (
+                        <div className="pm-tenure-control">
+                          <input id={`pm-${field}`} name={field} aria-label={label} value={form[field]} onChange={(event) => change(field, event.target.value)} type="number" min="1" max={form[`${field}Unit`] === 'Years' ? '40' : '480'} step="1" inputMode="numeric" autoComplete="off" aria-required="true" aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined} />
+                          <select id={`pm-${field}Unit`} aria-label={`${label} unit`} value={form[`${field}Unit`]} onChange={(event) => change(`${field}Unit`, event.target.value)}>
+                            <option value="Months">Months</option><option value="Years">Years</option>
+                          </select>
+                        </div>
                       ) : (
-                        <input id={`pm-${field}`} name={field} value={form[field]} onChange={(event) => change(field, event.target.value)} type={numeric ? 'number' : 'text'} min={numeric ? '0' : undefined} step={['minTenure', 'maxTenure'].includes(field) ? '1' : '0.01'} max={field === 'penaltyPercent' ? '100' : undefined} maxLength={!numeric ? (field === 'productCode' ? 20 : 100) : undefined} inputMode={numeric ? 'decimal' : undefined} autoComplete="off" aria-required="true" aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined} />
+                        <input id={`pm-${field}`} name={field} value={form[field]} onChange={(event) => change(field, event.target.value)} type={numeric ? 'number' : 'text'} min={numeric ? '0' : undefined} step="0.01" max={field === 'penaltyPercent' ? '100' : undefined} maxLength={!numeric ? (field === 'productCode' ? 20 : 100) : undefined} inputMode={numeric ? 'decimal' : undefined} autoComplete="off" aria-required="true" aria-invalid={Boolean(errors[field])} aria-describedby={errors[field] ? `pm-${field}-error` : undefined} />
                       )}
                       {errors[field] && <small className="pm-field-error" id={`pm-${field}-error`}>{errors[field]}</small>}
-                    </label>
+                    </div>
                   );
                 })}
               </div>
@@ -247,7 +307,14 @@ export default function ProductManagementPage() {
         <div className="pm-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDialog(null); }}>
           <section className="pm-dialog" role="dialog" aria-modal="true" aria-labelledby="pm-view-title">
             <header className="pm-dialog-head"><div><h2 id="pm-view-title">{dialog.product.productName}</h2><p>Product details</p></div><button type="button" className="pm-close" onClick={() => setDialog(null)} aria-label="Close product details"><X size={18} /></button></header>
-            <div className="pm-detail">{fieldList.map(([field, label]) => <div className="pm-detail-item" key={field}><span>{label}</span><strong>{dialog.product[field] || '—'}{field === 'penaltyPercent' ? '%' : ''}{['minTenure', 'maxTenure'].includes(field) ? ' months' : ''}</strong></div>)}</div>
+            <div className="pm-detail">{fieldList.filter(([field]) => (field !== 'emiType' || normalizeYesNo(dialog.product.emi) === 'Yes') && (field !== 'penaltyPercent' || normalizeYesNo(dialog.product.penalty) === 'Yes')).map(([field, label]) => {
+              const value = ['emi', 'penalty'].includes(field) ? normalizeYesNo(dialog.product[field])
+                : field === 'minTenure' ? formatTenure(dialog.product.minTenure, dialog.product.minTenureUnit)
+                  : field === 'maxTenure' ? formatTenure(dialog.product.maxTenure, dialog.product.maxTenureUnit)
+                    : field === 'penaltyPercent' ? `${dialog.product[field] || '—'}%`
+                      : dialog.product[field] || '—';
+              return <div className="pm-detail-item" key={field}><span>{label}</span><strong>{value || '—'}</strong></div>;
+            })}</div>
             <footer className="pm-dialog-actions"><button className="pm-btn" type="button" onClick={() => setDialog(null)}>Close</button></footer>
           </section>
         </div>

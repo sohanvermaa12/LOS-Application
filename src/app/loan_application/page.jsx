@@ -1,4 +1,4 @@
-
+﻿
 'use client';
 
 import { useState } from 'react';
@@ -20,12 +20,12 @@ import {
 import AppShell from '../../components/AppShell';
 
 const wizardSteps = [
-  { id: 'personal', label: 'Personal Details', title: 'Loan Application - Personal Details', icon: UserIcon },
-  { id: 'address', label: 'Address Details', title: 'Loan Application - Address Details', icon: Home },
-  { id: 'employment', label: 'Employment info', title: 'Loan Application - Employment Information', icon: Briefcase },
-  { id: 'income', label: 'Income Detail', title: 'Loan Application - Income Information', icon: Wallet },
-  { id: 'documents', label: 'Documents', title: 'Loan Application - Document Details', icon: FileText },
-  { id: 'loan', label: 'Loan Details', title: 'Loan Application - Loan Details', icon: Landmark }
+  { id: 'personal', label: 'Personal Details', title: 'Individual Customer Onboarding', icon: UserIcon },
+  { id: 'address', label: 'Address Details', title: 'Individual Customer Onboarding', icon: Home },
+  { id: 'employment', label: 'Employment info', title: 'Individual Customer Onboarding', icon: Briefcase },
+  { id: 'income', label: 'Income Details', title: 'Individual Customer Onboarding', icon: Wallet },
+  { id: 'documents', label: 'Documents', title: 'Individual Customer Onboarding', icon: FileText },
+  { id: 'loan', label: 'Loan Details', title: 'Individual Customer Onboarding', icon: Landmark }
 ];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,7 +34,7 @@ const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const AADHAAR_REGEX = /^\d{12}$/;
 const PIN_REGEX = /^\d{6}$/;
 const CKYC_REGEX = /^\d{14}$/;
-const NAME_REGEX = /^[A-Za-z]+(?: [A-Za-z]+)*$/;
+const NAME_REGEX = /^[A-Za-z][A-Za-z .'-]*$/;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_FILE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
 const PERSON_NAME_FIELDS = new Set([
@@ -65,7 +65,7 @@ const sanitizeInput = (key, value) => {
   if (typeof value !== 'string') return value;
 
   if (PERSON_NAME_FIELDS.has(key)) {
-    return value.replace(/[^A-Za-z ]/g, '').replace(/ {2,}/g, ' ');
+    return value.replace(/[^A-Za-z .'-]/g, '').replace(/ {2,}/g, ' ');
   }
 
   if (DIGIT_FIELDS.has(key)) {
@@ -104,12 +104,39 @@ const createPreviousEmployment = () => ({
   dateOfRelieving: ''
 });
 
-const createDocument = (name) => ({
+const createDocument = (name, required = false) => ({
   name,
+  required,
   file: null,
   expiryDate: '',
   remarks: ''
 });
+
+const documentTemplates = {
+  Retail: [
+    'PAN Card',
+    'Identity Proof (Aadhaar / Passport / Voter ID)',
+    'Address Proof',
+    'Passport-size Photograph',
+    'Recent Bank Statements (6 months)',
+    'Income Proof (Salary Slips / ITR)'
+  ],
+  Corporate: [
+    'Company PAN Card',
+    'Certificate of Incorporation / Registration',
+    'Memorandum and Articles of Association / Partnership Deed',
+    'Board Resolution / Authorised Signatory Proof',
+    'GST Registration Certificate',
+    'Registered Business Address Proof',
+    'KYC Documents for Directors / Partners',
+    'Audited Financial Statements (3 years)',
+    'Income Tax Returns (3 years)',
+    'Bank Statements (12 months)'
+  ]
+};
+
+const createDocuments = (category) =>
+  documentTemplates[category].map((name) => createDocument(name, true));
 
 const createTaxReturns = () => {
   const now = new Date();
@@ -127,8 +154,6 @@ const createTaxReturns = () => {
 
 const createInitialForm = () => ({
   leadId: '',
-  customerNumber: '',
-  title: '',
   panCard: '',
   fullName: '',
   middleName: '',
@@ -146,17 +171,16 @@ const createInitialForm = () => ({
   mobileNo: '',
   occupation: '',
   alternateContact: '',
-  aadhaarAddressMatch: '',
   residentialStatus: '',
   residentialType: '',
   flatBuildingName: '',
   streetRoad: '',
   landMark: '',
-  permanentAddress: '',
   city: '',
   state: '',
   pinCode: '',
   employmentType: '',
+  loanCategory: 'Retail',
   designation: '',
   employerName: '',
   dateOfJoining: '',
@@ -174,12 +198,7 @@ const createInitialForm = () => ({
   salaryCertificate: null,
   formNo16: null,
   taxReturns: createTaxReturns(),
-  documents: [
-    createDocument('PAN Card'),
-    createDocument('Aadhaar Card'),
-    createDocument('Salary Certificate'),
-    createDocument('Bank Statement')
-  ],
+  documents: createDocuments('Retail'),
   loanHistory: []
 });
 
@@ -295,10 +314,6 @@ const validateStep = (stepIndex, values) => {
   };
 
   if (stepIndex === 0) {
-    required('title', values.title, 'Select a title.');
-    if (values.title && !['Mr.', 'Mrs.', 'Miss'].includes(values.title)) {
-      errors.title = 'Select a valid title.';
-    }
     required('fullName', values.fullName, 'First name is required.');
     required('lastName', values.lastName, 'Last name is required.');
     [
@@ -319,6 +334,8 @@ const validateStep = (stepIndex, values) => {
       errors.dob = 'Enter a valid date of birth.';
     } else if (isFutureDate(values.dob)) {
       errors.dob = 'Date of birth cannot be in the future.';
+    } else if (values.dob && getAge(values.dob) && Number(getAge(values.dob)) < 18) {
+      errors.dob = 'Applicant must be at least 18 years old.';
     }
 
     required('gender', values.gender, 'Select a gender.');
@@ -369,20 +386,12 @@ const validateStep = (stepIndex, values) => {
 
   if (stepIndex === 1) {
     required(
-      'residentialStatus',
-      values.residentialStatus,
-      'Select a residential status.'
-    );
-    required(
       'residentialType',
       values.residentialType,
       'Select a residential type.'
     );
-    required(
-      'flatBuildingName',
-      values.flatBuildingName,
-      'Flat / building name is required.'
-    );
+    required('residentialStatus', values.residentialStatus, 'Select a residential status.');
+    required('flatBuildingName', values.flatBuildingName, 'Flat / building name is required.');
     required('streetRoad', values.streetRoad, 'Street / road is required.');
     required('city', values.city, 'City is required.');
     required('state', values.state, 'State is required.');
@@ -391,7 +400,7 @@ const validateStep = (stepIndex, values) => {
     if (values.pinCode && !PIN_REGEX.test(values.pinCode)) {
       errors.pinCode = 'PIN code must contain 6 digits.';
     }
-    ['flatBuildingName', 'streetRoad', 'landMark', 'permanentAddress', 'city'].forEach((field) => {
+    ['flatBuildingName', 'streetRoad', 'landMark', 'city'].forEach((field) => {
       if (values[field] && !/^[A-Za-z0-9 .,'#/-]+$/.test(values[field])) {
         errors[field] = 'Use letters, numbers, spaces, and common address punctuation only.';
       }
@@ -404,12 +413,13 @@ const validateStep = (stepIndex, values) => {
       values.employmentType,
       'Select an employment type.'
     );
-    required('designation', values.designation, 'Designation is required.');
-    required('employerName', values.employerName, 'Employer name is required.');
+    const selfEmployed = values.employmentType === 'Self Employed';
+    required('designation', values.designation, `${selfEmployed ? 'Nature of business / profession' : 'Designation'} is required.`);
+    required('employerName', values.employerName, `${selfEmployed ? 'Business / trade name' : 'Employer name'} is required.`);
     required(
       'dateOfJoining',
       values.dateOfJoining,
-      'Date of joining is required.'
+      `${selfEmployed ? 'Business start date' : 'Date of joining'} is required.`
     );
 
     if (values.dateOfJoining && !isValidDate(values.dateOfJoining)) {
@@ -418,11 +428,8 @@ const validateStep = (stepIndex, values) => {
       errors.dateOfJoining = 'Date of joining cannot be in the future.';
     }
 
-    required(
-      'qualification',
-      values.qualification,
-      'Qualification is required.'
-    );
+    required('qualification', values.qualification, 'Qualification is required.');
+    required('location', values.location, `${selfEmployed ? 'Business location' : 'Employer location'} is required.`);
     if (values.employerName && !/^[A-Za-z0-9 .,'&()/-]+$/.test(values.employerName)) {
       errors.employerName = 'Employer name contains unsupported characters.';
     }
@@ -437,7 +444,7 @@ const validateStep = (stepIndex, values) => {
       errors.empEmailId = 'Enter a valid employee email address.';
     }
 
-    if (values.dateOfRetirement) {
+    if (!selfEmployed && values.dateOfRetirement) {
       if (!isValidDate(values.dateOfRetirement)) {
         errors.dateOfRetirement = 'Enter a valid retirement date.';
       } else if (
@@ -570,6 +577,10 @@ const validateStep = (stepIndex, values) => {
 
   if (stepIndex === 4) {
     values.documents.forEach((document, index) => {
+      required(`documents.${index}.name`, document.name, 'Document name is required.');
+      if (document.required && !document.file) {
+        errors[`documents.${index}.file`] = `${document.name || 'This document'} is required.`;
+      }
       if (document.name && !/^[A-Za-z0-9 .,'&()/-]+$/.test(document.name)) {
         errors[`documents.${index}.name`] = 'Document name contains unsupported characters.';
       }
@@ -585,6 +596,8 @@ const validateStep = (stepIndex, values) => {
       if (document.expiryDate && !isValidDate(document.expiryDate)) {
         errors[`documents.${index}.expiryDate`] =
           'Enter a valid expiry date.';
+      } else if (document.expiryDate && document.expiryDate < new Date().toISOString().slice(0, 10)) {
+        errors[`documents.${index}.expiryDate`] = 'Document expiry date cannot be in the past.';
       }
     });
   }
@@ -804,15 +817,24 @@ export default function LoanApplicationPage() {
 
   const updateField = (field, value) => {
     const sanitizedValue = sanitizeInput(field, value);
+    const employmentReset = field === 'employmentType' && value !== form.employmentType
+      ? {
+        designation: '', employerName: '', dateOfJoining: '', qualification: '',
+        empEmailId: '', location: '', dateOfRetirement: '', appointmentLetter: null,
+        previousEmployment: []
+      }
+      : {};
     const nextForm = {
       ...form,
       [field]: sanitizedValue,
+      ...employmentReset,
       ...(field === 'dob' ? { age: getAge(sanitizedValue) } : {})
     };
 
     setForm((previous) => ({
       ...previous,
       [field]: sanitizedValue,
+      ...employmentReset,
       ...(field === 'dob' ? { age: getAge(sanitizedValue) } : {})
     }));
 
@@ -1027,7 +1049,7 @@ export default function LoanApplicationPage() {
   };
 
   return (
-    <AppShell title="Loan Application">
+    <AppShell title="Individual Customer Onboarding">
       <div className="loan-application-shell">
         <div className="loan-application-card">
           <div className="loan-application-header">
@@ -1059,7 +1081,7 @@ export default function LoanApplicationPage() {
 
           {submissionSuccess && (
             <div className="loan-form-success" role="status">
-              <strong>Loan Application Form Submitted Successfully!</strong>
+              <strong>Individual Customer Onboarding submitted successfully.</strong>
               {/* <span>This is a frontend-only confirmation; no server submission has occurred.</span> */}
             </div>
           )}
@@ -1078,21 +1100,6 @@ export default function LoanApplicationPage() {
                 />
 
                 <Field
-                  label="Customer Number"
-                  value={form.customerNumber}
-                  onChange={(value) => updateField('customerNumber', value)}
-                  placeholder="Enter Customer Number"
-                />
-
-                <SelectField
-                  label="Customer Type *"
-                  value={form.customerType}
-                  onChange={(value) => updateField('customerType', value)}
-                  options={['Individual', 'Non-Individual']}
-                  error={currentStepErrors.customerType}
-                />
-
-                <Field
                   label="PAN Card *"
                   value={form.panCard}
                   onChange={(value) =>
@@ -1101,43 +1108,10 @@ export default function LoanApplicationPage() {
                   placeholder="ABCDE1234F"
                   maxLength={10}
                   error={currentStepErrors.panCard}
-                >
-                  <div className="verification-input">
-                    <input
-                      value={form.panCard}
-                      onChange={(event) =>
-                        updateField(
-                          'panCard',
-                          normalizePan(event.target.value)
-                        )
-                      }
-                      placeholder="ABCDE1234F"
-                      maxLength={10}
-                      aria-label="PAN Card"
-                      aria-invalid={Boolean(currentStepErrors.panCard)}
-                    />
-                    <button
-                      type="button"
-                      className="loan-inline-button"
-                      disabled
-                      title="PAN verification service is not configured"
-                    >
-                      Verify
-                    </button>
-                  </div>
-                </Field>
+                />
               </div>
 
-              {/* Title and name fields displayed in one row */}
-              <div className="field-grid name-four-col">
-                <SelectField
-                  label="Title *"
-                  value={form.title}
-                  onChange={(value) => updateField('title', value)}
-                  options={['Mr.', 'Mrs.', 'Miss']}
-                  error={currentStepErrors.title}
-                />
-
+                <div className="field-grid name-three-col">
                 <Field
                   label="First Name *"
                   value={form.fullName}
@@ -1182,12 +1156,36 @@ export default function LoanApplicationPage() {
                 />
 
                 <Field
+                  label="Father's / Husband's Name *"
+                  value={form.fatherName}
+                  onChange={(value) => updateField('fatherName', value)}
+                  placeholder="Enter Father's / Husband's Name"
+                  error={currentStepErrors.fatherName}
+                />
+
+                <Field
+                  label="Mother's Name *"
+                  value={form.motherName}
+                  onChange={(value) => updateField('motherName', value)}
+                  placeholder="Enter Mother's Name"
+                  error={currentStepErrors.motherName}
+                />
+
+                <Field
                   label="Email ID *"
                   type="email"
                   value={form.email}
                   onChange={(value) => updateField('email', value)}
                   placeholder="Enter Email Address"
                   error={currentStepErrors.email}
+                />
+
+                <SelectField
+                  label="Customer Type *"
+                  value={form.customerType}
+                  onChange={(value) => updateField('customerType', value)}
+                  options={['Individual', 'Non-Individual']}
+                  error={currentStepErrors.customerType}
                 />
 
                 <Field
@@ -1203,41 +1201,34 @@ export default function LoanApplicationPage() {
                   inputMode="numeric"
                   maxLength={12}
                   error={currentStepErrors.aadhaarNumber}
-                >
-                  <div className="verification-input">
-                    <input
-                      value={form.aadhaarNumber}
-                      onChange={(event) =>
-                        updateField(
-                          'aadhaarNumber',
-                          event.target.value.replace(/\D/g, '').slice(0, 12)
-                        )
-                      }
-                      placeholder="Enter 12-digit Aadhaar Number"
-                      inputMode="numeric"
-                      maxLength={12}
-                      aria-label="Aadhaar Card Number"
-                      aria-invalid={Boolean(
-                        currentStepErrors.aadhaarNumber
-                      )}
-                    />
-                    <button
-                      type="button"
-                      className="loan-inline-button"
-                      disabled
-                      title="Aadhaar verification service is not configured"
-                    >
-                      Verify
-                    </button>
-                  </div>
-                </Field>
+                />
 
                 <Field
                   label="CKYC Registration Number"
                   value={form.kycRegn}
                   onChange={(value) => updateField('kycRegn', value)}
                   placeholder="Enter CKYC Registration Number"
+                  error={currentStepErrors.kycRegn}
                 />
+
+                <label className="field-block compact">
+                  <span>Gender *</span>
+                  <div className="radio-group">
+                    {['Male', 'Female', 'Other'].map((option) => (
+                      <label key={option} className="radio-option">
+                        <input
+                          type="radio"
+                          name="gender"
+                          checked={form.gender === option}
+                          onChange={() => updateField('gender', option)}
+                          aria-invalid={Boolean(currentStepErrors.gender)}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <FieldError message={currentStepErrors.gender} />
+                </label>
 
                 <Field
                   label="Mobile Number *"
@@ -1279,24 +1270,6 @@ export default function LoanApplicationPage() {
 
               <div className="field-grid two-col">
                 <label className="field-block compact">
-                  <span>Gender *</span>
-                  <div className="radio-group">
-                    {['Male', 'Female', 'Other'].map((option) => (
-                      <label key={option} className="radio-option">
-                        <input
-                          type="radio"
-                          name="gender"
-                          checked={form.gender === option}
-                          onChange={() => updateField('gender', option)}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <FieldError message={currentStepErrors.gender} />
-                </label>
-
-                <label className="field-block compact">
                   <span>Marital Status</span>
                   <div className="radio-group">
                     {['Married', 'Unmarried', 'Widowed', 'Divorced'].map(
@@ -1318,26 +1291,6 @@ export default function LoanApplicationPage() {
                 </label>
               </div>
 
-              <div className="loan-form-section-inner">
-                <h3>Parent Information</h3>
-                <div className="field-grid two-col">
-                  <Field
-                    label="Father's / Husband's Name *"
-                    value={form.fatherName}
-                    onChange={(value) => updateField('fatherName', value)}
-                    placeholder="Enter Father's / Husband's Name"
-                    error={currentStepErrors.fatherName}
-                  />
-
-                  <Field
-                    label="Mother's Name *"
-                    value={form.motherName}
-                    onChange={(value) => updateField('motherName', value)}
-                    placeholder="Enter Mother's Name"
-                    error={currentStepErrors.motherName}
-                  />
-                </div>
-              </div>
             </div>
           )}
 
@@ -1345,27 +1298,6 @@ export default function LoanApplicationPage() {
           {currentStep === 1 && (
             <div className="loan-form-section">
               <h2>Address Details</h2>
-
-              <div className="field-grid inline-choice">
-                <label className="field-block compact">
-                  <span>Address as per Aadhaar</span>
-                  <div className="radio-group">
-                    {['Yes', 'No'].map((option) => (
-                      <label key={option} className="radio-option">
-                        <input
-                          type="radio"
-                          name="aadhaarAddressMatch"
-                          checked={form.aadhaarAddressMatch === option}
-                          onChange={() =>
-                            updateField('aadhaarAddressMatch', option)
-                          }
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                </label>
-              </div>
 
               <div className="field-grid two-col">
                 <SelectField
@@ -1472,14 +1404,6 @@ export default function LoanApplicationPage() {
                   error={currentStepErrors.pinCode}
                 />
 
-                <Field
-                  label="Permanent Address (if different)"
-                  value={form.permanentAddress}
-                  onChange={(value) =>
-                    updateField('permanentAddress', value)
-                  }
-                  placeholder="Enter Permanent Address"
-                />
               </div>
             </div>
           )}
@@ -1496,32 +1420,29 @@ export default function LoanApplicationPage() {
                   onChange={(value) => updateField('employmentType', value)}
                   options={[
                     'Salaried',
-                    'Self Employed',
-                    'Contract',
-                    'Temporary',
-                    'Government'
+                    'Self Employed'
                   ]}
                   error={currentStepErrors.employmentType}
                 />
 
                 <Field
-                  label="Designation *"
+                  label={`${form.employmentType === 'Self Employed' ? 'Nature of Business / Profession' : 'Designation'} *`}
                   value={form.designation}
                   onChange={(value) => updateField('designation', value)}
-                  placeholder="Enter Designation"
+                  placeholder={form.employmentType === 'Self Employed' ? 'Enter Nature of Business / Profession' : 'Enter Designation'}
                   error={currentStepErrors.designation}
                 />
 
                 <Field
-                  label="Employer Name *"
+                  label={`${form.employmentType === 'Self Employed' ? 'Business / Trade Name' : 'Employer Name'} *`}
                   value={form.employerName}
                   onChange={(value) => updateField('employerName', value)}
-                  placeholder="Enter Employer Name"
+                  placeholder={form.employmentType === 'Self Employed' ? 'Enter Business / Trade Name' : 'Enter Employer Name'}
                   error={currentStepErrors.employerName}
                 />
 
                 <Field
-                  label="Date of Joining *"
+                  label={`${form.employmentType === 'Self Employed' ? 'Business Start Date' : 'Date of Joining'} *`}
                   type="date"
                   value={form.dateOfJoining}
                   onChange={(value) => updateField('dateOfJoining', value)}
@@ -1538,7 +1459,7 @@ export default function LoanApplicationPage() {
                 />
 
                 <Field
-                  label="Employee Email ID"
+                  label={form.employmentType === 'Self Employed' ? 'Business Email ID' : 'Employee Email ID'}
                   type="email"
                   value={form.empEmailId}
                   onChange={(value) => updateField('empEmailId', value)}
@@ -1547,30 +1468,33 @@ export default function LoanApplicationPage() {
                 />
 
                 <Field
-                  label="Employer Location"
+                  label={form.employmentType === 'Self Employed' ? 'Business Location *' : 'Employer Location *'}
                   value={form.location}
                   onChange={(value) => updateField('location', value)}
-                  placeholder="Enter Employer Location"
+                  placeholder={form.employmentType === 'Self Employed' ? 'Enter Business Location' : 'Enter Employer Location'}
+                  error={currentStepErrors.location}
                 />
 
-                <Field
-                  label="Date of Retirement"
-                  type="date"
-                  value={form.dateOfRetirement}
-                  onChange={(value) => updateField('dateOfRetirement', value)}
-                  error={currentStepErrors.dateOfRetirement}
-                  min={form.dateOfJoining || undefined}
-                />
+                {form.employmentType !== 'Self Employed' && (
+                  <Field
+                    label="Date of Retirement"
+                    type="date"
+                    value={form.dateOfRetirement}
+                    onChange={(value) => updateField('dateOfRetirement', value)}
+                    error={currentStepErrors.dateOfRetirement}
+                    min={form.dateOfJoining || undefined}
+                  />
+                )}
 
                 <FileUpload
-                  label="Appointment Letter Upload"
+                  label={form.employmentType === 'Self Employed' ? 'Business Proof Upload' : 'Appointment Letter Upload'}
                   file={form.appointmentLetter}
                   onChange={(file) => updateFile('appointmentLetter', file)}
                   error={currentStepErrors.appointmentLetter}
                 />
               </div>
 
-              <div className="loan-data-table-wrap">
+              {form.employmentType !== 'Self Employed' && <div className="loan-data-table-wrap">
                 <h3>Previous Employment Details</h3>
 
                 <table className="loan-data-table">
@@ -1738,7 +1662,7 @@ export default function LoanApplicationPage() {
                 >
                   <Plus size={14} /> Add Previous Employment
                 </button>
-              </div>
+              </div>}
             </div>
           )}
 
@@ -1882,6 +1806,25 @@ export default function LoanApplicationPage() {
           {currentStep === 4 && (
             <div className="loan-form-section">
               <h2>Document Details</h2>
+              <div className="loan-doc-category">
+                <SelectField
+                  label="Loan Category *"
+                  value={form.loanCategory}
+                  onChange={(category) => {
+                    setForm((previous) => {
+                      const existingDocuments = new Map(previous.documents.map((document) => [document.name, document]));
+                      const requiredDocuments = documentTemplates[category].map((name) =>
+                        existingDocuments.get(name) || createDocument(name, true)
+                      );
+                      const additionalDocuments = previous.documents.filter((document) => !document.required);
+                      return { ...previous, loanCategory: category, documents: [...requiredDocuments, ...additionalDocuments] };
+                    });
+                    setValidationErrors((previous) => ({ ...previous, [4]: {} }));
+                  }}
+                  options={['Retail', 'Corporate']}
+                />
+                <p>Select the loan segment to load its standard mandatory document checklist.</p>
+              </div>
 
               <div className="loan-data-table-wrap">
                 <table className="loan-data-table">
@@ -1908,20 +1851,18 @@ export default function LoanApplicationPage() {
                           <td>{index + 1}</td>
 
                           <td>
-                            <TableInput
-                              label="Document name"
-                              value={row.name}
-                              onChange={(value) =>
-                                updateArrayItem(
-                                  'documents',
-                                  index,
-                                  'name',
-                                  value
-                                )
-                              }
-                              placeholder="Document Name"
-                              error={currentStepErrors[`documents.${index}.name`]}
-                            />
+                            {row.required ? (
+                              <strong className="loan-standard-document">{row.name}</strong>
+                            ) : (
+                              <TableInput
+                                label="Document name"
+                                value={row.name}
+                                onChange={(value) => updateArrayItem('documents', index, 'name', value)}
+                                placeholder="Document Name"
+                                error={currentStepErrors[`documents.${index}.name`]}
+                              />
+                            )}
+                            {row.required && <span className="loan-doc-required">Required document</span>}
                           </td>
 
                           <td>
@@ -1930,6 +1871,7 @@ export default function LoanApplicationPage() {
                               <input
                                 type="file"
                                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                aria-required={row.required || undefined}
                                 onChange={(event) => {
                                   updateDocumentFile(
                                     index,
@@ -1938,7 +1880,7 @@ export default function LoanApplicationPage() {
                                   event.target.value = '';
                                 }}
                               />
-                              <span>{row.file?.name || 'Upload'}</span>
+                              <span>{row.file?.name || (row.required ? 'Upload required *' : 'Upload')}</span>
                             </label>
                             <FieldError message={fileError} />
                           </td>
@@ -2011,6 +1953,8 @@ export default function LoanApplicationPage() {
                                 type="button"
                                 className="loan-inline-button danger"
                                 onClick={() => removeDocument(index)}
+                                disabled={row.required}
+                                title={row.required ? 'Required document cannot be removed' : 'Remove document'}
                                 aria-label={`Delete ${row.name || 'document'}`}
                               >
                                 <Trash2 size={14} /> Delete
