@@ -1,0 +1,26 @@
+$kind: http-request
+name: "0.2 Verify 2FA OTP (Step 2: Access Token)"
+description: Exchanges tempSessionToken and OTP for a full multi-tenant JWT Bearer access token.
+url: "{{baseUrl}}/api/v1/auth/verify-otp"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "tempSessionToken": "{{tempSessionToken}}",
+      "otp": "{{password}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 200) {
+          var json = pm.response.json();
+          if (json.data && json.data.accessToken) {
+              pm.collectionVariables.set('accessToken', json.data.accessToken);
+              console.log('Saved accessToken for subsequent Lead API calls');
+          }
+      }
+    language: text/javascript
+order: 2000

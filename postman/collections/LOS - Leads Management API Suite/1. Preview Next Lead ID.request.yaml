@@ -1,0 +1,7 @@
+$kind: http-request
+description: "Generates and previews the next sequential Lead ID (format: LDYYYYMM####) without saving."
+url: "{{baseUrl}}/api/v1/leads/next-id"
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+order: 2000

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { getLoanProducts } from '../services/loanProducts';
 import { getUsers } from '../services/user_management';
+import { createLead } from '../services/lead_management';
 
 const verhoeffMultiplication = [
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -270,6 +271,7 @@ const newLeadInlineStyles = `
 .lead-modal-backdrop .lead-assignment-heading{grid-column:1/-1}
 .lead-modal-backdrop .lead-assignment-heading h4{margin:0;color:#315356;font-size:12px}
 .lead-modal-backdrop .lead-assignment-heading p,.lead-modal-backdrop .lead-assignment-hint{margin:4px 0 0;color:#718284;font-size:10px;line-height:1.45}
+.lead-modal-backdrop .lead-submit-error{margin:0 0 14px;padding:10px 12px;border:1px solid #efcaca;border-radius:5px;background:#fff5f5;color:#9d3030;font-size:12px;line-height:1.45}
 .lead-modal-backdrop .lead-modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:auto;padding-top:18px}
 .lead-modal-backdrop .lead-save-btn,.lead-modal-backdrop .lead-cancel-btn,.lead-modal-backdrop .lead-previous-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:96px;min-height:37px;padding:0 12px;border:1px solid #d2dfdc;border-radius:5px;background:#fff;color:#52696b;font-size:11px;font-weight:700;cursor:pointer}
 .lead-modal-backdrop .lead-save-btn{border-color:#177e7a;background:#177e7a;color:#fff}
@@ -289,6 +291,8 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
   const [loanProducts, setLoanProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [assignmentUsers, setAssignmentUsers] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
 
   useEffect(() => {
     if (!open) return undefined;
@@ -299,6 +303,8 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     setMobileMessage('');
     setAadhaarMessage('');
     setAadhaarValidated(false);
+    setSubmissionError('');
+    setIsSubmitting(false);
     setAssignmentUsers([]);
     let isActive = true;
     try {
@@ -398,13 +404,16 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     if (name === 'mobileNumber') setMobileMessage('');
   };
 
-  const resetAndClose = () => {
+  const resetAndClose = (force = false) => {
+    if (isSubmitting && !force) return;
     setForm(initialForm);
     setActiveStep(0);
     setOtpMessage('');
     setMobileMessage('');
     setAadhaarMessage('');
     setAadhaarValidated(false);
+    setSubmissionError('');
+    setIsSubmitting(false);
     onClose();
   };
 
@@ -890,19 +899,21 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
           Next <ChevronRight size={16} />
         </button>
       ) : (
-        <button type="submit" className="lead-save-btn" style={{ minWidth: '120px' }}>
-        {initialData ? 'Save Changes' : 'Submit'}
+        <button type="submit" className="lead-save-btn" disabled={isSubmitting} style={{ minWidth: '120px' }}>
+        {isSubmitting ? 'Submitting...' : initialData ? 'Save Changes' : 'Submit'}
         </button>
       )}
 
-      <button type="button" className="lead-cancel-btn" onClick={resetAndClose} style={{ minWidth: '120px' }}>
+      <button type="button" className="lead-cancel-btn" onClick={() => resetAndClose()} disabled={isSubmitting} style={{ minWidth: '120px' }}>
         Cancel
       </button>
     </div>
   );
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    if (isSubmitting) return;
+    setSubmissionError('');
 
     const requiredFields = Array.from(document.querySelectorAll('.lead-step-panel input[required], .lead-step-panel select[required]'));
     const missing = requiredFields.filter((field) => !field.disabled && (!field.value || !field.value.toString().trim()));
@@ -929,13 +940,82 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     };
     delete leadData.otpNumber;
     delete leadData.otpSent;
-    if (initialData) onUpdate(leadData);
-    else onCreate(leadData);
-    resetAndClose();
+
+    if (initialData) {
+      onUpdate(leadData);
+      resetAndClose();
+      return;
+    }
+
+    const numericValue = (value) => value === '' || value === null || value === undefined ? null : Number(value);
+    const requestData = {
+      customerName,
+      mobileNumber: form.mobileNumber,
+      dateOfBirth: form.dateOfBirth,
+      age: numericValue(computedAge),
+      customerType: computedCustomerType,
+      panNumber: form.panCard,
+      panValidationStatus: 'PENDING',
+      aadhaarNumber: form.aadhaarCard,
+      aadhaarValidationStatus: 'PENDING',
+      residentialStatus: form.residentialStatus || null,
+      gender: form.gender,
+      maritalStatus: form.maritalStatus,
+      passportNumber: form.passportNo || null,
+      passportExpiryDate: form.passportExpiryDate || null,
+      emailAddress: form.email || null,
+      pinCode: null,
+      numberOfDependents: numericValue(form.dependents),
+      loanProductType: form.loanProductType,
+      loanAmount: numericValue(form.loanAmount),
+      purposeOfLoan: form.loanPurpose,
+      tenure: numericValue(tenureMonths),
+      numberOfInstalments: numericValue(computedInstalments),
+      emi: numericValue(computedMonthlyEmi),
+      interestRate: numericValue(form.interestRate),
+      totalInterest: numericValue(computedTotalInterest),
+      securityAmount: numericValue(form.securityAmount) ?? 0,
+      downPaymentCollateral: numericValue(form.collateral),
+      employmentType: form.employmentType === 'Employee' ? 'Salaried' : form.employmentType,
+      annualIncome: numericValue(form.annualIncome),
+      designation: form.designation || null,
+      employerName: form.employerName || null,
+      location: form.location || null,
+      state: form.state || null,
+      takeHomePay: numericValue(form.takeHomePay),
+      deductionsOrEmisPayable: numericValue(form.deductions),
+      bankName: form.bankName || null,
+      accountNumber: form.primaryBankAccount || null,
+      accountStatementConsent: false,
+      cibilLiabilityCheck: null,
+      debtToIncomeRatio: null,
+      loanToValueRatio: null,
+      debtServiceCoverageRatio: null,
+      netDisposableIncome: null,
+      leadAcquisitionChannel: form.acquisitionChannel,
+      date: form.referralDate || todayInputDate,
+      sourcingAgentPartnerId: form.partnerId || null,
+      agentPartnerName: form.partnerName || null,
+      employeeId: form.employeeId || null,
+      employeeName: form.employeeName || null,
+    };
+
+    setIsSubmitting(true);
+    try {
+      const result = await createLead(requestData);
+      onCreate(leadData, result);
+      resetAndClose(true);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'Unable to create the lead. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="lead-modal-backdrop" onMouseDown={resetAndClose}>
+    <div className="lead-modal-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) resetAndClose();
+    }}>
       <style>{newLeadInlineStyles}</style>
       <div className="lead-modal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="lead-modal-header">
@@ -943,12 +1023,13 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
             <h2>{initialData ? `Edit Lead ${initialData.id}` : 'New Lead'}</h2>
             <p>{initialData ? 'Update the lead information, assignment, and status.' : 'Capture the applicant and loan requirements.'}</p>
           </div>
-          <button type="button" className="lead-modal-close" aria-label="Close form" onClick={resetAndClose}>
+          <button type="button" className="lead-modal-close" aria-label="Close form" onClick={() => resetAndClose()} disabled={isSubmitting}>
             <X size={18} />
           </button>
         </div>
 
         <form className="lead-form" onSubmit={handleSubmit}>
+          {submissionError ? <p className="lead-submit-error" role="alert">{submissionError}</p> : null}
           <div className="lead-step-layout">
             <nav className="lead-step-nav" aria-label="Lead form steps">
               {steps.map((step, index) => (

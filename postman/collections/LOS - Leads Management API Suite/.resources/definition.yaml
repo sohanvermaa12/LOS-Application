@@ -1,0 +1,9 @@
+$kind: collection
+description: Comprehensive, standalone Postman collection for LOS Lead Management. Includes automated Bank Admin login & 2FA OTP verification, multi-step Lead Capture across 4 sections (Personal, Loan, Income, Referral), Lead Retrieval, Assignment, Status Updates, CSV Bulk Import, and CSV Export.
+variables:
+  baseUrl: https://los-backend-355v.onrender.com
+  identifier: EMP-HDFC01-47AA80
+  password: Password@123
+  tempSessionToken: ""
+  accessToken: ""
+  leadId: LD2026100001

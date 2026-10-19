@@ -1,0 +1,7 @@
+$kind: http-request
+description: Fetches complete lead details by leadId.
+url: "{{baseUrl}}/api/v1/leads/{{leadId}}"
+method: GET
+headers:
+  Authorization: Bearer {{accessToken}}
+order: 4000

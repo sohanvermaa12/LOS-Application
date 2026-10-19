@@ -1,0 +1,72 @@
+$kind: http-request
+description: "Unified single REST endpoint saving all 4 sections (Personal, Loan, Income, Referral) in a single transaction. Automatically assigns next sequential leadId (format: LDYYYYMM####) and sets leadStatus = NEW."
+url: "{{baseUrl}}/api/v1/leads"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{accessToken}}
+body:
+  type: text
+  content: |-
+    {
+      "customerName": "Aarav Singhania",
+      "dateOfBirth": "1992-07-25",
+      "age": 34,
+      "customerType": "Individual",
+      "panNumber": "ABCDE1234F",
+      "panValidationStatus": "VERIFIED",
+      "aadhaarNumber": "123456789012",
+      "aadhaarValidationStatus": "VERIFIED",
+      "residentialStatus": "Resident",
+      "gender": "Male",
+      "maritalStatus": "Married",
+      "passportNumber": "P9876543",
+      "passportExpiryDate": "2032-05-19",
+      "emailAddress": "aarav.singhania@example.com",
+      "pinCode": "400001",
+      "numberOfDependents": 2,
+      "loanProductType": "Personal Loan",
+      "loanAmount": 1200000.0,
+      "purposeOfLoan": "Home Renovation",
+      "tenure": 36,
+      "numberOfInstalments": 36,
+      "emi": 40123.0,
+      "interestRate": 11.5,
+      "totalInterest": 244428.0,
+      "securityAmount": 0.0,
+      "downPaymentCollateral": "50000.00",
+      "employmentType": "Salaried",
+      "annualIncome": 1800000.0,
+      "designation": "Senior Engineer",
+      "employerName": "Infosys Technologies",
+      "location": "Mumbai",
+      "state": "Maharashtra",
+      "takeHomePay": 120000.0,
+      "deductionsOrEmisPayable": 15000.0,
+      "bankName": "HDFC Bank",
+      "accountNumber": "50100234567890",
+      "accountStatementConsent": true,
+      "cibilLiabilityCheck": "CLEAR",
+      "debtToIncomeRatio": 0.35,
+      "loanToValueRatio": 0.70,
+      "debtServiceCoverageRatio": 1.45,
+      "netDisposableIncome": 85000.0,
+      "leadAcquisitionChannel": "Website",
+      "date": "2026-10-17",
+      "sourcingAgentPartnerId": "AGT-555",
+      "agentPartnerName": "Apex Partners",
+      "employeeId": "EMP-HDFC-001",
+      "employeeName": "Bank Admin"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 201) {
+          var jsonData = pm.response.json();
+          if (jsonData.leadId) {
+              pm.collectionVariables.set('leadId', jsonData.leadId);
+              console.log('Saved leadId: ' + jsonData.leadId);
+          }
+      }
+    language: text/javascript
+order: 3000

@@ -4,7 +4,8 @@ import { ChevronLeft, ChevronRight, Eye, Pencil, Plus, Search, X } from 'lucide-
 import AppShell from '../../components/AppShell';
 import NewLead from '../../components/NewLead';
 import LeadDetails from '../../components/LeadDetails';
-import { getLeads, saveLeads } from '../../services/leadService';
+import { saveLeads } from '../../services/leadService';
+import { getAllLeads } from '../../services/lead_management';
 
 const leadTableColumns = [
   ['id', 'Lead ID'],
@@ -36,13 +37,44 @@ const statusKeys = {
   'On Hold': 'progress',
   Rejected: 'progress',
   Converted: 'qualified',
+  NEW: 'new',
+  PENDING: 'new',
+  IN_PROGRESS: 'progress',
+  CONTACTED: 'contacted',
+  QUALIFIED: 'qualified',
+  REJECTED: 'progress',
+  CONVERTED: 'qualified',
 };
 
 const LEADS_PER_PAGE = 5;
 
 const toIsoDate = (date) => {
-  const [day, month, year] = String(date || '').split('-');
+  const value = String(date || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+  const [day, month, year] = value.split('-');
   return year && month && day ? `${year}-${month}-${day}` : '';
+};
+
+const normalizeLeadRecord = (lead) => {
+  const nameParts = String(lead.customerName || lead.name || '').trim().split(/\s+/).filter(Boolean);
+  const apiDate = lead.date || lead.leadDate || lead.createdAt || '';
+  const dateMatch = String(apiDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  return {
+    ...lead,
+    id: lead.leadId || lead.id || lead._id || '',
+    firstName: lead.firstName || nameParts[0] || '',
+    lastName: lead.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''),
+    mobileNumber: lead.mobileNumber || lead.mobile || lead.phoneNumber || '',
+    assignedBy: lead.assignedBy || lead.createdBy || '',
+    assignedToName: lead.assignedToName || lead.assignedCheckerName || lead.assignedViewerName || '',
+    date: dateMatch ? `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}` : apiDate,
+    name: lead.customerName || lead.name || nameParts.join(' '),
+    status: lead.leadStatus || lead.status || 'New',
+    product: lead.loanProductType || lead.product || '',
+    amount: lead.loanAmount ?? lead.amount ?? '',
+    source: lead.leadAcquisitionChannel || lead.acquisitionChannel || lead.source || '',
+  };
 };
 
 const leadManagementStyles = `
@@ -83,6 +115,8 @@ const leadManagementStyles = `
 .lm-action{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:30px;padding:0 8px;border:1px solid #d8e3e1;border-radius:4px;background:#fff;color:#315d5b;font-size:10px;font-weight:700;cursor:pointer}
 .lm-action:hover{border-color:#a9cbc3;background:#f1f8f5}
 .lm-empty{padding:42px 18px!important;text-align:center!important;color:#718284!important}
+.lm-load-error{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding:11px 13px;border:1px solid #efcaca;border-radius:5px;background:#fff5f5;color:#9d3030;font-size:12px}
+.lm-load-error button{border:1px solid #d9aaaa;border-radius:4px;background:#fff;color:#8c3030;padding:6px 10px;font:inherit;font-weight:700;cursor:pointer}
 .lm-pagination{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 14px;border-top:1px solid #e8eeec;color:#718284;font-size:10px}
 .lm-pager{display:flex;align-items:center;gap:7px}
 .lm-pager button{display:grid;place-items:center;width:30px;height:30px;border:1px solid #d8e3e1;border-radius:4px;background:#fff;color:#456567;cursor:pointer}
@@ -94,6 +128,9 @@ const leadManagementStyles = `
 
 export default function LeadManagementPage() {
   const [leads, setLeads] = useState([]);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
   const [showNewLead, setShowNewLead] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [editingLead, setEditingLead] = useState(null);
@@ -105,18 +142,42 @@ export default function LeadManagementPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
+    let isActive = true;
+    setIsLoadingLeads(true);
+    setLoadError('');
+
+    getAllLeads()
+      .then((records) => {
+        if (isActive) setLeads(records.map(normalizeLeadRecord));
+      })
+      .catch((error) => {
+        if (isActive) {
+          setLoadError(error instanceof Error ? error.message : 'Unable to load leads.');
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingLeads(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [reloadKey]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, assignedToFilter, fromDate, toDate]);
 
-  const handleCreateLead = (form) => {
+  const handleCreateLead = (form, response) => {
     setLeads((current) => {
-      const nextId = Math.max(...current.map((lead) => Number(lead.id.replace(/\D/g, ''))), 0) + 1;
+      const nextId = Math.max(...current.map((lead) => Number(String(lead.id).replace(/\D/g, ''))), 0) + 1;
       const today = new Date();
       const date = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+      const leadId = response?.leadId || response?.data?.leadId || response?.id || `LD${String(nextId).padStart(6, '0')}`;
 
       return [{
         ...form,
-        id: `LD${String(nextId).padStart(6, '0')}`,
+        id: leadId,
         name: form.customerName,
         mobile: form.mobileNumber,
         date,
@@ -208,13 +269,17 @@ export default function LeadManagementPage() {
             {(searchInput || assignedToFilter !== 'All' || fromDate || toDate) && <button type="button" className="lm-reset" onClick={clearFilters}><X size={14} /> Clear filters</button>}
           </section>
 
+          {loadError ? <div className="lm-load-error" role="alert"><span>{loadError}</span><button type="button" onClick={() => setReloadKey((key) => key + 1)}>Retry</button></div> : null}
+
           <section className="lm-results" aria-label="Lead records">
             <div className="lm-results-meta"><strong>{filteredLeads.length} {filteredLeads.length === 1 ? 'lead' : 'leads'}</strong><span>Search covers lead ID, first and last name, mobile number, and assignee.</span></div>
             <div className="lm-table-wrap">
               <table className="lm-table">
                 <thead><tr>{leadTableColumns.map(([, label]) => <th key={label}>{label}</th>)}<th>Actions</th></tr></thead>
                 <tbody>
-                  {paginatedLeads.length ? paginatedLeads.map((lead) => (
+                  {isLoadingLeads ? <tr><td className="lm-empty" colSpan={leadTableColumns.length + 1}>Loading leads...</td></tr>
+                  : loadError ? <tr><td className="lm-empty" colSpan={leadTableColumns.length + 1}>Unable to load leads. Retry the request above.</td></tr>
+                  : paginatedLeads.length ? paginatedLeads.map((lead) => (
                     <tr key={lead.id}>
                       {leadTableColumns.map(([field]) => (
                         <td key={field} className={field === 'id' ? 'lm-id' : undefined}>
