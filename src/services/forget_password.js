@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://los-backend-355v.onrender.com";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://los-backend-at5n.onrender.com";
 
 export async function requestPasswordReset(credentials) {
 	const response = await fetch(`${API_BASE_URL}/api/v1/auth/forgot-password`, {
