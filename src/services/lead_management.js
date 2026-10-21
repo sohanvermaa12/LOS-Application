@@ -1,3 +1,10 @@
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'https://los-backend-at5n.onrender.com'
+).replace(/\/+$/, '');
+const API_V1_URL = /\/api\/v\d+$/i.test(API_BASE_URL)
+  ? API_BASE_URL
+  : `${API_BASE_URL}/api/v1`;
+
 function getRequestHeaders() {
   const storedAuthData = window.localStorage.getItem('authData');
   if (!storedAuthData) {
@@ -17,6 +24,7 @@ function getRequestHeaders() {
 
   return {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
     Authorization: `Bearer ${authData.accessToken}`,
   };
 }
@@ -49,7 +57,7 @@ async function requestLeads(path, options, defaultMessage) {
 
 export async function createLead(lead) {
   return requestLeads(
-    '/api/leads',
+    `${API_V1_URL}/leads`,
     { method: 'POST', body: JSON.stringify(lead) },
     'Unable to create lead',
   );
@@ -57,7 +65,7 @@ export async function createLead(lead) {
 
 export async function getAllLeads() {
   const result = await requestLeads(
-    '/api/leads',
+    `${API_V1_URL}/leads`,
     { method: 'GET', cache: 'no-store' },
     'Unable to load leads',
   );
@@ -85,7 +93,7 @@ export async function getLeadById(leadId) {
   if (!leadId) throw new Error('A lead ID is required to load lead details.');
 
   const result = await requestLeads(
-    `/api/leads/${encodeURIComponent(leadId)}`,
+    `${API_V1_URL}/leads/${encodeURIComponent(leadId)}`,
     { method: 'GET', cache: 'no-store' },
     'Unable to load lead details',
   );
@@ -102,7 +110,7 @@ export async function updateLead(leadId, updates) {
   if (!leadId) throw new Error('A lead ID is required to update the lead.');
 
   return requestLeads(
-    `/api/leads/${encodeURIComponent(leadId)}`,
+    `${API_V1_URL}/leads/${encodeURIComponent(leadId)}`,
     { method: 'PUT', body: JSON.stringify(updates) },
     'Unable to update lead',
   );
@@ -114,7 +122,7 @@ export async function assignLead(leadId, employeeId, assignedBy) {
   if (!assignedBy) throw new Error('Your employee ID is unavailable. Please sign in again.');
 
   return requestLeads(
-    `/api/leads/${encodeURIComponent(leadId)}/assign`,
+    `${API_V1_URL}/leads/${encodeURIComponent(leadId)}/assign`,
     {
       method: 'PUT',
       body: JSON.stringify({ employeeId, assignedBy }),
@@ -124,9 +132,12 @@ export async function assignLead(leadId, employeeId, assignedBy) {
 }
 
 export async function exportAllLeads() {
-  const response = await fetch('/api/leads/export', {
+  const response = await fetch(`${API_V1_URL}/leads/export`, {
     method: 'GET',
-    headers: getRequestHeaders(),
+    headers: {
+      ...getRequestHeaders(),
+      Accept: 'text/csv, application/octet-stream',
+    },
     cache: 'no-store',
   });
 
@@ -153,7 +164,7 @@ export async function importLeadsCsv(file, onProgress) {
 
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open('POST', '/api/leads/import');
+    request.open('POST', `${API_V1_URL}/leads/import`);
     request.setRequestHeader('Authorization', getRequestHeaders().Authorization);
 
     request.upload.addEventListener('progress', (event) => {
