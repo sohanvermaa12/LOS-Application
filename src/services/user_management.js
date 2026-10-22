@@ -1,63 +1,106 @@
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "https://los-backend-355.onrender.com"
+).replace(/\/+$/, "");
+
+export const USER_ORGANIZATION_ID = 17;
+export const USER_ORGANIZATION_CODE = "SBI01";
+
 function getHeaders() {
   const headers = { "Content-Type": "application/json" };
-  const storedAuthData = window.localStorage.getItem("authData");
+  const storedAuthData = typeof window === "undefined"
+    ? null
+    : window.localStorage.getItem("authData");
 
   if (storedAuthData) {
     let authData;
     try {
       authData = JSON.parse(storedAuthData);
     } catch {
-      throw new Error("Your session is invalid. Please sign in again.");
+      throw new Error("Authentication data is invalid. Please sign in again.");
     }
-    const accessToken = authData?.accessToken;
-    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+    if (typeof authData?.accessToken === "string" && authData.accessToken) {
+      headers.Authorization = `Bearer ${authData.accessToken}`;
+    }
   }
 
   return headers;
 }
 
-function getOrganizationId() {
-  const storedAuthData = window.localStorage.getItem("authData");
-  if (!storedAuthData) {
-    throw new Error("Your session is unavailable. Please sign in again.");
+function getServerErrorMessage(result) {
+  if (!result || typeof result !== "object") return "";
+  if (typeof result.message === "string" && result.message.trim()) return result.message;
+  if (typeof result.error === "string" && result.error.trim()) return result.error;
+
+  const details = result.errors || result.details;
+  if (Array.isArray(details)) {
+    return details
+      .map((item) => typeof item === "string" ? item : item?.message)
+      .filter((message) => typeof message === "string" && message.trim())
+      .join(" ");
   }
 
-  let authData;
-  try {
-    authData = JSON.parse(storedAuthData);
-  } catch {
-    throw new Error("Your session is invalid. Please sign in again.");
+  if (details && typeof details === "object") {
+    return Object.entries(details)
+      .flatMap(([field, messages]) => {
+        const values = Array.isArray(messages) ? messages : [messages];
+        return values
+          .filter((message) => typeof message === "string" && message.trim())
+          .map((message) => `${field}: ${message}`);
+      })
+      .join(" ");
   }
 
-  const user = authData?.user || authData?.profile || authData?.employee || {};
-  const organizationId =
-    authData?.organizationId ??
-    authData?.organization_id ??
-    user.organizationId ??
-    user.organization_id;
-
-  if (organizationId === undefined || organizationId === null || organizationId === "") {
-    throw new Error("Organization ID is missing from your session. Please sign in again.");
-  }
-
-  return organizationId;
+  return "";
 }
 
 async function request(path, options, defaultMessage) {
-  const response = await fetch(path, {
-    ...options,
-    headers: getHeaders(),
-  });
-
-  let result;
+  let response;
   try {
-    result = await response.json();
-  } catch {
-    throw new Error(defaultMessage);
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: { ...getHeaders(), ...options.headers },
+    });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error("Unable to reach the user service. Check your connection and try again.");
+    }
+    throw error;
+  }
+
+  let responseText;
+  try {
+    responseText = await response.text();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error("Unable to read the user service response. Please try again.");
+    }
+    throw error;
+  }
+
+  let result = null;
+
+  if (responseText) {
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      if (response.ok) {
+        throw new Error("The user service returned an unexpected response.");
+      }
+    }
+  }
+
+  if (response.ok && responseText && (!result || typeof result !== "object")) {
+    throw new Error("The user service returned an unexpected response.");
   }
 
   if (!response.ok || result?.success === false) {
-    throw new Error(result?.message || result?.error || defaultMessage);
+    const fallback = response.status >= 500
+      ? "The user service is temporarily unavailable. Please try again."
+      : response.status === 401 || response.status === 403
+        ? "You are not authorized to create this user. Please sign in again or contact an administrator."
+        : defaultMessage;
+    throw new Error(getServerErrorMessage(result) || fallback);
   }
 
   return result;
@@ -68,17 +111,17 @@ export async function getUsers(organizationId = getOrganizationId()) {
   return request(
     `/api/users?${query.toString()}`,
     { method: "GET" },
-    "Unable to load users",
+    "Unable to load users.",
   );
 }
 
 export async function createUser(user) {
   return request(
-    "/api/users",
+    "/api/v1/users",
     {
       method: "POST",
       body: JSON.stringify(user),
     },
-    "Unable to create user",
+    "Unable to create user.",
   );
 }

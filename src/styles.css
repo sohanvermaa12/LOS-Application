@@ -226,7 +226,7 @@
 @media (max-width: 600px){
   .loan-application-shell{padding:18px 14px 24px}
   .loan-step{font-size:10px}
-  .loan-step:not(:last-child)::after{width:18px}
+  .loan-step:not(:last-child)::after{width:18px  }
   .loan-step-text{display:none}
   .loan-form-section h2{font-size:22px}
   .loan-form-section h3{font-size:18px}
@@ -235,6 +235,38 @@
   .name-three-col{grid-template-columns:1fr}
   .review-row{display:grid;grid-template-columns:1fr;gap:4px}
   .review-row strong{text-align:left}
+}
+
+.loan-application-shell{margin-top:-22px;padding:0 24px 24px}
+.loan-application-shell>.page-header{margin-bottom:16px}
+.loan-application-card{padding-top:14px}
+.loan-stepper{gap:10px;padding:6px 0 4px;margin-bottom:16px}
+.loan-form-section{padding-top:4px}
+.loan-form-section h2{margin-bottom:14px;font-size:24px}
+.loan-form-section h3{margin:16px 0 12px;font-size:18px}
+.loan-form-section-inner{margin-top:12px;padding:10px 16px 14px}
+.loan-form-grid{gap:14px 18px}
+.loan-field{gap:6px;font-size:12px}
+.loan-field input,.loan-field select,.loan-field textarea{min-height:40px;padding:0 10px}
+.loan-field select{padding-right:30px}
+.borrower-information-heading{white-space:nowrap;font-size:clamp(15px,2vw,18px)!important;line-height:1.35}
+.loan-step-actions{padding-top:20px}
+.loan-delete-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(16,35,48,.48)}
+.loan-delete-dialog{width:min(100%,420px);padding:24px;border:1px solid #dfe9eb;border-radius:12px;background:#fff;box-shadow:0 18px 48px rgba(17,36,44,.2)}
+.loan-delete-dialog h2{margin:0 0 10px;color:#1d3b48;font-size:19px}
+.loan-delete-dialog p{margin:0;color:#526a74;font-size:14px;line-height:1.5}
+.loan-delete-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+.loan-delete-actions button{min-width:92px;min-height:38px;padding:0 14px;border-radius:7px;font-size:13px;font-weight:700}
+.loan-delete-cancel{border:1px solid #cddbd9;background:#fff;color:#315b62}
+.loan-delete-confirm{border:1px solid #c43d3d;background:#c43d3d;color:#fff}
+.loan-delete-actions button:focus-visible{outline:3px solid rgba(31,102,214,.35);outline-offset:2px}
+@media(max-width:600px){
+  .loan-application-shell{margin-top:-22px;padding:0 14px 24px}
+  .loan-application-shell>.page-header{margin-bottom:12px}
+  .loan-application-card{padding:12px 14px 20px}
+  .loan-form-section h2{font-size:22px}
+  .loan-form-section-inner{padding:8px 12px 12px}
+  .loan-delete-dialog{padding:20px}
 }
 
 .loan-data-table-wrap{max-width:100%;overflow-x:auto}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -16,13 +16,16 @@ import {
 } from 'lucide-react';
 import PageHeader from './PageHeader';
 import { saveEmployee, isEmpIdUnique, isUsernameUnique } from '../services/employeeService';
+import { createUser } from '../services/user_management';
 import {
   filterUserInput,
+  filterMobileInput,
   getMaxDateFor18YearsOld,
   calculateAge,
   isValidEmployeeName,
   isAtLeast18YearsOld,
   isValidMobile,
+  normalizeIndianMobile,
   isValidEmail,
   validatePasswordStrength
 } from '../utils/validation';
@@ -77,6 +80,8 @@ export default function UserForm({ mode = 'add', initialData = null }) {
   const [touched, setTouched] = useState({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const submittingRef = useRef(false);
 
   // Validate single field
   const validateField = (name, value, values = form) => {
@@ -102,39 +107,41 @@ export default function UserForm({ mode = 'add', initialData = null }) {
         break;
 
       case 'firstName':
-        if (!value || !String(value).trim()) {
+        if (!String(value ?? '').trim()) {
           err = 'First Name is required.';
-        } else if (String(value).trim().length < 2) {
-          err = 'First Name must be at least 2 characters.';
+        } else if (String(value).trim().length < 3 || String(value).trim().length > 50) {
+          err = 'First Name must be between 3 and 50 characters.';
         } else if (!isValidEmployeeName(value)) {
-          err = 'Employee name must not contain numbers or unsupported characters.';
+          err = 'First Name may contain letters, spaces, hyphens, and apostrophes only.';
         }
         break;
 
       case 'middleName':
-        if (value && String(value).trim() && !isValidEmployeeName(value)) {
-          err = 'Employee name must not contain numbers or unsupported characters.';
+        if (String(value ?? '').trim()) {
+          if (String(value).trim().length < 3 || String(value).trim().length > 50) {
+            err = 'Middle Name must be between 3 and 50 characters when provided.';
+          } else if (!isValidEmployeeName(value)) {
+            err = 'Middle Name may contain letters, spaces, hyphens, and apostrophes only.';
+          }
         }
         break;
 
       case 'lastName':
-        if (!value || !String(value).trim()) {
+        if (!String(value ?? '').trim()) {
           err = 'Last Name is required.';
+        } else if (String(value).trim().length < 3 || String(value).trim().length > 50) {
+          err = 'Last Name must be between 3 and 50 characters.';
         } else if (!isValidEmployeeName(value)) {
-          err = 'Employee name must not contain numbers or unsupported characters.';
+          err = 'Last Name may contain letters, spaces, hyphens, and apostrophes only.';
         }
         break;
 
       case 'mobile': {
-        const cleanMobile = String(value || '').trim();
+        const cleanMobile = normalizeIndianMobile(value);
         if (!cleanMobile) {
           err = 'Mobile number is required.';
-        } else if (!/^[789]/.test(cleanMobile)) {
-          err = 'Mobile number must start with 7, 8, or 9.';
-        } else if (cleanMobile.length !== 10) {
-          err = 'Mobile number must contain the required 10 digits.';
         } else if (!isValidMobile(cleanMobile)) {
-          err = 'Please enter a valid 10-digit mobile number starting with 7, 8, or 9.';
+          err = 'Enter exactly 10 digits starting with 6, 7, 8, or 9. An optional +91 or 0 prefix is allowed.';
         }
         break;
       }
@@ -176,14 +183,19 @@ export default function UserForm({ mode = 'add', initialData = null }) {
           err = 'Password is required.';
         } else if (value) {
           err = validatePasswordStrength(value);
+          if (!err && String(values.userName ?? '').trim().toLowerCase() === String(value).toLowerCase()) {
+            err = 'Password must not be the same as the username (case-insensitive).';
+          }
         }
         break;
 
       case 'email':
         if (!value || !String(value).trim()) {
           err = 'Email ID is required.';
+        } else if (String(value).trim().length > 254) {
+          err = 'Email address must not exceed 254 characters.';
         } else if (!isValidEmail(String(value).trim())) {
-          err = 'Please enter a valid email address (e.g. employee@bank.com).';
+          err = 'Enter a valid email address with one @, a valid local part, and valid domain labels.';
         }
         break;
 
@@ -244,12 +256,25 @@ export default function UserForm({ mode = 'add', initialData = null }) {
     const input = e.currentTarget;
     const { name, type, checked } = input;
     const rawValue = input.value;
-    const val = type === 'checkbox' ? checked : filterUserInput(name, rawValue);
+    const val = type === 'checkbox'
+      ? checked
+      : name === 'mobile'
+        ? filterMobileInput(rawValue)
+        : filterUserInput(name, rawValue);
+
+    if (val === null) {
+      input.value = String(form[name] ?? '');
+      return;
+    }
+
+    setSubmitError('');
     const nextForm = { ...form, [name]: val };
 
     if (type !== 'checkbox' && val !== rawValue && typeof input.setSelectionRange === 'function') {
       const caret = input.selectionStart ?? rawValue.length;
-      const filteredCaret = filterUserInput(name, rawValue.slice(0, caret)).length;
+      const filteredCaret = (name === 'mobile'
+        ? filterMobileInput(rawValue.slice(0, caret))
+        : filterUserInput(name, rawValue.slice(0, caret)))?.length ?? val.length;
       requestAnimationFrame(() => input.setSelectionRange(filteredCaret, filteredCaret));
     }
 
@@ -268,12 +293,19 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       return;
     }
 
-    if (hasSubmitted || touched[name]) {
+    if (hasSubmitted || touched[name] || name === 'password') {
       setErrors((prev) => {
         const nextErrors = { ...prev };
         const error = validateField(name, val, nextForm);
         if (error) nextErrors[name] = error;
         else delete nextErrors[name];
+
+        if (name === 'userName' && (hasSubmitted || touched.password)) {
+          const passwordError = validateField('password', nextForm.password, nextForm);
+          if (passwordError) nextErrors.password = passwordError;
+          else delete nextErrors.password;
+        }
+
         return nextErrors;
       });
     }
@@ -281,20 +313,43 @@ export default function UserForm({ mode = 'add', initialData = null }) {
 
   const handleBlur = (e) => {
     const { name, value, type, checked } = e.currentTarget;
-    const val = type === 'checkbox' ? checked : filterUserInput(name, value);
+    const inputValue = type === 'checkbox'
+      ? checked
+      : name === 'mobile'
+        ? filterMobileInput(value)
+        : filterUserInput(name, value);
+    const val = ['firstName', 'middleName', 'lastName', 'email'].includes(name)
+      ? inputValue.trim()
+      : inputValue;
+    const nextForm = { ...form, [name]: val };
+
+    if (val !== form[name]) {
+      setForm((prev) => ({ ...prev, [name]: val }));
+    }
+
     setTouched((prev) => ({ ...prev, [name]: true }));
-    const errorMsg = validateField(name, val);
+    const errorMsg = validateField(name, val, nextForm);
 
     setErrors((prev) => {
       const nextErrors = { ...prev };
       if (errorMsg) nextErrors[name] = errorMsg;
       else delete nextErrors[name];
+
+      if (name === 'userName' && (hasSubmitted || touched.password)) {
+        const passwordError = validateField('password', nextForm.password, nextForm);
+        if (passwordError) nextErrors.password = passwordError;
+        else delete nextErrors.password;
+      }
+
       return nextErrors;
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+
+    setSubmitError('');
     setHasSubmitted(true);
 
     const newErrors = {};
@@ -302,6 +357,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       'empNo',
       'title',
       'firstName',
+      'middleName',
       'lastName',
       'userName',
       'mobile',
@@ -314,10 +370,6 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       'idleTimeout',
       'badLogins',
     ];
-
-    if (form.middleName) {
-      fieldsToValidate.push('middleName');
-    }
 
     if (!isEdit || form.password) {
       fieldsToValidate.push('password');
@@ -346,12 +398,13 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
 
     const fullName = [form.firstName, form.middleName, form.lastName]
+      .map((name) => String(name ?? '').trim())
       .filter(Boolean)
-      .join(' ')
-      .trim();
+      .join(' ');
 
     const branchValue = form.allowMultiBranch ? 'Multiple Branches' : (form.loginBranch || 'Head Office');
 
@@ -366,7 +419,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       middleName: String(form.middleName || '').trim(),
       lastName: String(form.lastName).trim(),
       userName: String(form.userName).trim(),
-      mobile: String(form.mobile).trim(),
+      mobile: normalizeIndianMobile(form.mobile),
       email: String(form.email).trim(),
       dateOfBirth: form.dateOfBirth,
 
@@ -395,23 +448,56 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       logoutTime: form.logoutTime,
     };
 
-    if (form.password) {
-      employeeRecord.password = form.password;
+    try {
+      if (!isEdit) {
+        const userPayload = {
+          empNo: employeeRecord.empNo,
+          title: employeeRecord.title,
+          firstName: employeeRecord.firstName,
+          middleName: employeeRecord.middleName,
+          lastName: employeeRecord.lastName,
+          userName: employeeRecord.userName,
+          password: form.password,
+          mobile: employeeRecord.mobile,
+          email: employeeRecord.email,
+          dateOfBirth: employeeRecord.dateOfBirth,
+          designation: employeeRecord.designation,
+          userRole: employeeRecord.userRole,
+          systemRole: employeeRecord.systemRole,
+          status: employeeRecord.status,
+          allow2FA: employeeRecord.allow2FA,
+          allowMultiBranch: employeeRecord.allowMultiBranch,
+          loginBranch: employeeRecord.loginBranch,
+          allowLoginOnHolidays: employeeRecord.allowLoginOnHolidays,
+          idleTimeout: employeeRecord.idleTimeout,
+          badLogins: employeeRecord.badLogins,
+          loginTime: employeeRecord.loginTime,
+          logoutTime: employeeRecord.logoutTime,
+        };
+
+        await createUser(userPayload);
+      }
+
+      saveEmployee(employeeRecord);
+
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(
+          'los_user_notification',
+          isEdit
+            ? `Employee ${fullName} (${employeeRecord.empNo}) updated successfully.`
+            : `New user ${fullName} (${employeeRecord.empNo}) created successfully.`
+        );
+      }
+
+      router.push('/user_management');
+    } catch (error) {
+      setSubmitError(error instanceof Error
+        ? error.message
+        : 'Unable to save the user. Please try again.');
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-
-    saveEmployee(employeeRecord);
-
-    // Save notification message in session
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(
-        'los_user_notification',
-        isEdit
-          ? `Employee ${fullName} (${employeeRecord.empNo}) updated successfully.`
-          : `New user ${fullName} (${employeeRecord.empNo}) created successfully.`
-      );
-    }
-
-    router.push('/user_management');
   };
 
   return (
@@ -502,7 +588,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                 id="field-firstName"
                 name="firstName"
                 type="text"
-                maxLength={100}
+                maxLength={50}
                 autoComplete="given-name"
                 aria-invalid={Boolean(errors.firstName)}
                 className={`form-input ${errors.firstName ? 'has-error' : ''}`}
@@ -522,7 +608,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                 id="field-middleName"
                 name="middleName"
                 type="text"
-                maxLength={100}
+                maxLength={50}
                 aria-invalid={Boolean(errors.middleName)}
                 className={`form-input ${errors.middleName ? 'has-error' : ''}`}
                 value={form.middleName}
@@ -541,7 +627,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                 id="field-lastName"
                 name="lastName"
                 type="text"
-                maxLength={100}
+                maxLength={50}
                 autoComplete="family-name"
                 aria-invalid={Boolean(errors.lastName)}
                 className={`form-input ${errors.lastName ? 'has-error' : ''}`}
@@ -558,27 +644,27 @@ export default function UserForm({ mode = 'add', initialData = null }) {
             <div>
               <label className="form-label" htmlFor="field-mobile">
                 Mobile <span>*</span>{' '}
-                <small style={{ color: '#167c78', fontWeight: 600 }}>(Starts with 7, 8, or 9)</small>
+                <small style={{ color: '#167c78', fontWeight: 600 }}>(Starts with 6, 7, 8, or 9)</small>
               </label>
               <input
                 id="field-mobile"
                 name="mobile"
                 type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                autoComplete="tel-national"
+                inputMode="tel"
+                maxLength={13}
+                autoComplete="tel"
                 aria-invalid={Boolean(errors.mobile)}
                 className={`form-input ${errors.mobile ? 'has-error' : ''}`}
                 value={form.mobile}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                placeholder="10-digit number starting with 7, 8, or 9"
+                placeholder="10 digits, optionally prefixed by +91 or 0"
               />
               {errors.mobile ? (
                 <span className="field-error-text">{errors.mobile}</span>
               ) : (
                 <span style={{ fontSize: '11px', color: '#647e82', marginTop: '4px', display: 'block' }}>
-                  Must be exactly 10 digits starting with 7, 8, or 9.
+                  Enter 10 digits starting with 6-9; +91 and 0 prefixes are accepted and normalized.
                 </span>
               )}
             </div>
@@ -689,7 +775,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                 <span className="field-error-text">{errors.password}</span>
               ) : (
                 <span style={{ fontSize: '11px', color: '#647e82', marginTop: '4px', display: 'block' }}>
-                  Min. 8 chars with uppercase, lowercase, number and special symbol.
+                  8-128 characters; include at least 3 of uppercase, lowercase, numbers, and symbols.
                 </span>
               )}
             </div>
@@ -1007,7 +1093,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
         </div>
 
         {/* Global Error Banner */}
-        {Object.keys(errors).length > 0 && (
+        {(Object.keys(errors).length > 0 || submitError) && (
           <div
             style={{
               padding: '12px 18px',
@@ -1023,7 +1109,9 @@ export default function UserForm({ mode = 'add', initialData = null }) {
             }}
           >
             <AlertCircle size={18} />
-            <span>Please correct the errors highlighted above before submitting the form.</span>
+            <span>
+              {submitError || 'Please correct the errors highlighted above before submitting the form.'}
+            </span>
           </div>
         )}
 
@@ -1050,11 +1138,12 @@ export default function UserForm({ mode = 'add', initialData = null }) {
           <button
             type="submit"
             disabled={submitting}
+            aria-busy={submitting}
             className="primary-button"
             style={{ minWidth: '140px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
             {isEdit ? <Save size={16} /> : <Check size={16} />}
-            {isEdit ? 'Save Changes' : 'Submit'}
+            {submitting ? 'Submitting...' : isEdit ? 'Save Changes' : 'Submit'}
           </button>
         </div>
       </form>

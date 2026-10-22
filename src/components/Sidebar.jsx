@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   BookOpen,
   BriefcaseBusiness,
   ClipboardList,
   ClipboardCheck,
+  FilePlus2,
   House,
   Package,
   PanelLeftClose,
@@ -22,6 +24,7 @@ const items = [
   { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
   { href: '/loan_application', label: 'Individual Customer Onboarding', icon: ClipboardList },
+  { href: '/loan_application_form', label: 'Loan Application', icon: FilePlus2 },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
   { href: '/user_management', label: 'User Management', icon: UsersRound },
   { href: '/master_creation', label: 'Bank Master', icon: ClipboardList },
@@ -34,6 +37,8 @@ const items = [
 ];
 
 export default function Sidebar({ open, collapsed, onToggle, onClose }) {
+  const pathname = usePathname();
+
   return (
     <>
       {open && (
@@ -79,19 +84,24 @@ export default function Sidebar({ open, collapsed, onToggle, onClose }) {
           </button>
         </div>
         <nav className="main-nav" aria-label="Primary">
-          {items.map(({ href, label, icon: Icon }) => (
-            <Link
-              className="nav-item"
-              href={href}
-              key={`${href}-${label}`}
-              onClick={onClose}
-              aria-label={label}
-              title={label}
-            >
-              <Icon size={18} strokeWidth={1.8} />
-              <span>{label}</span>
-            </Link>
-          ))}
+          {items.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+
+            return (
+              <Link
+                className={`nav-item ${isActive ? 'active' : ''}`}
+                href={href}
+                key={`${href}-${label}`}
+                onClick={onClose}
+                aria-label={label}
+                aria-current={isActive ? 'page' : undefined}
+                title={label}
+              >
+                <Icon size={18} strokeWidth={1.8} />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
         </nav>
       </aside>
     </>
