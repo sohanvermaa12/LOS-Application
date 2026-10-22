@@ -1,7 +1,0 @@
-$kind: http-request
-description: Exports all leads to CSV attachment leads.csv.
-url: "{{baseUrl}}/api/v1/leads/export"
-method: GET
-headers:
-  Authorization: Bearer {{accessToken}}
-order: 9000

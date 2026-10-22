@@ -1,7 +1,0 @@
-$kind: http-request
-description: Returns all leads stored in the bank tenant's database.
-url: "{{baseUrl}}/api/v1/leads"
-method: GET
-headers:
-  Authorization: Bearer {{accessToken}}
-order: 5000

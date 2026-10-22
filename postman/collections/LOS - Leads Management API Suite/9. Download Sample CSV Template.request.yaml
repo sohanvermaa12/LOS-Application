@@ -1,7 +1,0 @@
-$kind: http-request
-description: Downloads sample CSV template sample_leads.csv.
-url: "{{baseUrl}}/api/v1/leads/sample-csv"
-method: GET
-headers:
-  Authorization: Bearer {{accessToken}}
-order: 10000
