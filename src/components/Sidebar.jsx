@@ -23,8 +23,7 @@ const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
   { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
-  { href: '/loan_application', label: 'Individual Customer Onboarding', icon: ClipboardList },
-  { href: '/loan_application_form', label: 'Loan Application', icon: FilePlus2 },
+  { label: 'Loan Application', icon: FilePlus2 },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
   { href: '/user_management', label: 'User Management', icon: UsersRound },
   { href: '/master_creation', label: 'Bank Master', icon: ClipboardList },
@@ -85,7 +84,23 @@ export default function Sidebar({ open, collapsed, onToggle, onClose }) {
         </div>
         <nav className="main-nav" aria-label="Primary">
           {items.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+            const isActive = href && (pathname === href || pathname?.startsWith(`${href}/`));
+
+            if (!href) {
+              return (
+                <button
+                  className="nav-item"
+                  type="button"
+                  key={label}
+                  disabled
+                  aria-label={`${label} unavailable`}
+                  title={`${label} is not linked to a page`}
+                >
+                  <Icon size={18} strokeWidth={1.8} />
+                  <span>{label}</span>
+                </button>
+              );
+            }
 
             return (
               <Link

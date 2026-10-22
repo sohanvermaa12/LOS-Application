@@ -1,12 +1,163 @@
 const STORAGE_KEY = 'los_lead_records';
 
-const defaultLeads = [
-  { id: 'LD000123', name: 'Neha Patil', mobile: '9876543210', email: 'neha.patil@gmail.com', source: 'Website', date: '26-09-2026', status: 'New', statusKey: 'new', branch: 'Pune - FC Road', product: 'Home Loan', amount: '25,00,000', remarks: 'Interested in home loan, please contact me.' },
-  { id: 'LD000122', name: 'Rohit Sharma', mobile: '8765432109', email: 'rohit.sharma@gmail.com', source: 'Mobile App', date: '25-09-2026', status: 'In Progress', statusKey: 'progress', branch: 'Koramangala', product: 'Personal Loan', amount: '12,00,000', remarks: 'Looking for quick processing.' },
-  { id: 'LD000121', name: 'Pooja Deshmukh', mobile: '9123456780', email: 'pooja.deshmukh@gmail.com', source: 'Branch Office', date: '25-09-2026', status: 'Contacted', statusKey: 'contacted', branch: 'Andheri West', product: 'Business Loan', amount: '18,50,000', remarks: 'Waiting for discussion callback.' },
-  { id: 'LD000120', name: 'Amit Joshi', mobile: '9988776655', email: 'amit.joshi@gmail.com', source: 'Partner Network', date: '24-09-2026', status: 'New', statusKey: 'new', branch: 'Pimpri', product: 'Home Loan', amount: '30,00,000', remarks: 'Family property loan inquiry.' },
-  { id: 'LD000119', name: 'Sneha Kulkarni', mobile: '9098765432', email: 'sneha.kulkarni@gmail.com', source: 'Sales Team', date: '24-09-2026', status: 'Qualified', statusKey: 'qualified', branch: 'Salt Lake', product: 'Personal Loan', amount: '9,50,000', remarks: 'Documents uploaded and pending review.' },
-];
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || 'https://los-backend-at5n.onrender.com'
+).replace(/\/+$/, '');
+export const USER_ORGANIZATION_ID = 3;
+export const USER_ORGANIZATION_CODE = 'BOIBA01';
+export const USER_ORGANIZATION_NAME = 'BOI123';
+
+function getHeaders() {
+  const headers = {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  };
+
+  if (typeof window !== 'undefined') {
+    const storedAuthData = window.localStorage.getItem('authData');
+    if (storedAuthData) {
+      let authData;
+      try {
+        authData = JSON.parse(storedAuthData);
+      } catch {
+        throw new Error('Authentication data is invalid. Please sign in again.');
+      }
+
+      if (typeof authData?.accessToken === 'string' && authData.accessToken) {
+        headers.Authorization = `Bearer ${authData.accessToken}`;
+      }
+    }
+  }
+
+  return headers;
+}
+
+function getServerErrorMessage(result) {
+  if (!result || typeof result !== 'object') return '';
+  if (typeof result.message === 'string' && result.message.trim()) return result.message;
+  if (typeof result.error === 'string' && result.error.trim()) return result.error;
+
+  const details = result.errors || result.details;
+  if (Array.isArray(details)) {
+    return details
+      .map((item) => typeof item === 'string' ? item : item?.message)
+      .filter((message) => typeof message === 'string' && message.trim())
+      .join(' ');
+  }
+
+  if (details && typeof details === 'object') {
+    return Object.entries(details)
+      .flatMap(([field, messages]) => {
+        const values = Array.isArray(messages) ? messages : [messages];
+        return values
+          .filter((message) => typeof message === 'string' && message.trim())
+          .map((message) => `${field}: ${message}`);
+      })
+      .join(' ');
+  }
+
+  return '';
+}
+
+async function requestUsersApi(path, options, defaultMessage) {
+  if (!API_BASE_URL) {
+    throw new Error('NEXT_PUBLIC_API_URL is not configured.');
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: { ...getHeaders(), ...options.headers },
+      cache: 'no-store',
+    });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error('Unable to reach the user service. Check your connection and try again.');
+    }
+    throw error;
+  }
+
+  let responseText;
+  try {
+    responseText = await response.text();
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error('Unable to read the user service response. Please try again.');
+    }
+    throw error;
+  }
+
+  let result = null;
+  if (responseText) {
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      if (response.ok) {
+        throw new Error('The user service returned an unexpected response.');
+      }
+    }
+  }
+
+  if (!response.ok || result?.success === false) {
+    const fallback = response.status >= 500
+      ? 'The user service is temporarily unavailable. Please try again.'
+      : response.status === 401 || response.status === 403
+        ? 'You are not authorized to access users. Please sign in again or contact an administrator.'
+        : defaultMessage;
+    throw new Error(getServerErrorMessage(result) || fallback);
+  }
+
+  return result;
+}
+
+function getUserList(result) {
+  if (Array.isArray(result)) return result;
+  if (result === null) return [];
+
+  const candidates = [
+    result?.users,
+    result?.data,
+    result?.content,
+    result?.items,
+    result?.data?.users,
+    result?.data?.content,
+    result?.data?.items,
+  ];
+
+  const users = candidates.find(Array.isArray);
+  if (!users) {
+    throw new Error('The user service returned an unexpected user list.');
+  }
+
+  return users;
+}
+
+export async function getUsers() {
+  const result = await requestUsersApi(
+    '/api/v1/users',
+    { method: 'GET', headers: { Accept: 'application/json' } },
+    'Unable to load users.',
+  );
+
+  return getUserList(result);
+}
+
+export async function createUser(user) {
+  return requestUsersApi(
+    '/api/v1/users',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        ...user,
+        organizationId: USER_ORGANIZATION_ID,
+        organizationCode: USER_ORGANIZATION_CODE,
+        organizationName: USER_ORGANIZATION_NAME,
+      }),
+    },
+    'Unable to create user.',
+  );
+}
 
 export function getLeads() {
   if (typeof window !== 'undefined') {
@@ -17,11 +168,11 @@ export function getLeads() {
         if (Array.isArray(parsed)) return parsed;
       }
     } catch {
-      // Fall back to the existing lead records.
+      // Return no local leads when browser storage contains invalid data.
     }
   }
 
-  return defaultLeads;
+  return [];
 }
 
 export function saveLeads(leads) {
@@ -29,7 +180,7 @@ export function saveLeads(leads) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
     } catch {
-      // Keep the in-memory lead list available when browser storage is unavailable.
+      // Keep the current in-memory lead list available when browser storage is unavailable.
     }
   }
 

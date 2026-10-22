@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import PageHeader from './PageHeader';
 import { saveEmployee, isEmpIdUnique, isUsernameUnique } from '../services/employeeService';
-import { createUser } from '../services/user_management';
+import { createUser, USER_ORGANIZATION_CODE, USER_ORGANIZATION_ID, USER_ORGANIZATION_NAME } from '../services/leadService';
 import {
   filterUserInput,
   filterMobileInput,
@@ -407,6 +407,16 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       .join(' ');
 
     const branchValue = form.allowMultiBranch ? 'Multiple Branches' : (form.loginBranch || 'Head Office');
+    const toApiTime = (timeValue) => {
+      const match = String(timeValue).match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+      if (!match) return timeValue;
+
+      let hours = Number(match[1]);
+      const period = match[3]?.toUpperCase();
+      if (period === 'PM' && hours < 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      return `${String(hours).padStart(2, '0')}:${match[2]}:00`;
+    };
 
     const employeeRecord = {
       ...(initialData || {}),
@@ -452,27 +462,35 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       if (!isEdit) {
         const userPayload = {
           empNo: employeeRecord.empNo,
-          title: employeeRecord.title,
+          userCode: `USR-${employeeRecord.empNo.replace(/^EMP-?/i, '')}`,
+          username: employeeRecord.userName.toLowerCase(),
+          password: form.password,
           firstName: employeeRecord.firstName,
           middleName: employeeRecord.middleName,
           lastName: employeeRecord.lastName,
-          userName: employeeRecord.userName,
-          password: form.password,
-          mobile: employeeRecord.mobile,
           email: employeeRecord.email,
-          dateOfBirth: employeeRecord.dateOfBirth,
+          mobile: employeeRecord.mobile,
+          gender: employeeRecord.title === 'Mr.' ? 'MALE' : 'FEMALE',
+          dob: employeeRecord.dateOfBirth,
           designation: employeeRecord.designation,
-          userRole: employeeRecord.userRole,
-          systemRole: employeeRecord.systemRole,
-          status: employeeRecord.status,
-          allow2FA: employeeRecord.allow2FA,
-          allowMultiBranch: employeeRecord.allowMultiBranch,
-          loginBranch: employeeRecord.loginBranch,
-          allowLoginOnHolidays: employeeRecord.allowLoginOnHolidays,
-          idleTimeout: employeeRecord.idleTimeout,
-          badLogins: employeeRecord.badLogins,
-          loginTime: employeeRecord.loginTime,
-          logoutTime: employeeRecord.logoutTime,
+          userType: 'STAFF',
+          role: employeeRecord.userRole.toUpperCase(),
+          status: employeeRecord.status === 'Active'
+            ? 'OPERATIVE'
+            : employeeRecord.status === 'Inactive'
+              ? 'INOPERATIVE'
+              : 'SUSPENDED',
+          twoFaEnabled: employeeRecord.allow2FA,
+          multiBranchAccess: employeeRecord.allowMultiBranch,
+          branchId: 1,
+          branchName: 'Bank Of India Main Branch',
+          organizationId: USER_ORGANIZATION_ID,
+          organizationCode: USER_ORGANIZATION_CODE,
+          organizationName: USER_ORGANIZATION_NAME,
+          loginOnHolidays: employeeRecord.allowLoginOnHolidays,
+          loginTime: toApiTime(employeeRecord.loginTime),
+          logoutTime: toApiTime(employeeRecord.logoutTime),
+          inactiveSessionTimeout: employeeRecord.idleTimeout,
         };
 
         await createUser(userPayload);

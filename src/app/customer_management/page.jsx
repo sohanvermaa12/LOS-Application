@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, Mail, Pencil, Search, Trash2, UserRound, UsersRound, X } from 'lucide-react';
+import Link from 'next/link';
+import { Eye, FilePlus2, Mail, Pencil, Search, Trash2, UserRound, UsersRound, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
@@ -113,6 +114,7 @@ export default function CustomerManagementPage() {
         eyebrow="CUSTOMERS"
         title="Customer Management"
         description="Review customer profiles, KYC status, and active lending relationships."
+        action={<Link className="primary-button" href="/customer_management/customer_onboarding"><FilePlus2 size={16} /> Loan Application</Link>}
       />
 
       <div className="metric-grid">

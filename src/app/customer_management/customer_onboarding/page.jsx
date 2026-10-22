@@ -17,7 +17,7 @@ import {
   UploadCloud,
   Wallet
 } from 'lucide-react';
-import AppShell from '../../components/AppShell';
+import AppShell from '../../../components/AppShell';
 
 const wizardSteps = [
   { id: 'personal', label: 'Personal Details', title: 'Individual Customer Onboarding', icon: UserIcon },

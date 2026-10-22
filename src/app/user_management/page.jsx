@@ -17,8 +17,9 @@ import {
   X,
 
   CheckCircle2,
-
-  UserRound
+  UserRound,
+  ChevronLeft,
+  ChevronRight,
 
 } from 'lucide-react';
 
@@ -27,18 +28,50 @@ import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
 
 import Card from '../../components/Card';
-
 import { api } from '../../services/api.js';
+import { getLeads, getUsers } from '../../services/leadService';
 
-import { getEmployees } from '../../services/employeeService';
+const USERS_PER_PAGE = 5;
 
-import { getLeads } from '../../services/leadService';
+function normalizeUserRecord(user) {
+  const name = user.name
+    || user.fullName
+    || [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ');
+  const status = String(user.status || '');
+  const normalizedStatus = {
+    OPERATIVE: 'Active',
+    INOPERATIVE: 'Inactive',
+    SUSPENDED: 'Suspended',
+  }[status.toUpperCase()] || status;
+
+  return {
+    ...user,
+    id: user.id || user.userId || user.userCode || user.empNo,
+    empNo: user.empNo || user.employeeId,
+    employeeId: user.employeeId || user.empNo,
+    name,
+    fullName: name,
+    title: user.title || ({
+      MALE: 'Mr.',
+      FEMALE: 'Ms.',
+    }[String(user.gender || '').toUpperCase()] || ''),
+    userName: user.userName || user.username,
+    branch: user.branch || user.branchName || user.loginBranch,
+    designation: user.designation || user.jobTitle || user.position,
+    userRole: user.userRole || user.role,
+    status: normalizedStatus,
+  };
+}
 
 export default function UserManagementPage() {
 
   const router = useRouter();
 
   const [employees, setEmployees] = useState([]);
+
+  const [usersLoading, setUsersLoading] = useState(true);
+
+  const [usersError, setUsersError] = useState('');
 
   const [leads, setLeads] = useState([]);
 
@@ -48,15 +81,28 @@ export default function UserManagementPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [currentPage, setCurrentPage] = useState(1);
+
   const [notification, setNotification] = useState('');
 
-  // Load employees & check for any flash notification from add/edit
-
   useEffect(() => {
+    let cancelled = false;
+    let notificationTimer;
 
-    // Read the status saved by the Add/Edit User form.
-    // Do not override it here; the table only displays the saved value.
-    setEmployees(getEmployees());
+    const loadUsers = async () => {
+      try {
+        const users = await getUsers();
+        if (!cancelled) setEmployees(users.map(normalizeUserRecord));
+      } catch (error) {
+        if (!cancelled) {
+          setUsersError(error instanceof Error ? error.message : 'Unable to load users.');
+        }
+      } finally {
+        if (!cancelled) setUsersLoading(false);
+      }
+    };
+
+    loadUsers();
 
     setLeads(getLeads());
 
@@ -72,19 +118,24 @@ export default function UserManagementPage() {
 
         window.sessionStorage.removeItem('los_user_notification');
 
-        const timer = setTimeout(() => setNotification(''), 6000);
-
-        return () => clearTimeout(timer);
+        notificationTimer = setTimeout(() => setNotification(''), 6000);
 
       }
 
     }
+
+    return () => {
+      cancelled = true;
+      if (notificationTimer) clearTimeout(notificationTimer);
+    };
 
   }, []);
 
   // Search logic: triggers only when Search button is clicked or Enter is pressed
 
   const handleSearch = () => {
+
+    setCurrentPage(1);
 
     setSearchQuery(searchInput.trim());
 
@@ -95,6 +146,8 @@ export default function UserManagementPage() {
     setSearchInput('');
 
     setSearchQuery('');
+
+    setCurrentPage(1);
 
   };
 
@@ -150,6 +203,12 @@ export default function UserManagementPage() {
 
   }, [employees, searchQuery]);
 
+  const pageCount = Math.max(1, Math.ceil(filteredRecords.length / USERS_PER_PAGE));
+  const visiblePage = Math.min(currentPage, pageCount);
+  const pageStart = filteredRecords.length ? (visiblePage - 1) * USERS_PER_PAGE : 0;
+  const pageEnd = Math.min(pageStart + USERS_PER_PAGE, filteredRecords.length);
+  const paginatedRecords = filteredRecords.slice(pageStart, pageEnd);
+
   const tableColumns = ['Sr. No.', 'Emp. No.', 'Employee Name', 'Mobile Number', 'Branch', 'Designation', 'System Role', 'User Role', 'Status', 'Action'];
 
   // Navigate to dedicated full-page View
@@ -174,15 +233,11 @@ export default function UserManagementPage() {
 
     <AppShell title="User Management">
 
-      <PageHeader
-
-        eyebrow="ADMINISTRATION"
-
-        title="User Management"
-
-        description="Manage application users, authentication controls, role-based access, and operational branch privileges."
-
-      />
+      <div style={{ marginBottom: '31px' }}>
+        <h1 style={{ margin: 0, color: '#111', font: '600 15px Manrope' }}>
+          User Management
+        </h1>
+      </div>
 
       <div
 
@@ -387,11 +442,9 @@ export default function UserManagementPage() {
                 type="button"
 
                 onClick={() => {
-
                   setSearchInput('');
-
                   setSearchQuery('');
-
+                  setCurrentPage(1);
                 }}
 
                 style={{
@@ -447,9 +500,11 @@ export default function UserManagementPage() {
               alignItems: 'center',
 
               gap: '8px',
-
               flexShrink: 0,
-
+              background: '#167c78',
+              color: '#fff',
+              border: '1px solid #167c78',
+              boxShadow: '0 4px 12px rgba(23, 126, 122, 0.15)',
             }}
 
           >
@@ -501,9 +556,11 @@ export default function UserManagementPage() {
             display: 'inline-flex',
 
             alignItems: 'center',
-
             gap: '8px',
-
+            background: '#167c78',
+            color: '#fff',
+            border: '1px solid #167c78',
+            boxShadow: '0 4px 12px rgba(23, 126, 122, 0.15)',
           }}
 
         >
@@ -617,23 +674,24 @@ export default function UserManagementPage() {
             <tbody>
 
               {filteredRecords.length === 0 ? (
-
                 <tr>
-
                   <td colSpan={10} style={{ textAlign: 'center', padding: '48px 16px', color: '#7a898b' }}>
-
                     <div style={{ display: 'grid', placeItems: 'center', gap: '8px' }}>
-
                       <UserRound size={32} color="#9bb0af" />
-
-                      <strong style={{ color: '#173e46', fontSize: '14px' }}>No employees found</strong>
-
+                      <strong style={{ color: '#173e46', fontSize: '14px' }}>
+                        {usersLoading
+                          ? 'Loading users...'
+                          : usersError
+                            ? 'Unable to load users'
+                            : 'No employees found'}
+                      </strong>
                       <span style={{ fontSize: '12px' }}>
-
-                        {searchQuery ? 'Try clearing or modifying your search terms.' : 'Click "Add User" to register a new employee.'}
-
+                        {usersError
+                          ? usersError
+                          : searchQuery
+                            ? 'Try clearing or modifying your search terms.'
+                            : 'Click "Add User" to register a new employee.'}
                       </span>
-
                     </div>
 
                   </td>
@@ -642,7 +700,7 @@ export default function UserManagementPage() {
 
               ) : (
 
-                filteredRecords.map((emp, index) => (
+                paginatedRecords.map((emp, index) => (
 
                   <tr
 
@@ -660,7 +718,7 @@ export default function UserManagementPage() {
 
                     <td style={{ color: '#708087', fontSize: '12px', padding: '14px 12px' }}>
 
-                      {index + 1}
+                      {pageStart + index + 1}
 
                     </td>
 
@@ -843,6 +901,68 @@ export default function UserManagementPage() {
           </table>
 
         </div>
+
+        <footer
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '14px',
+            padding: '11px 14px',
+            borderTop: '1px solid #e8eeec',
+            color: '#718284',
+            fontSize: '10px',
+          }}
+        >
+          <span>
+            Showing {filteredRecords.length ? pageStart + 1 : 0}–{pageEnd} of {filteredRecords.length}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <button
+              type="button"
+              aria-label="Previous page"
+              onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+              disabled={visiblePage === 1}
+              style={{
+                display: 'grid',
+                placeItems: 'center',
+                width: '30px',
+                height: '30px',
+                border: '1px solid #d8e3e1',
+                borderRadius: '4px',
+                background: '#fff',
+                color: '#456567',
+                cursor: visiblePage === 1 ? 'not-allowed' : 'pointer',
+                opacity: visiblePage === 1 ? 0.45 : 1,
+              }}
+            >
+              <ChevronLeft size={15} />
+            </button>
+            <span style={{ minWidth: '48px', textAlign: 'center', color: '#496163', fontWeight: 700 }}>
+              {visiblePage} / {pageCount}
+            </span>
+            <button
+              type="button"
+              aria-label="Next page"
+              onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+              disabled={visiblePage === pageCount}
+              style={{
+                display: 'grid',
+                placeItems: 'center',
+                width: '30px',
+                height: '30px',
+                border: '1px solid #d8e3e1',
+                borderRadius: '4px',
+                background: '#fff',
+                color: '#456567',
+                cursor: visiblePage === pageCount ? 'not-allowed' : 'pointer',
+                opacity: visiblePage === pageCount ? 0.45 : 1,
+              }}
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+        </footer>
 
       </Card>
 
