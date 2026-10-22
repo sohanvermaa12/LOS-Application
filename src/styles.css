@@ -226,7 +226,7 @@
 @media (max-width: 600px){
   .loan-application-shell{padding:18px 14px 24px}
   .loan-step{font-size:10px}
-  .loan-step:not(:last-child)::after{width:18px}
+  .loan-step:not(:last-child)::after{width:18px  }
   .loan-step-text{display:none}
   .loan-form-section h2{font-size:22px}
   .loan-form-section h3{font-size:18px}
@@ -235,6 +235,38 @@
   .name-three-col{grid-template-columns:1fr}
   .review-row{display:grid;grid-template-columns:1fr;gap:4px}
   .review-row strong{text-align:left}
+}
+
+.loan-application-shell{margin-top:-22px;padding:0 24px 24px}
+.loan-application-shell>.page-header{margin-bottom:16px}
+.loan-application-card{padding-top:14px}
+.loan-stepper{gap:10px;padding:6px 0 4px;margin-bottom:16px}
+.loan-form-section{padding-top:4px}
+.loan-form-section h2{margin-bottom:14px;font-size:24px}
+.loan-form-section h3{margin:16px 0 12px;font-size:18px}
+.loan-form-section-inner{margin-top:12px;padding:10px 16px 14px}
+.loan-form-grid{gap:14px 18px}
+.loan-field{gap:6px;font-size:12px}
+.loan-field input,.loan-field select,.loan-field textarea{min-height:40px;padding:0 10px}
+.loan-field select{padding-right:30px}
+.borrower-information-heading{white-space:nowrap;font-size:clamp(15px,2vw,18px)!important;line-height:1.35}
+.loan-step-actions{padding-top:20px}
+.loan-delete-overlay{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;background:rgba(16,35,48,.48)}
+.loan-delete-dialog{width:min(100%,420px);padding:24px;border:1px solid #dfe9eb;border-radius:12px;background:#fff;box-shadow:0 18px 48px rgba(17,36,44,.2)}
+.loan-delete-dialog h2{margin:0 0 10px;color:#1d3b48;font-size:19px}
+.loan-delete-dialog p{margin:0;color:#526a74;font-size:14px;line-height:1.5}
+.loan-delete-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+.loan-delete-actions button{min-width:92px;min-height:38px;padding:0 14px;border-radius:7px;font-size:13px;font-weight:700}
+.loan-delete-cancel{border:1px solid #cddbd9;background:#fff;color:#315b62}
+.loan-delete-confirm{border:1px solid #c43d3d;background:#c43d3d;color:#fff}
+.loan-delete-actions button:focus-visible{outline:3px solid rgba(31,102,214,.35);outline-offset:2px}
+@media(max-width:600px){
+  .loan-application-shell{margin-top:-22px;padding:0 14px 24px}
+  .loan-application-shell>.page-header{margin-bottom:12px}
+  .loan-application-card{padding:12px 14px 20px}
+  .loan-form-section h2{font-size:22px}
+  .loan-form-section-inner{padding:8px 12px 12px}
+  .loan-delete-dialog{padding:20px}
 }
 
 .loan-data-table-wrap{max-width:100%;overflow-x:auto}
@@ -544,3 +576,15 @@
 .lead-detail-modal .detail-row>em{color:var(--ink)}
 .lead-detail-modal .detail-empty-state{color:var(--muted)}
 @media(max-width:720px){.lead-detail-header{padding:14px 16px}.lead-detail-body{padding:14px}}
+.header-identity{display:flex;align-items:center;gap:10px;min-width:150px;max-width:240px}
+.header-bank-mark{width:36px;height:36px;flex:0 0 36px;border-radius:8px;background:#e4edf6;color:#193A62;display:grid;place-items:center;overflow:hidden;font:800 12px Manrope,sans-serif}
+.header-bank-mark img{width:100%;height:100%;object-fit:contain}
+.header-bank-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#33474c;font-size:13px}
+.header-user-details{display:flex;align-items:center;gap:clamp(12px,2vw,28px);min-width:0}
+.header-detail{display:grid;gap:3px;min-width:0}
+.header-detail span{color:#859497;font-size:9px;font-weight:700;letter-spacing:.45px;text-transform:uppercase}
+.header-detail strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#33474c;font-size:11px;font-weight:600}
+.topbar .top-actions{gap:14px}
+.sidebar{padding-bottom:16px}
+@media(max-width:1050px){.header-identity{max-width:200px}.header-user-details{gap:12px}.header-detail strong{max-width:125px}}
+@media(max-width:720px){.topbar{height:auto;min-height:60px;flex-wrap:wrap;padding:10px 17px;gap:8px}.header-identity{flex:1;min-width:0;max-width:none}.header-user-details{order:3;flex:0 0 100%;justify-content:space-between;padding:6px 0 2px}.header-detail{flex:1}.header-detail strong{max-width:100%}.topbar .top-actions{gap:6px}}

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { State } from 'country-state-city';
 import { getLoanProducts } from '../services/loanProducts';
-import { getUsers } from '../services/user_management';
+import { createLead } from '../services/lead_management';
 
 const indianStates = State.getStatesOfCountry('IN').map((state) => state.name);
 
@@ -79,20 +79,9 @@ const getTodayInputDate = () => {
   return localDate.toISOString().slice(0, 10);
 };
 
-const getRows = (result) => [
-  result?.data?.users,
-  result?.data?.items,
-  result?.data?.records,
-  result?.data?.content,
-  result?.data,
-  result?.users,
-  result?.items,
-  result?.records,
-  result?.content,
-].find(Array.isArray) || [];
-
-const getUserId = (user) => user.id ?? user.userId ?? user.employeeId ?? user.empNo ?? '';
-const getUserName = (user) => user.name || user.fullName || [user.firstName, user.middleName, user.lastName].filter(Boolean).join(' ') || user.username || user.userName || user.email || '';
+const includeCurrentOption = (options, value) => (
+  value && !options.includes(value) ? [value, ...options] : options
+);
 
 const getCustomerTypeFromAge = (age) => {
   if (age === '' || age === null || Number.isNaN(Number(age))) return '';
@@ -146,13 +135,6 @@ const initialForm = {
   partnerName: '',
   employeeId: '',
   employeeName: '',
-  assignedCheckerId: '',
-  assignedCheckerName: '',
-  assignedViewerId: '',
-  assignedViewerName: '',
-  assignedBy: '',
-  assignedToId: '',
-  assignedToName: '',
   status: 'Pending',
 };
 
@@ -163,15 +145,29 @@ const getLeadFormValues = (lead) => {
   return {
     ...initialForm,
     ...lead,
-    assignedToId: lead.assignedToId || lead.assignedCheckerId || lead.assignedViewerId || '',
-    assignedToName: lead.assignedToName || lead.assignedCheckerName || lead.assignedViewerName || '',
     firstName: lead.firstName || nameParts[0] || '',
     middleName: lead.middleName || (nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : ''),
     lastName: lead.lastName || (nameParts.length > 1 ? nameParts[nameParts.length - 1] : ''),
     mobileNumber: lead.mobileNumber || lead.mobile || '',
+    email: lead.email || lead.emailAddress || '',
+    panCard: lead.panCard || lead.panNumber || '',
+    aadhaarCard: lead.aadhaarCard || lead.aadhaarNumber || '',
+    passportNo: lead.passportNo || lead.passportNumber || '',
+    dependents: lead.dependents ?? lead.numberOfDependents ?? '',
     loanProductType: lead.loanProductType || lead.product || '',
     loanAmount: lead.loanAmount || String(lead.amount || '').replace(/,/g, ''),
+    loanPurpose: lead.loanPurpose || lead.purposeOfLoan || '',
+    instalments: lead.instalments ?? lead.numberOfInstalments ?? '',
+    monthlyEmi: lead.monthlyEmi ?? lead.emi ?? '',
+    collateral: lead.collateral ?? lead.downPaymentCollateral ?? '',
+    annualIncome: lead.annualIncome ?? '',
+    takeHomePay: lead.takeHomePay ?? '',
+    deductions: lead.deductions ?? lead.deductionsOrEmisPayable ?? '',
+    primaryBankAccount: lead.primaryBankAccount || lead.accountNumber || '',
     acquisitionChannel: lead.acquisitionChannel || lead.source || '',
+    referralDate: lead.referralDate || lead.date || '',
+    partnerId: lead.partnerId || lead.sourcingAgentPartnerId || '',
+    partnerName: lead.partnerName || lead.agentPartnerName || '',
     status: lead.status || 'Pending',
   };
 };
@@ -198,7 +194,7 @@ const steps = [
     { name: 'loanPurpose', label: 'Purpose of Loan', type: 'select', options: ['Home purchase', 'Home renovation', 'Medical expenses', 'Education', 'Business expansion', 'Debt consolidation', 'Vehicle purchase', 'Other'], required: true },
     { name: 'tenure', label: 'Tenure', type: 'number', min: 1, step: 1, required: true },
     { name: 'instalments', label: 'No. of Instalments', type: 'number', min: 1, step: 1 },
-    { name: 'collateral', label: 'Down Payment / Collateral', type: 'number', min: 0, step: 1, required: true },
+    { name: 'collateral', label: 'Down Payment / Collateral', type: 'number', min: 1, step: 1, required: true },
   ] },
   { title: 'Income & Employment', fields: [
     { name: 'employmentType', label: 'Employment Type', type: 'select', options: ['Salaried', 'Self-Employed', 'Corporate Employee', 'Business Owner', 'Other'], required: true },
@@ -271,17 +267,14 @@ const newLeadInlineStyles = `
 .lead-modal-backdrop .lead-referral-grid .lead-field input,.lead-modal-backdrop .lead-referral-grid .lead-field select{width:100%;min-height:39px;padding:0 10px;border:1px solid #cbd9d6;border-radius:5px;background:#fff;color:#263f41;font-size:12px}
 .lead-modal-backdrop .lead-referral-grid .lead-referral-date input[type=date]{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;padding:0 8px}
 .lead-modal-backdrop .lead-referral-partner-name{max-width:250px}
-.lead-modal-backdrop .lead-assignment-section{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px;border:1px solid #dfe8e6;border-radius:5px;background:#f8faf9}
-.lead-modal-backdrop .lead-assignment-heading{grid-column:1/-1}
-.lead-modal-backdrop .lead-assignment-heading h4{margin:0;color:#315356;font-size:12px}
-.lead-modal-backdrop .lead-assignment-heading p,.lead-modal-backdrop .lead-assignment-hint{margin:4px 0 0;color:#718284;font-size:10px;line-height:1.45}
+.lead-modal-backdrop .lead-submit-error{margin:0 0 14px;padding:10px 12px;border:1px solid #efcaca;border-radius:5px;background:#fff5f5;color:#9d3030;font-size:12px;line-height:1.45}
 .lead-modal-backdrop .lead-modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:auto;padding-top:18px}
 .lead-modal-backdrop .lead-save-btn,.lead-modal-backdrop .lead-cancel-btn,.lead-modal-backdrop .lead-previous-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:96px;min-height:37px;padding:0 12px;border:1px solid #d2dfdc;border-radius:5px;background:#fff;color:#52696b;font-size:11px;font-weight:700;cursor:pointer}
 .lead-modal-backdrop .lead-save-btn{border-color:#177e7a;background:#177e7a;color:#fff}
 .lead-modal-backdrop .lead-save-btn:hover{border-color:#0c6662;background:#0c6662}
 .lead-modal-backdrop .lead-cancel-btn:hover,.lead-modal-backdrop .lead-previous-btn:hover{background:#f2f7f5}
 @media(max-width:760px){.lead-modal-backdrop{padding:10px}.lead-modal-backdrop .lead-modal{width:96vw;height:94dvh;max-height:94dvh}.lead-modal-backdrop .lead-modal-header{padding:15px 16px}.lead-modal-backdrop .lead-form{padding:15px 16px}.lead-modal-backdrop .lead-step-layout{grid-template-columns:1fr;gap:16px}.lead-modal-backdrop .lead-step-nav{position:static;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;max-height:none;overflow:visible;padding:0 0 11px;border-right:0;border-bottom:1px solid #e6edeb}.lead-modal-backdrop .lead-step-item{min-height:58px;flex-direction:column;justify-content:center;gap:4px;padding:5px 2px;text-align:center;font-size:9px}.lead-modal-backdrop .lead-step-panel{padding:0}.lead-modal-backdrop .lead-personal-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:minmax(0,1.2fr) minmax(65px,.5fr) minmax(0,1fr);gap:10px}.lead-modal-backdrop .lead-income-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-modal-backdrop .lead-referral-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lead-modal-backdrop .lead-income-actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:480px){.lead-modal-backdrop .lead-personal-grid,.lead-modal-backdrop .lead-referral-grid,.lead-modal-backdrop .lead-income-grid{grid-template-columns:1fr}.lead-modal-backdrop .lead-name-combo{grid-template-columns:70px minmax(0,1fr)}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:1fr;width:100%}.lead-modal-backdrop .lead-personal-demographics,.lead-modal-backdrop .lead-identity-field{grid-column:1}.lead-modal-backdrop .lead-personal-actions{grid-column:1;justify-content:stretch}.lead-modal-backdrop .lead-personal-actions button{flex:1}.lead-modal-backdrop .lead-income-grid .lead-income-employer{grid-column:auto}.lead-modal-backdrop .lead-referral-grid .lead-assignment-section{grid-column:1}.lead-modal-backdrop .lead-assignment-section{grid-template-columns:1fr}.lead-modal-backdrop .lead-assignment-heading{grid-column:1}.lead-modal-backdrop .lead-modal-footer{flex-wrap:wrap}.lead-modal-backdrop .lead-save-btn,.lead-modal-backdrop .lead-cancel-btn,.lead-modal-backdrop .lead-previous-btn{flex:1}.lead-modal-backdrop .lead-mobile-field,.lead-modal-backdrop .lead-identity-field,.lead-modal-backdrop .lead-otp-field{grid-template-columns:1fr}.lead-modal-backdrop .lead-verify-button,.lead-modal-backdrop .lead-otp-verify{width:100%}}
+@media(max-width:480px){.lead-modal-backdrop .lead-personal-grid,.lead-modal-backdrop .lead-referral-grid,.lead-modal-backdrop .lead-income-grid{grid-template-columns:1fr}.lead-modal-backdrop .lead-name-combo{grid-template-columns:70px minmax(0,1fr)}.lead-modal-backdrop .lead-personal-demographics{grid-template-columns:1fr;width:100%}.lead-modal-backdrop .lead-personal-demographics,.lead-modal-backdrop .lead-identity-field{grid-column:1}.lead-modal-backdrop .lead-personal-actions{grid-column:1;justify-content:stretch}.lead-modal-backdrop .lead-personal-actions button{flex:1}.lead-modal-backdrop .lead-income-grid .lead-income-employer{grid-column:auto}.lead-modal-backdrop .lead-modal-footer{flex-wrap:wrap}.lead-modal-backdrop .lead-save-btn,.lead-modal-backdrop .lead-cancel-btn,.lead-modal-backdrop .lead-previous-btn{flex:1}.lead-modal-backdrop .lead-mobile-field,.lead-modal-backdrop .lead-identity-field,.lead-modal-backdrop .lead-otp-field{grid-template-columns:1fr}.lead-modal-backdrop .lead-verify-button,.lead-modal-backdrop .lead-otp-verify{width:100%}}
 `;
 
 export default function NewLead({ open, onClose, onCreate, onUpdate, initialData = null }) {
@@ -293,37 +286,22 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
   const [aadhaarValidated, setAadhaarValidated] = useState(false);
   const [loanProducts, setLoanProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [assignmentUsers, setAssignmentUsers] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
+  const [downPaymentMessage, setDownPaymentMessage] = useState('');
 
   useEffect(() => {
     if (!open) return undefined;
 
     setForm(getLeadFormValues(initialData));
-    setActiveStep(initialData ? steps.length - 1 : 0);
+    setActiveStep(initialData ? 1 : 0);
     setOtpMessage('');
     setMobileMessage('');
     setAadhaarMessage('');
     setAadhaarValidated(false);
-    setAssignmentUsers([]);
-    let isActive = true;
-    try {
-      const authData = JSON.parse(window.localStorage.getItem('authData'));
-      const user = authData?.user || {};
-      const assignedBy = getUserName(user);
-      if (!initialData && assignedBy) {
-        setForm((current) => ({ ...current, assignedBy }));
-      }
-    } catch {
-      if (!initialData) setForm((current) => ({ ...current, assignedBy: '' }));
-    }
-    getUsers()
-      .then((result) => {
-        if (isActive) setAssignmentUsers(getRows(result));
-      })
-      .catch(() => {
-        if (isActive) setAssignmentUsers([]);
-      });
-
+    setSubmissionError('');
+    setDownPaymentMessage('');
+    setIsSubmitting(false);
     const controller = new AbortController();
     setProductsLoading(true);
     let accessToken;
@@ -343,7 +321,6 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       });
 
     return () => {
-      isActive = false;
       controller.abort();
     };
   }, [open, initialData]);
@@ -370,6 +347,11 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     : '';
   const todayInputDate = getTodayInputDate();
   const aadhaarInputInvalid = Boolean(aadhaarMessage && /required|remaining|invalid|enter a valid/i.test(aadhaarMessage));
+  const downPaymentExceedsLoan = form.loanAmount !== ''
+    && Number(form.loanAmount) > 0
+    && form.collateral !== ''
+    && Number(form.collateral) >= Number(form.loanAmount);
+  const downPaymentError = downPaymentMessage || (downPaymentExceedsLoan ? 'Down payment below the loan amount.' : '');
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -379,6 +361,24 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       : ['firstName', 'middleName', 'lastName'].includes(name) ? value.replace(/[^\p{L}\p{M} .'-]/gu, '').slice(0, 100)
       : name === 'panCard' ? normalizePan(value)
       : name === 'passportNo' ? value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) : value;
+
+    if (name === 'collateral') {
+      if (value !== '' && form.loanAmount !== '' && Number(form.loanAmount) > 0 && Number(value) >= Number(form.loanAmount)) {
+        setDownPaymentMessage('Down payment below the loan amount.');
+        return;
+      }
+      setDownPaymentMessage('');
+    }
+
+    if (name === 'loanAmount') {
+      const downPayment = Number(form.collateral);
+      setDownPaymentMessage(value !== ''
+        && Number(value) > 0
+        && form.collateral !== ''
+        && downPayment >= Number(value)
+        ? 'Down payment below the loan amount.'
+        : '');
+    }
 
     setForm((current) => ({
       ...current,
@@ -406,26 +406,32 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     if (name === 'mobileNumber') setMobileMessage('');
   };
 
-  const resetAndClose = () => {
+  const resetAndClose = (force = false) => {
+    if (isSubmitting && !force) return;
     setForm(initialForm);
     setActiveStep(0);
     setOtpMessage('');
     setMobileMessage('');
     setAadhaarMessage('');
     setAadhaarValidated(false);
+    setSubmissionError('');
+    setDownPaymentMessage('');
+    setIsSubmitting(false);
     onClose();
   };
 
   const validateStep = () => {
     if (activeStep === 1) {
-      const amountField = document.querySelector('.lead-step-panel input[name="loanAmount"]');
       const collateralField = document.querySelector('.lead-step-panel input[name="collateral"]');
       const amount = Number(form.loanAmount);
       const downPayment = Number(form.collateral || 0);
       const invalidDownPayment = amount > 0 && downPayment >= amount;
 
-      amountField?.setCustomValidity('');
-      collateralField?.setCustomValidity(invalidDownPayment ? 'Down payment must be less than the loan amount.' : '');
+      if (invalidDownPayment) {
+        setDownPaymentMessage('Down payment below the loan amount.');
+        collateralField?.focus();
+        return false;
+      }
     }
 
     if (activeStep === 0) {
@@ -501,7 +507,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       {field.type === 'select' ? (
         <select name={field.name} value={form[field.name]} onChange={handleChange} required={field.required}>
           <option value="">Select {field.label.toLowerCase()}</option>
-          {field.options.map((option) => <option key={option} value={option}>{option}</option>)}
+          {includeCurrentOption(field.options, form[field.name]).map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       ) : (
         <input
@@ -529,7 +535,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
           <span>Title</span>
           <select name="namePrefix" value={form.namePrefix} onChange={handleChange}>
       <option value="">Mr</option>
-            {[ 'Ms', 'Mrs', 'Miss', 'Dr', 'Other'].map((title) => <option key={title} value={title}>{title}</option>)}
+            {includeCurrentOption(['Ms', 'Mrs', 'Miss', 'Dr', 'Other'], form.namePrefix).map((title) => <option key={title} value={title}>{title}</option>)}
           </select>
         </label>
         <label className="lead-field">
@@ -613,8 +619,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         <span>Residential Status</span>
         <select name="residentialStatus" value={form.residentialStatus} onChange={handleChange}>
           <option value="">Select</option>
-          <option value="Resident">Resident</option>
-          <option value="Non-Resident">Non-Resident</option>
+          {includeCurrentOption(['Resident', 'Non-Resident'], form.residentialStatus).map((status) => <option key={status} value={status}>{status}</option>)}
         </select>
       </label>
 
@@ -622,9 +627,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
           <span>Gender <em>*</em></span>
           <select name="gender" value={form.gender} onChange={handleChange} required>
           <option value="">Select</option>
-          <option value="Female">Female</option>
-          <option value="Male">Male</option>
-          <option value="Other">Other</option>
+          {includeCurrentOption(['Female', 'Male', 'Other'], form.gender).map((gender) => <option key={gender} value={gender}>{gender}</option>)}
         </select>
       </label>
 
@@ -632,10 +635,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
           <span>Marital Status <em>*</em></span>
           <select name="maritalStatus" value={form.maritalStatus} onChange={handleChange} required>
           <option value="">Select</option>
-          <option value="Single">Single</option>
-          <option value="Married">Married</option>
-          <option value="Divorced">Divorced</option>
-          <option value="Other">Other</option>
+          {includeCurrentOption(['Single', 'Married', 'Divorced', 'Other'], form.maritalStatus).map((status) => <option key={status} value={status}>{status}</option>)}
         </select>
       </label>
 
@@ -658,6 +658,9 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         <span>Loan Product Type <em>*</em></span>
         <select name="loanProductType" value={form.loanProductType} onChange={handleChange} required={loanProducts.length > 0 && (!initialData || Boolean(initialData.loanProductType || initialData.product))} disabled={productsLoading} style={{ minHeight: '42px' }}>
           <option value="">{productsLoading ? 'Loading products...' : loanProducts.length ? 'Select product' : 'No products available'}</option>
+          {form.loanProductType && !loanProducts.some((product) => product.name === form.loanProductType)
+            ? <option value={form.loanProductType}>{form.loanProductType}</option>
+            : null}
           {loanProducts.map((product) => <option key={product.id} value={product.name}>{product.name}</option>)}
         </select>
       </label>
@@ -669,22 +672,26 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Purpose of Loan</span>
-        <select name="loanPurpose" value={form.loanPurpose} onChange={handleChange} required style={{ minHeight: '42px' }}>
+        <select name="loanPurpose" value={form.loanPurpose} onChange={handleChange} required={!initialData || Boolean(initialData.loanPurpose || initialData.purposeOfLoan)} style={{ minHeight: '42px' }}>
           <option value="">Select purpose</option>
-          <option value="Home purchase">Home purchase</option>
-          <option value="Home renovation">Home renovation</option>
-          <option value="Medical expenses">Medical expenses</option>
-          <option value="Education">Education</option>
-          <option value="Business expansion">Business expansion</option>
-          <option value="Debt consolidation">Debt consolidation</option>
-          <option value="Vehicle purchase">Vehicle purchase</option>
-          <option value="Other">Other</option>
+          {includeCurrentOption(['Home purchase', 'Home renovation', 'Medical expenses', 'Education', 'Business expansion', 'Debt consolidation', 'Vehicle purchase', 'Other'], form.loanPurpose).map((purpose) => <option key={purpose} value={purpose}>{purpose}</option>)}
         </select>
       </label>
 
       <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span>Down Payment <em>*</em></span>
-        <input name="collateral" type="number" min="0" value={form.collateral} onChange={handleChange} required style={{ minHeight: '42px' }} />
+        <input
+          name="collateral"
+          type="number"
+          min="1"
+          value={form.collateral}
+          onChange={handleChange}
+          required={!initialData || Boolean(initialData.collateral || initialData.downPaymentCollateral)}
+          aria-invalid={Boolean(downPaymentError)}
+          aria-describedby={downPaymentError ? 'lead-down-payment-error' : undefined}
+          style={{ minHeight: '42px' }}
+        />
+        {downPaymentError ? <p id="lead-down-payment-error" role="alert" className="lead-inline-hint lead-inline-hint-error">{downPaymentError}</p> : null}
       </label>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: '12px' }}>
@@ -695,9 +702,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         <label className="lead-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <span>Unit</span>
           <select name="tenureUnit" value={form.tenureUnit} onChange={handleChange} style={{ minHeight: '42px' }}>
-            <option value="month">Month</option>
-            <option value="quarter">Quarter</option>
-            <option value="year">Year</option>
+            {includeCurrentOption(['month', 'quarter', 'year'], form.tenureUnit).map((unit) => <option key={unit} value={unit}>{unit[0].toUpperCase() + unit.slice(1)}</option>)}
           </select>
         </label>
       </div>
@@ -738,8 +743,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
           <span>Employment Type <em>*</em></span>
           <select name="employmentType" value={form.employmentType} onChange={handleChange} required={!initialData || Boolean(initialData.employmentType)}>
             <option value="">Select type</option>
-            <option value="Employee">Employee</option>
-            <option value="Self-Employed">Self-Employed</option>
+            {includeCurrentOption(['Employee', 'Salaried', 'Self-Employed'], form.employmentType).map((type) => <option key={type} value={type}>{type}</option>)}
           </select>
         </label>
 
@@ -755,7 +759,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
         <label className="lead-field lead-income-employer">
           <span>{form.employmentType === 'Self-Employed' ? 'Business Name' : 'Employer / Business Name'}</span>
-          <input name="employerName" value={form.employerName} onChange={handleChange} disabled={form.employmentType === 'Employee'} />
+          <input name="employerName" value={form.employerName} onChange={handleChange} disabled={['Employee', 'Salaried'].includes(form.employmentType)} />
         </label>
 
         <label className="lead-field">
@@ -811,16 +815,9 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         return <>
       <label className="lead-field lead-referral-channel">
         <span>Lead Acquisition Channel <em>*</em></span>
-        <select name="acquisitionChannel" value={form.acquisitionChannel} onChange={handleChange} required>
+        <select name="acquisitionChannel" value={form.acquisitionChannel} onChange={handleChange} required={!initialData}>
           <option value="">Select channel</option>
-          <option value="Bank Generated">Bank Generated</option>
-          <option value="Branch">Branch</option>
-          <option value="Website">Website</option>
-          <option value="Mobile App">Mobile App</option>
-          <option value="Customer Referral">Customer Referral</option>
-          <option value="Direct Sales">Direct Sales</option>
-          <option value="Partner / Agent">Partner / Agent</option>
-          <option value="Other">Other</option>
+          {includeCurrentOption(['Bank Generated', 'Branch', 'Website', 'Mobile App', 'Customer Referral', 'Direct Sales', 'Partner / Agent', 'Other'], form.acquisitionChannel).map((channel) => <option key={channel} value={channel}>{channel}</option>)}
         </select>
       </label>
 
@@ -849,40 +846,6 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         <input name="employeeName" value={form.employeeName} onChange={handleChange} disabled={!referralEnabled} />
       </label>
 
-      <div className="lead-assignment-section">
-        <div className="lead-assignment-heading">
-          <h4>Lead Assignment</h4>
-          <p>New leads remain pending until they are assigned.</p>
-        </div>
-        <label className="lead-field">
-          <span>Assign By</span>
-          <input name="assignedBy" value={form.assignedBy} readOnly placeholder="Signed-in user" />
-        </label>
-        <label className="lead-field">
-          <span>Assign To</span>
-          <select
-            name="assignedToId"
-            value={form.assignedToId}
-            onChange={(event) => {
-              const selected = assignmentUsers.find((user) => String(getUserId(user)) === event.target.value);
-              setForm((current) => ({
-                ...current,
-                assignedToId: event.target.value,
-                assignedToName: selected ? getUserName(selected) : '',
-                status: selected ? 'In Progress' : 'Pending',
-              }));
-            }}
-          >
-            <option value="">Select assignee</option>
-            {assignmentUsers.map((user) => {
-              const userId = getUserId(user);
-              const userName = getUserName(user);
-              return userId ? <option key={userId} value={userId}>{userName || userId}</option> : null;
-            })}
-          </select>
-          {!assignmentUsers.length && <span className="lead-assignment-hint">No assignees are available from the user lookup.</span>}
-        </label>
-      </div>
          </>;
       })()}
     </div>
@@ -890,7 +853,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
   const renderFooter = () => (
     <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '28px', paddingTop: '10px' }}>
-      {activeStep > 0 && (
+      {activeStep > (initialData ? 1 : 0) && (
         <button type="button" className="lead-cancel-btn" onClick={() => setActiveStep((current) => current - 1)} style={{ minWidth: '120px' }}>
           <ChevronLeft size={16} /> Previous
         </button>
@@ -901,19 +864,20 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
           Next <ChevronRight size={16} />
         </button>
       ) : (
-        <button type="submit" className="lead-save-btn" style={{ minWidth: '120px' }}>
-        {initialData ? 'Save Changes' : 'Submit'}
+        <button type="button" className="lead-save-btn" onClick={handleSubmit} disabled={isSubmitting} style={{ minWidth: '120px' }}>
+        {isSubmitting ? 'Submitting...' : initialData ? 'Save Changes' : 'Submit'}
         </button>
       )}
 
-      <button type="button" className="lead-cancel-btn" onClick={resetAndClose} style={{ minWidth: '120px' }}>
+      <button type="button" className="lead-cancel-btn" onClick={() => resetAndClose()} disabled={isSubmitting} style={{ minWidth: '120px' }}>
         Cancel
       </button>
     </div>
   );
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setSubmissionError('');
 
     const requiredFields = Array.from(document.querySelectorAll('.lead-step-panel input[required], .lead-step-panel select[required]'));
     const missing = requiredFields.filter((field) => !field.disabled && (!field.value || !field.value.toString().trim()));
@@ -936,30 +900,117 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       monthlyEmi: computedMonthlyEmi,
       totalInterest: computedTotalInterest,
       securityAmount: computedTotalAmount,
-      status: form.assignedToId ? 'In Progress' : initialData ? form.status : 'Pending',
+      status: initialData ? form.status : 'Pending',
     };
     delete leadData.otpNumber;
     delete leadData.otpSent;
-    if (initialData) onUpdate(leadData);
-    else onCreate(leadData);
-    resetAndClose();
+
+    const numericValue = (value) => value === '' || value === null || value === undefined ? null : Number(value);
+
+    if (initialData) {
+      const updates = {
+        loanAmount: numericValue(form.loanAmount),
+        tenure: numericValue(tenureMonths),
+        numberOfInstalments: numericValue(computedInstalments),
+        emi: numericValue(computedMonthlyEmi),
+        annualIncome: numericValue(form.annualIncome),
+        designation: form.designation || null,
+      };
+
+      setIsSubmitting(true);
+      try {
+        await onUpdate(leadData, updates);
+        resetAndClose(true);
+      } catch (error) {
+        setSubmissionError(error instanceof Error ? error.message : 'Unable to update the lead. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    const requestData = {
+      customerName,
+      mobileNumber: form.mobileNumber,
+      dateOfBirth: form.dateOfBirth,
+      age: numericValue(computedAge),
+      customerType: computedCustomerType,
+      panNumber: form.panCard,
+      panValidationStatus: 'PENDING',
+      aadhaarNumber: form.aadhaarCard,
+      aadhaarValidationStatus: 'PENDING',
+      residentialStatus: form.residentialStatus || null,
+      gender: form.gender,
+      maritalStatus: form.maritalStatus,
+      passportNumber: form.passportNo || null,
+      passportExpiryDate: form.passportExpiryDate || null,
+      emailAddress: form.email || null,
+      pinCode: null,
+      numberOfDependents: numericValue(form.dependents),
+      loanProductType: form.loanProductType,
+      loanAmount: numericValue(form.loanAmount),
+      purposeOfLoan: form.loanPurpose,
+      tenure: numericValue(tenureMonths),
+      numberOfInstalments: numericValue(computedInstalments),
+      emi: numericValue(computedMonthlyEmi),
+      interestRate: numericValue(form.interestRate),
+      totalInterest: numericValue(computedTotalInterest),
+      securityAmount: numericValue(form.securityAmount) ?? 0,
+      downPaymentCollateral: numericValue(form.collateral),
+      employmentType: form.employmentType === 'Employee' ? 'Salaried' : form.employmentType,
+      annualIncome: numericValue(form.annualIncome),
+      designation: form.designation || null,
+      employerName: form.employerName || null,
+      location: form.location || null,
+      state: form.state || null,
+      takeHomePay: numericValue(form.takeHomePay),
+      deductionsOrEmisPayable: numericValue(form.deductions),
+      bankName: form.bankName || null,
+      accountNumber: form.primaryBankAccount || null,
+      accountStatementConsent: false,
+      cibilLiabilityCheck: null,
+      debtToIncomeRatio: null,
+      loanToValueRatio: null,
+      debtServiceCoverageRatio: null,
+      netDisposableIncome: null,
+      leadAcquisitionChannel: form.acquisitionChannel,
+      date: form.referralDate || todayInputDate,
+      sourcingAgentPartnerId: form.partnerId || null,
+      agentPartnerName: form.partnerName || null,
+      employeeId: form.employeeId || null,
+      employeeName: form.employeeName || null,
+    };
+
+    setIsSubmitting(true);
+    try {
+      const result = await createLead(requestData);
+      onCreate(leadData, result);
+      resetAndClose(true);
+    } catch (error) {
+      setSubmissionError(error instanceof Error ? error.message : 'Unable to create the lead. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="lead-modal-backdrop" onMouseDown={resetAndClose}>
+    <div className="lead-modal-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) resetAndClose();
+    }}>
       <style>{newLeadInlineStyles}</style>
       <div className="lead-modal" onMouseDown={(event) => event.stopPropagation()}>
         <div className="lead-modal-header">
           <div>
             <h2>{initialData ? `Edit Lead ${initialData.id}` : 'New Lead'}</h2>
-            <p>{initialData ? 'Update the lead information, assignment, and status.' : 'Capture the applicant and loan requirements.'}</p>
+            <p>{initialData ? 'Update the lead information.' : 'Capture the applicant and loan requirements.'}</p>
           </div>
-          <button type="button" className="lead-modal-close" aria-label="Close form" onClick={resetAndClose}>
+          <button type="button" className="lead-modal-close" aria-label="Close form" onClick={() => resetAndClose()} disabled={isSubmitting}>
             <X size={18} />
           </button>
         </div>
 
-        <form className="lead-form" onSubmit={handleSubmit}>
+        <form className="lead-form" onSubmit={(event) => event.preventDefault()}>
+          {submissionError ? <p className="lead-submit-error" role="alert">{submissionError}</p> : null}
           <div className="lead-step-layout">
             <nav className="lead-step-nav" aria-label="Lead form steps">
               {steps.map((step, index) => (
@@ -967,7 +1018,8 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
                   type="button"
                   key={step.title}
                   className={`lead-step-item${index === activeStep ? ' active' : ''}${index < activeStep ? ' complete' : ''}`}
-                  onClick={() => index < activeStep && setActiveStep(index)}
+                  disabled={Boolean(initialData && index === 0)}
+                  onClick={() => index < activeStep && !(initialData && index === 0) && setActiveStep(index)}
                   aria-current={index === activeStep ? 'step' : undefined}
                   aria-label={`Step ${index + 1}: ${step.title}`}
                 >

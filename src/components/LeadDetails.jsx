@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Pencil, X } from 'lucide-react';
 
-export default function LeadDetails({ lead, open, onClose, onEdit }) {
+export default function LeadDetails({ lead, open, onClose, onEdit, loading = false, error = '', onRetry }) {
   const [tab, setTab] = useState('lead');
 
   if (!open || !lead) return null;
@@ -26,14 +26,14 @@ export default function LeadDetails({ lead, open, onClose, onEdit }) {
         ['Age', lead.age],
         ['Customer Type', lead.customerType],
         ['Mobile Number', lead.mobileNumber || lead.mobile],
-        ['Email ID', lead.email],
+        ['Email ID', lead.email || lead.emailAddress],
         ['Residential Status', lead.residentialStatus],
         ['Gender', lead.gender],
         ['Marital Status', lead.maritalStatus],
-        ['Dependents', lead.dependents],
-        ['PAN Card', lead.panCard],
-        ['Aadhaar Card', lead.aadhaarCard],
-        ['Passport Number', lead.passportNo],
+        ['Dependents', lead.dependents ?? lead.numberOfDependents],
+        ['PAN Card', lead.panCard || lead.panNumber],
+        ['Aadhaar Card', lead.aadhaarCard || lead.aadhaarNumber],
+        ['Passport Number', lead.passportNo || lead.passportNumber],
         ['Passport Expiry Date', lead.passportExpiryDate],
       ],
     },
@@ -42,12 +42,12 @@ export default function LeadDetails({ lead, open, onClose, onEdit }) {
       fields: [
         ['Loan Product Type', lead.loanProductType || lead.product],
         ['Loan Amount', lead.loanAmount || lead.amount],
-        ['Purpose of Loan', lead.loanPurpose],
-        ['Down Payment / Collateral', lead.collateral],
+        ['Purpose of Loan', lead.loanPurpose || lead.purposeOfLoan],
+        ['Down Payment / Collateral', lead.collateral ?? lead.downPaymentCollateral],
         ['Tenure', lead.tenure ? `${lead.tenure} ${lead.tenureUnit || 'month'}${Number(lead.tenure) === 1 ? '' : 's'}` : ''],
-        ['Number of Instalments', lead.instalments],
+        ['Number of Instalments', lead.instalments ?? lead.numberOfInstalments],
         ['Interest Rate (% p.a.)', lead.interestRate ? `${lead.interestRate}%` : ''],
-        ['Monthly EMI', lead.monthlyEmi],
+        ['Monthly EMI', lead.monthlyEmi ?? lead.emi],
         ['Total Interest', lead.totalInterest],
         ['Total Amount', lead.securityAmount],
       ],
@@ -62,18 +62,18 @@ export default function LeadDetails({ lead, open, onClose, onEdit }) {
         ['Location', lead.location],
         ['State', lead.state],
         ['Take Home Pay', lead.takeHomePay],
-        ['Deductions', lead.deductions],
+        ['Deductions', lead.deductions ?? lead.deductionsOrEmisPayable],
         ['Bank Name', lead.bankName],
-        ['Primary Bank Account', lead.primaryBankAccount],
+        ['Primary Bank Account', lead.primaryBankAccount || lead.accountNumber],
       ],
     },
     {
       title: 'Referral and Assignment',
       fields: [
-        ['Lead Acquisition Channel', lead.acquisitionChannel || lead.source],
+        ['Lead Acquisition Channel', lead.acquisitionChannel || lead.leadAcquisitionChannel || lead.source],
         ['Referral Date', lead.referralDate],
-        ['Sourcing Agent / Partner ID', lead.partnerId],
-        ['Agent / Partner Name', lead.partnerName],
+        ['Sourcing Agent / Partner ID', lead.partnerId || lead.sourcingAgentPartnerId],
+        ['Agent / Partner Name', lead.partnerName || lead.agentPartnerName],
         ['Employee ID', lead.employeeId],
         ['Employee Name', lead.employeeName],
         ['Assigned Checker', lead.assignedCheckerName],
@@ -107,7 +107,7 @@ export default function LeadDetails({ lead, open, onClose, onEdit }) {
           </div>
           <div className="lead-detail-actions">
             {onEdit && (
-              <button type="button" className="lead-detail-edit" onClick={() => onEdit(lead)}>
+              <button type="button" className="lead-detail-edit" onClick={() => onEdit(lead)} disabled={loading}>
                 <Pencil size={15} /> Edit Lead
               </button>
             )}
@@ -116,6 +116,13 @@ export default function LeadDetails({ lead, open, onClose, onEdit }) {
             </button>
           </div>
         </div>
+
+        {loading || error ? (
+          <div role={error ? 'alert' : 'status'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 20px', borderBottom: '1px solid #e4ece9', color: error ? '#9d3030' : '#52696b', fontSize: '12px' }}>
+            <span>{error || 'Loading full lead details...'}</span>
+            {error && onRetry ? <button type="button" className="lead-detail-edit" onClick={onRetry}>Retry</button> : null}
+          </div>
+        ) : null}
 
         <div className="lead-detail-body">
           <div className="detail-panel">

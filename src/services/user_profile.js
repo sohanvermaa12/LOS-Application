@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://los-backend-355v.onrender.com";
+  process.env.NEXT_PUBLIC_API_URL || "https://los-backend-at5n.onrender.com";
 
 export async function getUserProfile() {
   const authData = getAuthData();

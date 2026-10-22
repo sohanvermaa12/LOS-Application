@@ -1,5 +1,13 @@
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "https://los-backend-at5n.onrender.com"
+).replace(/\/+$/, "");
+
 export async function login(credentials) {
-  return request("/api/auth/login", credentials, "Unable to sign in");
+  return request(
+    `${API_BASE_URL}/api/v1/auth/login`,
+    credentials,
+    "Unable to sign in",
+  );
 }
 
 export async function verifyOtp({ tempSessionToken, otp }) {
@@ -11,13 +19,23 @@ export async function verifyOtp({ tempSessionToken, otp }) {
 }
 
 export async function logout() {
-  return request("/api/auth/logout", undefined, "Unable to log out");
+  const authData = JSON.parse(window.localStorage.getItem("authData") || "{}");
+  const headers = authData.accessToken
+    ? { Authorization: `Bearer ${authData.accessToken}` }
+    : {};
+
+  return request(
+    `${API_BASE_URL}/api/v1/auth/logout`,
+    undefined,
+    "Unable to log out",
+    headers,
+  );
 }
 
-async function request(path, body, defaultMessage) {
+async function request(path, body, defaultMessage, headers = {}) {
   const response = await fetch(path, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: body ? JSON.stringify(body) : undefined,
   });
 

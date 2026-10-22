@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   BarChart3,
   BookOpen,
   BriefcaseBusiness,
   ClipboardList,
   ClipboardCheck,
+  FilePlus2,
   House,
   Package,
   PanelLeftClose,
@@ -17,13 +18,13 @@ import {
   ShieldCheck,
   UsersRound,
 } from 'lucide-react';
-import { getUserProfile } from '../services/user_profile';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
   { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
   { href: '/loan_application', label: 'Individual Customer Onboarding', icon: ClipboardList },
+  { href: '/loan_application_form', label: 'Loan Application', icon: FilePlus2 },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
   { href: '/user_management', label: 'User Management', icon: UsersRound },
   { href: '/master_creation', label: 'Bank Master', icon: ClipboardList },
@@ -36,36 +37,7 @@ const items = [
 ];
 
 export default function Sidebar({ open, collapsed, onToggle, onClose }) {
-  const [profile, setProfile] = useState(null);
-  const [profileError, setProfileError] = useState('');
-
-  useEffect(() => {
-    let isCurrent = true;
-
-    async function loadProfile() {
-      try {
-        const userProfile = await getUserProfile();
-        if (isCurrent) setProfile(userProfile);
-      } catch (requestError) {
-        if (isCurrent) {
-          setProfileError(requestError.message || 'Unable to load the user profile.');
-        }
-      }
-    }
-
-    loadProfile();
-    return () => {
-      isCurrent = false;
-    };
-  }, []);
-
-  const firstName = [profile?.first_name, profile?.firstName].find(
-    (value) => typeof value === 'string' && value.trim(),
-  )?.trim();
-  const role = [profile?.role, profile?.role_name].find(
-    (value) => typeof value === 'string' && value.trim(),
-  )?.trim();
-  const displayName = firstName || (profileError ? 'Profile unavailable' : 'Loading...');
+  const pathname = usePathname();
 
   return (
     <>
@@ -112,29 +84,25 @@ export default function Sidebar({ open, collapsed, onToggle, onClose }) {
           </button>
         </div>
         <nav className="main-nav" aria-label="Primary">
-          {items.map(({ href, label, icon: Icon }) => (
-            <Link
-              className="nav-item"
-              href={href}
-              key={`${href}-${label}`}
-              onClick={onClose}
-              aria-label={label}
-              title={label}
-            >
-              <Icon size={18} strokeWidth={1.8} />
-              <span>{label}</span>
-            </Link>
-          ))}
+          {items.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
+
+            return (
+              <Link
+                className={`nav-item ${isActive ? 'active' : ''}`}
+                href={href}
+                key={`${href}-${label}`}
+                onClick={onClose}
+                aria-label={label}
+                aria-current={isActive ? 'page' : undefined}
+                title={label}
+              >
+                <Icon size={18} strokeWidth={1.8} />
+                <span>{label}</span>
+              </Link>
+            );
+          })}
         </nav>
-        <div className="sidebar-footer" title={profileError || undefined}>
-          <div className="mini-avatar" title={displayName}>
-            {firstName ? firstName.charAt(0).toUpperCase() : '?'}
-          </div>
-          <div className="user-meta">
-            <strong>{displayName}</strong>
-            <span>{profileError ? 'Unable to load role' : role || (profile ? 'Role unavailable' : '')}</span>
-          </div>
-        </div>
       </aside>
     </>
   );

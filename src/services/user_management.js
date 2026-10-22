@@ -106,10 +106,10 @@ async function request(path, options, defaultMessage) {
   return result;
 }
 
-export async function getUsers(organizationId = USER_ORGANIZATION_ID) {
+export async function getUsers(organizationId = getOrganizationId()) {
   const query = new URLSearchParams({ organizationId: String(organizationId) });
   return request(
-    `/api/v1/administration/users?${query.toString()}`,
+    `/api/users?${query.toString()}`,
     { method: "GET" },
     "Unable to load users.",
   );

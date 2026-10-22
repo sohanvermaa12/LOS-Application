@@ -2,6 +2,10 @@
 workspace:
   id: 6505bb40-ea06-457a-86ba-304ef0307f78
 
+cloudResources:
+  collections:
+    ../postman/collections/LOS - Leads Management API Suite: 8ddb55ea-6b2c-414a-9b87-c6c8bb3247ca
+
 # All resources in the `postman/` folder are automatically registered in Local View.
 # Point to additional files outside the `postman/` folder to register them individually. Example:
 #localResources:
