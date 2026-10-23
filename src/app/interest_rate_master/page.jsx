@@ -195,7 +195,7 @@ export default function InterestRateMasterPage() {
       <style>{styles}</style>
       <main className="irm-wrap">
         <div className="irm-heading">
-          <PageHeader eyebrow="PRICING" title="Interest Rate Master" description="Set effective-dated interest tiers by loan product and tenure." />
+          <PageHeader title="Interest Rate Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
           <button className="irm-create" type="button" onClick={openCreate}><Plus size={16} /> Create interest rate master</button>
         </div>
         {message && !dialog && <div className={`irm-message ${message.type}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div>}

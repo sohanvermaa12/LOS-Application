@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Pencil, Plus, Search, Upload, UserRound, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
+import PageHeader from '../../components/PageHeader';
 import NewLead from '../../components/NewLead';
 import LeadDetails from '../../components/LeadDetails';
 import { saveLeads } from '../../services/leadService';
@@ -148,6 +149,7 @@ const normalizeLeadRecord = (lead) => {
 const leadManagementStyles = `
 .lm-page{max-width:1480px;margin:0 auto;padding:4px 0 28px;color:#20383a;font-family:var(--font-sans,inherit)}
 .lm-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:19px}
+.lm-page-header.page-header{margin-bottom:19px}
 .lm-heading-copy span{color:#748789;font-size:10px;font-weight:800;letter-spacing:.1em}
 .lm-heading-copy h1{margin:5px 0 4px;color:#193f42;font-size:24px;font-weight:750}
 .lm-heading-copy p{margin:0;color:#748587;font-size:12px;line-height:1.5}
@@ -239,7 +241,7 @@ const leadManagementStyles = `
 .lm-pager button:hover:not(:disabled){background:#f1f8f5}.lm-pager button:disabled{cursor:not-allowed;opacity:.45}
 .lm-page-number{min-width:48px;text-align:center;color:#496163;font-weight:700}
 @media(max-width:880px){.lm-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.lm-filter-search{grid-column:1/-1}.lm-reset{justify-self:start}}
-@media(max-width:540px){.lm-page{padding-top:0}.lm-heading{align-items:flex-start;flex-direction:column;gap:12px}.lm-heading-actions{width:100%}.lm-heading-actions button{flex:1}.lm-toolbar{grid-template-columns:1fr;padding:12px}.lm-filter-search{grid-column:auto}.lm-reset{width:100%}.lm-results-meta{align-items:flex-start;flex-direction:column}.lm-pagination{align-items:flex-start;flex-direction:column}}
+@media(max-width:540px){.lm-page{padding-top:0}.lm-page-header.page-header{align-items:flex-start;flex-direction:column;gap:12px}.lm-heading-actions{width:100%}.lm-heading-actions button{flex:1}.lm-toolbar{grid-template-columns:1fr;padding:12px}.lm-filter-search{grid-column:auto}.lm-reset{width:100%}.lm-results-meta{align-items:flex-start;flex-direction:column}.lm-pagination{align-items:flex-start;flex-direction:column}}
 `;
 
 export default function LeadManagementPage() {
@@ -570,18 +572,23 @@ export default function LeadManagementPage() {
       <AppShell title="Lead Management">
         <style>{leadManagementStyles}</style>
         <main className="lm-page">
-          <header className="lm-heading">
-            <div className="lm-heading-copy"><span>SALES OPERATIONS</span><h1>Lead Management</h1><p>Track applicants, ownership and lead progress.</p></div>
-            <div className="lm-heading-actions">
-              <button type="button" className="lm-export-button" onClick={() => {
-                setExportMode('all');
-                setExportError('');
-                setShowExportDialog(true);
-              }}><Download size={16} /> Export Lead</button>
-              <button type="button" className="lm-add-button" onClick={() => setShowNewLead(true)}><Plus size={16} /> Add New Lead</button>
-              <button type="button" className="lm-export-button" onClick={openBulkImport}><Upload size={16} /> Upload Bulk Lead</button>
-            </div>
-          </header>
+          <PageHeader
+            className="lm-page-header"
+            title="Interest Rate Master"
+            description="Set effective-dated interest tiers by loan product and tenure."
+            marquee
+            action={
+              <div className="lm-heading-actions">
+                <button type="button" className="lm-export-button" onClick={() => {
+                  setExportMode('all');
+                  setExportError('');
+                  setShowExportDialog(true);
+                }}><Download size={16} /> Export Lead</button>
+                <button type="button" className="lm-add-button" onClick={() => setShowNewLead(true)}><Plus size={16} /> Add New Lead</button>
+                <button type="button" className="lm-export-button" onClick={openBulkImport}><Upload size={16} /> Upload Bulk Lead</button>
+              </div>
+            }
+          />
 
           <section className="lm-toolbar" aria-label="Lead filters">
             <label className="lm-filter lm-filter-search" htmlFor="lead-search-text">Search leads

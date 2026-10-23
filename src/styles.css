@@ -588,3 +588,11 @@
 .sidebar{padding-bottom:16px}
 @media(max-width:1050px){.header-identity{max-width:200px}.header-user-details{gap:12px}.header-detail strong{max-width:125px}}
 @media(max-width:720px){.topbar{height:auto;min-height:60px;flex-wrap:wrap;padding:10px 17px;gap:8px}.header-identity{flex:1;min-width:0;max-width:none}.header-user-details{order:3;flex:0 0 100%;justify-content:space-between;padding:6px 0 2px}.header-detail{flex:1}.header-detail strong{max-width:100%}.topbar .top-actions{gap:6px}}
+
+.page-header-marquee{width:min(100%,560px);margin-top:10px;overflow:hidden;color:#111}
+.page-header-marquee-window{overflow:hidden;white-space:nowrap}
+.page-header-marquee-track{width:max-content;animation:page-header-marquee-scroll 32s linear infinite}
+.page-header-marquee-track span{display:block;font-size:11px;font-weight:500}
+.page-header-marquee:hover .page-header-marquee-track{animation-play-state:paused}
+@keyframes page-header-marquee-scroll{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
+@media(prefers-reduced-motion:reduce){.page-header-marquee-track{animation:none}}
