@@ -255,7 +255,7 @@ export default function LoanEligibilityPage() {
       <style>{styles}</style>
       <style>{assessmentStyles}</style>
       <main className="le-wrap">
-        <PageHeader eyebrow="CREDIT ASSESSMENT" title="Loan Eligibility" description="Estimate repayment capacity using income, obligations, proposed EMI and collateral." />
+        <PageHeader title="Interest Rate Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
         <p className="le-intro">Enter monthly take-home income and expenses, existing loan payments, requested amount, rate and term. The assessment is indicative; each lender applies its own credit policy.</p>
         {message && <div className={`le-message${message.type === 'error' ? ' error' : ''}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div>}
         <div className="le-assessment-layout">

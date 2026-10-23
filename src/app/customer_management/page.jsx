@@ -136,6 +136,7 @@ export default function CustomerManagementPage() {
         </div>
 
         <div className="table-scroll">
+          
           <table>
             <thead><tr><th>Customer</th><th>Type</th><th>Phone</th><th>KYC status</th><th>Active loans</th><th>Action</th></tr></thead>
             <tbody>

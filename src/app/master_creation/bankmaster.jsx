@@ -277,7 +277,7 @@ export default function BankMaster() {
   return (
     <AppShell title="Bank Master">
       <div className="bank-master-page">
-        <PageHeader eyebrow="ADMINISTRATION" title="Bank Master" description="Review and update your bank's registered, account and lending details." />
+        <PageHeader title="Interest Rate Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
 
         {pageError && (
           <div className="bank-master-alert" role="alert">
