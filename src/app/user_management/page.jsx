@@ -47,8 +47,8 @@ function normalizeUserRecord(user) {
   return {
     ...user,
     id: user.id || user.userId || user.userCode || user.empNo,
-    empNo: user.empNo || user.employeeId,
-    employeeId: user.employeeId || user.empNo,
+    empNo: user.empNo || user.emp_no || user.employeeId || user.employee_id,
+    employeeId: user.employeeId || user.employee_id || user.empNo || user.emp_no,
     name,
     fullName: name,
     title: user.title || ({
@@ -56,7 +56,7 @@ function normalizeUserRecord(user) {
       FEMALE: 'Ms.',
     }[String(user.gender || '').toUpperCase()] || ''),
     userName: user.userName || user.username,
-    branch: user.branch || user.branchName || user.loginBranch,
+    branch: user.branch || user.branchName || user.loginBranch || user.login_branch_name,
     designation: user.designation || user.jobTitle || user.position,
     userRole: user.userRole || user.role,
     status: normalizedStatus,
@@ -162,8 +162,9 @@ export default function UserManagementPage() {
       const values = [
 
         record.empNo,
-
+        record.emp_no,
         record.employeeId,
+        record.employee_id,
 
         record.title,
 
@@ -176,6 +177,7 @@ export default function UserManagementPage() {
         record.branch,
 
         record.loginBranch,
+        record.login_branch_name,
 
         record.designation,
 
@@ -209,7 +211,7 @@ export default function UserManagementPage() {
   const pageEnd = Math.min(pageStart + USERS_PER_PAGE, filteredRecords.length);
   const paginatedRecords = filteredRecords.slice(pageStart, pageEnd);
 
-  const tableColumns = ['Sr. No.', 'Emp. No.', 'Employee Name', 'Mobile Number', 'Branch', 'Designation', 'System Role', 'User Role', 'Status', 'Action'];
+  const tableColumns = ['Sr. No.', 'Emp. No.', 'Employee Name', 'Mobile Number', 'Branch', 'Designation', 'User Role', 'Status', 'Action'];
 
   // Navigate to dedicated full-page View
 
@@ -233,8 +235,8 @@ export default function UserManagementPage() {
 
     <AppShell title="User Management">
 
-      <div style={{ marginBottom: '31px' }}>
-        <h1 style={{ margin: 0, color: '#111', font: '600 15px Manrope' }}>
+      <div style={{ marginTop: '-15px', marginBottom: '26px' }}>
+        <h1 style={{ margin: 0, color: '#23474C', font: '700 23px Manrope' }}>
           User Management
         </h1>
       </div>
@@ -639,8 +641,6 @@ export default function UserManagementPage() {
 
                         Designation: '150px',
 
-                        'System Role': '140px',
-
                         'User Role': '130px',
 
                         Status: '120px',
@@ -675,7 +675,7 @@ export default function UserManagementPage() {
 
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '48px 16px', color: '#7a898b' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '48px 16px', color: '#7a898b' }}>
                     <div style={{ display: 'grid', placeItems: 'center', gap: '8px' }}>
                       <UserRound size={32} color="#9bb0af" />
                       <strong style={{ color: '#173e46', fontSize: '14px' }}>
@@ -699,9 +699,8 @@ export default function UserManagementPage() {
                 </tr>
 
               ) : (
-
-                paginatedRecords.map((emp, index) => (
-
+                <>
+                  {paginatedRecords.map((emp, index) => (
                   <tr
 
                     key={emp.id || emp.empNo || index}
@@ -726,7 +725,7 @@ export default function UserManagementPage() {
 
                       <strong className="id-text" style={{ fontSize: '12px', fontWeight: 700 }}>
 
-                        {emp.empNo || emp.employeeId}
+                        {emp.empNo || emp.emp_no || emp.employeeId || emp.employee_id}
 
                       </strong>
 
@@ -756,23 +755,13 @@ export default function UserManagementPage() {
 
                     <td style={{ color: '#2c4751', fontSize: '12px', padding: '14px 12px' }}>
 
-                      {emp.branch || emp.loginBranch || '-'}
+                      {emp.branch || emp.loginBranch || emp.login_branch_name || '-'}
 
                     </td>
 
                     <td style={{ color: '#2c4751', fontSize: '12px', padding: '14px 12px' }}>
 
                       {emp.designation || emp.jobTitle || emp.position || '-'}
-
-                    </td>
-
-                    <td style={{ padding: '14px 12px' }}>
-
-                      <span className="role-badge" style={{ fontWeight: 600 }}>
-
-                        {emp.systemRole || emp.system_role || '-'}
-
-                      </span>
 
                     </td>
 
@@ -892,7 +881,16 @@ export default function UserManagementPage() {
 
                   </tr>
 
-                ))
+                  ))}
+                  {Array.from(
+                    { length: USERS_PER_PAGE - paginatedRecords.length },
+                    (_, index) => (
+                      <tr key={`empty-row-${index}`} aria-hidden="true">
+                        <td colSpan={9} style={{ height: '64px', padding: 0 }} />
+                      </tr>
+                    ),
+                  )}
+                </>
 
               )}
 

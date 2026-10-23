@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Bell, LogOut, Menu, CircleUserRound } from 'lucide-react';
 import Link from 'next/link';
-import { logout } from '../services/login';
+import { logout, LOGOUT_PENDING_KEY } from '../services/login';
 import { getBankProfile } from '../services/bankProfile';
 import { getUserProfile } from '../services/user_profile';
 
@@ -25,14 +25,15 @@ export default function Header({ menuOpen, onMenu }) {
   }, []);
 
   const handleLogout = async () => {
+    window.sessionStorage.setItem(LOGOUT_PENDING_KEY, 'true');
     try {
       await logout();
     } catch {
-      // Always complete local sign-out even if the logout request fails.
+      console.error('Unable to complete server logout; completing local sign-out.');
     } finally {
       window.localStorage.removeItem('authData');
       headerDetailsCache = null;
-      window.location.href = '/login';
+      window.location.replace('/login');
     }
   };
 

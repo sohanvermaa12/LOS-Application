@@ -13,7 +13,11 @@ export function proxy(request) {
     isPublicRoute ||
     readSessionAccessToken(request.cookies.get(AUTH_SESSION_COOKIE)?.value)
   ) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (!isPublicRoute) {
+      response.headers.set("Cache-Control", "no-store, max-age=0");
+    }
+    return response;
   }
   const loginUrl = new URL("/login", request.url);
 

@@ -183,10 +183,23 @@ export default function RuleEnginePage() {
           </div>
         ) : (
           <>
-            <div className="rule-list-heading">
-              <h1>Rules Management</h1>
-              <button type="button" className="rule-button primary add-rule-button" onClick={() => setShowAdd(true)}><Plus size={16} /> Add Rule</button>
+            <div
+              className="rule-list-heading"
+              style={{ marginTop: '-15px', marginBottom: '20px' }}
+            >
+              <h1 style={{ margin: 0, color: '#23474C', font: '700 24px Manrope' }}>
+                Rules Management
+              </h1>
+
+              <button
+                type="button"
+                className="rule-button primary add-rule-button"
+                onClick={() => setShowAdd(true)}
+              >
+                <Plus size={16} /> Add Rule
+              </button>
             </div>
+
             <div className="rule-filters">
               <label className="rule-search">
                 <Search size={17} />

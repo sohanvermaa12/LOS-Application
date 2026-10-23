@@ -8,7 +8,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import loginImage from "../public/asset/login page12.png";
-import { login, verifyOtp } from "../services/login";
+import { login, verifyOtp, LOGOUT_PENDING_KEY } from "../services/login";
 import ForgotPasswordRequest from "./ForgotPasswordRequest";
 
 export default function LoginForm() {
@@ -109,6 +109,7 @@ export default function LoginForm() {
         window.localStorage.setItem("authData", JSON.stringify(response.data));
       }
 
+      window.sessionStorage.removeItem(LOGOUT_PENDING_KEY);
       window.location.assign("/dashboard");
     } catch (requestError) {
       setError(requestError.message || "Unable to sign in");
@@ -254,6 +255,7 @@ export default function LoginForm() {
                           updateOtpFromPaste(event.clipboardData.getData("text"), index);
                         }}
                         aria-label={`OTP digit ${index + 1}`}
+                        autoFocus={index === 0}
                         inputMode="numeric"
                         pattern="[0-9]"
                         maxLength={6}
