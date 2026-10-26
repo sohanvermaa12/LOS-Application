@@ -349,7 +349,7 @@ export default function LoanDashboardPage() {
 
           {applicationsAvailable && applications.length > 0 && (
             <p className="data-note">
-              These records are existing in-project development fixtures; no
+              These records are existing in-project development  fixtures; no
               live loan-application API is configured.
             </p>
           )}
