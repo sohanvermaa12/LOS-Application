@@ -104,11 +104,6 @@ export default function DashboardPage() {
             <p className="dashboard-date">{today}</p>
             <h1>{greeting}, {userName}</h1>
           </div>
-          <div className="dashboard-filters" aria-label="Dashboard filters">
-            <button type="button">All branches</button>
-            <button type="button">All products</button>
-            <button type="button" className="selected">This month</button>
-          </div>
         </header>
 
         <section className="dashboard-metrics" aria-label="Portfolio overview">
@@ -191,7 +186,13 @@ export default function DashboardPage() {
         <section className="dashboard-card recent-card">
           <div className="card-heading">
             <h2>Recent applications</h2>
-            <Link href="/customer_management" className="view-all">View all</Link>
+            <Link
+              href="/customer_management"
+              className="view-all"
+              style={{ color: '#0c5d5d' }}
+            >
+              View all
+            </Link>
           </div>
           <div className="recent-table-wrap">
             <table className="recent-table">
@@ -231,8 +232,8 @@ export default function DashboardPage() {
           min-height: calc(100vh - 68px);
           margin: -42px -45px -55px;
           padding: 22px 7% 40px;
-          background: #f4f7fb;
-          color: #172746;
+          background: #f4f7f7;
+          color: #173f49;
           font-family: "Google Sans", Arial, sans-serif;
           font-weight: 500;
         }
@@ -247,42 +248,18 @@ export default function DashboardPage() {
 
         .dashboard-date {
           margin: 0 0 4px;
-          color: #7584a0;
+          color: #738984;
           font-size: 12px;
           font-weight: 500;
         }
 
         .dashboard-heading h1 {
           margin: 0;
-          color: #172746;
+          color: #173f49;
           font-size: 24px;
           font-weight: 700;
           letter-spacing: -0.6px;
           line-height: 1.25;
-        }
-
-        .dashboard-filters {
-          display: flex;
-          gap: 6px;
-        }
-
-        .dashboard-filters button {
-          min-height: 34px;
-          padding: 0 11px;
-          border: 1px solid #d9e1ef;
-          border-radius: 7px;
-          background: #fff;
-          color: #34425f;
-          font-size: 12px;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-
-        .dashboard-filters button.selected {
-          border-color: #2362e9;
-          background: #2362e9;
-          color: #fff;
-          font-weight: 700;
         }
 
         .dashboard-metrics {
@@ -294,7 +271,7 @@ export default function DashboardPage() {
 
         .dashboard-metric,
         .dashboard-card {
-          border: 1px solid #dfe6f2;
+          border: 1px solid #dfe8e8;
           border-radius: 10px;
           background: #fff;
         }
@@ -306,14 +283,14 @@ export default function DashboardPage() {
 
         .dashboard-metric p {
           margin: 0 0 4px;
-          color: #7685a0;
+          color: #738984;
           font-size: 12px;
           font-weight: 600;
         }
 
         .dashboard-metric strong {
           display: block;
-          color: #172746;
+          color: #173f49;
           font-size: 24px;
           font-weight: 700;
           letter-spacing: -0.6px;
@@ -323,7 +300,7 @@ export default function DashboardPage() {
         .dashboard-metric span {
           display: block;
           margin-top: 5px;
-          color: #2362e9;
+          color: #0c5d5d;
           font-size: 11px;
           font-weight: 600;
         }
@@ -355,14 +332,14 @@ export default function DashboardPage() {
 
         .card-heading h2 {
           margin: 0;
-          color: #1d2e4d;
+          color: #173f49;
           font-size: 15px;
           font-weight: 700;
           letter-spacing: -0.2px;
         }
 
         .sample-label {
-          color: #8693ac;
+          color: #899b97;
           font-size: 10px;
           font-weight: 500;
         }
@@ -383,8 +360,8 @@ export default function DashboardPage() {
           align-items: center;
           justify-content: space-between;
           min-height: 28px;
-          border-bottom: 1px solid #eff2f7;
-          color: #33415e;
+          border-bottom: 1px solid #edf2f0;
+          color: #405b57;
           font-size: 12px;
           font-weight: 500;
           counter-increment: branch;
@@ -399,7 +376,7 @@ export default function DashboardPage() {
         }
 
         .branch-list strong {
-          color: #202f4d;
+          color: #243f3e;
           font-size: 12px;
           font-weight: 700;
         }
@@ -424,22 +401,22 @@ export default function DashboardPage() {
         }
 
         .pipeline-segment.approved,
-        .status-dot.approved { background: #2462e8; }
+        .status-dot.approved { background: #177e7a; }
         .pipeline-segment.review,
-        .status-dot.review { background: #5e8cf0; }
+        .status-dot.review { background: #4da9a0; }
         .pipeline-segment.kyc,
-        .status-dot.kyc { background: #9ab9f5; }
+        .status-dot.kyc { background: #8bc9bd; }
         .pipeline-segment.returned,
         .status-dot.returned { background: #f5a337; }
         .pipeline-segment.draft,
-        .status-dot.draft { background: #b5c1d7; }
+        .status-dot.draft { background: #b7c9c7; }
 
         .pipeline-list li {
           display: flex;
           align-items: center;
           justify-content: space-between;
           min-height: 20px;
-          color: #3b4966;
+          color: #415b56;
           font-size: 12px;
           font-weight: 500;
         }
@@ -451,7 +428,7 @@ export default function DashboardPage() {
         }
 
         .pipeline-list strong {
-          color: #202f4d;
+          color: #243f3e;
           font-size: 12px;
           font-weight: 700;
         }
@@ -489,13 +466,13 @@ export default function DashboardPage() {
           justify-content: space-between;
           gap: 10px;
           margin-bottom: 3px;
-          color: #34415f;
+          color: #405b57;
           font-size: 12px;
           font-weight: 500;
         }
 
         .product-label strong {
-          color: #202f4d;
+          color: #243f3e;
           font-weight: 700;
         }
 
@@ -503,7 +480,7 @@ export default function DashboardPage() {
           height: 6px;
           overflow: hidden;
           border-radius: 5px;
-          background: #e5ecf9;
+          background: #e2eeea;
         }
 
         .product-fill {
@@ -512,12 +489,12 @@ export default function DashboardPage() {
           border-radius: inherit;
         }
 
-        .product-fill.gold { background: #2462e8; }
-        .product-fill.home { background: #80a5f4; }
-        .product-fill.personal { background: #4a7ce9; }
-        .product-fill.vehicle { background: #91aff0; }
-        .product-fill.business { background: #5f8cf0; }
-        .product-fill.education { background: #afc6f4; }
+        .product-fill.gold { background: #177e7a; }
+        .product-fill.home { background: #80b8a7; }
+        .product-fill.personal { background: #408e80; }
+        .product-fill.vehicle { background: #9ac8b9; }
+        .product-fill.business { background: #5b9c8d; }
+        .product-fill.education { background: #b5d9cd; }
 
         .recent-card {
           padding: 15px 15px 10px;
@@ -527,12 +504,22 @@ export default function DashboardPage() {
           margin-bottom: 8px;
         }
 
-        .view-all {
-          color: #2362e9;
+        .view-all:link,
+        .view-all:visited {
+          display: inline-flex;
+          align-items: center;
+          border-radius: 6px;
+          padding: 5px 8px;
+          color: #0c5d5d;
           font-size: 12px;
           font-weight: 700;
-          text-decoration: underline;
-          text-underline-offset: 2px;
+          text-decoration: none;
+        }
+
+        .view-all:hover,
+        .view-all:active,
+        .view-all:focus-visible {
+          background: #e2eeea;
         }
 
         .recent-table-wrap {
@@ -543,7 +530,7 @@ export default function DashboardPage() {
           width: 100%;
           min-width: 650px;
           border-collapse: collapse;
-          color: #34415f;
+          color: #405b57;
           font-size: 12px;
           font-weight: 500;
           text-align: left;
@@ -551,8 +538,8 @@ export default function DashboardPage() {
 
         .recent-table th {
           padding: 8px 9px;
-          background: #f4f6fa;
-          color: #74829d;
+          background: #f2f6f4;
+          color: #738984;
           font-size: 10px;
           font-weight: 700;
           text-transform: uppercase;
@@ -568,7 +555,7 @@ export default function DashboardPage() {
 
         .recent-table td {
           padding: 8px 9px;
-          border-bottom: 1px solid #eff2f7;
+          border-bottom: 1px solid #edf2f0;
           white-space: nowrap;
         }
 
@@ -577,18 +564,18 @@ export default function DashboardPage() {
         }
 
         .application-id {
-          color: #2462e8;
+          color: #177e7a;
           font-size: 12px;
           font-weight: 700;
         }
 
         .application-amount {
-          color: #202f4d;
+          color: #243f3e;
           font-weight: 700;
         }
 
         .updated-time {
-          color: #7583a0;
+          color: #738984;
         }
 
         .application-status {
@@ -597,20 +584,20 @@ export default function DashboardPage() {
           min-height: 17px;
           padding: 2px 8px;
           border-radius: 10px;
-          background: #e7efff;
-          color: #2860cb;
+          background: #dff1ec;
+          color: #146c62;
           font-size: 10px;
           font-weight: 700;
         }
 
         .application-status.approved {
-          background: #2462e8;
+          background: #177e7a;
           color: #fff;
         }
 
         .application-status.awaiting-kyc {
-          background: #edf1f8;
-          color: #50607d;
+          background: #edf4f2;
+          color: #526962;
         }
 
         .application-status.returned {
@@ -669,16 +656,6 @@ export default function DashboardPage() {
         }
 
         @media (max-width: 420px) {
-          .dashboard-filters {
-            width: 100%;
-          }
-
-          .dashboard-filters button {
-            flex: 1;
-            padding: 0 5px;
-            font-size: 11px;
-          }
-
           .dashboard-metric strong {
             font-size: 21px;
           }

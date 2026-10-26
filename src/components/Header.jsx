@@ -4,14 +4,12 @@ import { useEffect, useState } from 'react';
 import { Bell, LogOut, Menu, CircleUserRound } from 'lucide-react';
 import Link from 'next/link';
 import { logout, LOGOUT_PENDING_KEY } from '../services/login';
-import { getBankProfile } from '../services/bankProfile';
 import { getUserProfile } from '../services/user_profile';
 
 let headerDetailsCache = null;
 
 export default function Header({ menuOpen, onMenu }) {
   const [details, setDetails] = useState(getInitialHeaderDetails);
-  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     let isCurrent = true;
@@ -37,21 +35,7 @@ export default function Header({ menuOpen, onMenu }) {
     }
   };
 
-  const { profile, bank, profileError, bankError, profileLoaded, bankLoaded } = details;
-  const bankName = firstText(
-    bank?.bank_name,
-    bank?.name,
-    bank?.legal_name,
-    profile?.organization_name,
-    profile?.bank_name,
-  ) || (bankLoaded ? 'Bank information unavailable' : 'Loading bank...');
-  const logo = firstText(bank?.logo_url, bank?.bank_logo, bank?.logo);
-  const initials = bankName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 3)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('') || 'B';
+  const { profile, profileError, profileLoaded } = details;
   const branch = firstText(
     profile?.login_branch,
     profile?.login_branch_name,
@@ -76,16 +60,6 @@ export default function Header({ menuOpen, onMenu }) {
       >
         <Menu size={20} />
       </button>
-      <div className="header-identity">
-        <div className="header-bank-mark" title={bankError || undefined}>
-          {logo && !logoFailed ? (
-            <img src={logo} alt={`${bankName} logo`} onError={() => setLogoFailed(true)} />
-          ) : (
-            <span aria-label={`${bankName} initials`}>{initials}</span>
-          )}
-        </div>
-        <strong className="header-bank-name" title={bankName}>{bankName}</strong>
-      </div>
       <div className="header-user-details">
         <HeaderDetail label="Login Branch" value={branch} error={profileError} />
         <HeaderDetail label="User Role" value={role} error={profileError} />
@@ -136,11 +110,8 @@ function getInitialHeaderDetails() {
 function emptyHeaderDetails() {
   return {
     profile: null,
-    bank: null,
     profileError: '',
-    bankError: '',
     profileLoaded: false,
-    bankLoaded: false,
   };
 }
 
@@ -154,21 +125,14 @@ function loadHeaderDetails() {
 
   const cache = { authData, details: null, promise: null };
   headerDetailsCache = cache;
-  cache.promise = Promise.allSettled([getUserProfile(), getBankProfile()]).then(
-    ([profileResult, bankResult]) => {
+  cache.promise = Promise.allSettled([getUserProfile()]).then(
+    ([profileResult]) => {
       const details = {
         profile: profileResult.status === 'fulfilled' ? profileResult.value : null,
-        bank: bankResult.status === 'fulfilled'
-          ? bankResult.value?.data || bankResult.value || null
-          : null,
         profileError: profileResult.status === 'rejected'
           ? profileResult.reason?.message || 'Unable to load user details.'
           : '',
-        bankError: bankResult.status === 'rejected'
-          ? bankResult.reason?.message || 'Unable to load bank details.'
-          : '',
         profileLoaded: true,
-        bankLoaded: true,
       };
 
       if (headerDetailsCache === cache) {

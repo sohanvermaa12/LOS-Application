@@ -24,18 +24,19 @@ import { getRoutePermission, hasRolePermission } from '../lib/rbac';
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
   { href: '/lead_management', label: 'Lead Management', icon: BriefcaseBusiness },
-  { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
-  { href: '/loan_application', label: 'Loan Application', icon: FilePlus2 },
+   { href: '/loan_eligibility', label: 'Loan Eligibility', icon: ClipboardCheck },
+  { href: '/customer_management', label: 'Customer Management', icon: UsersRound }, 
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
+  { href: '/loan_application', label: 'Loan Application', icon: FilePlus2 },
+  { href: '/product_management', label: 'Product Management', icon: Package },
   { href: '/user_management', label: 'User Management', icon: UsersRound },
   { href: '/master_creation', label: 'Bank Master', icon: ClipboardList },
-  { href: '/product_management', label: 'Product Management', icon: Package },
-  { href: '/loan_eligibility', label: 'Loan Eligibility', icon: ClipboardCheck },
   { href: '/interest_rate_master', label: 'Interest Rate Master', icon: Percent },
   { href: '/lookup_management', label: 'Lookup Management', icon: BookOpen },
+    { href: '/role_access', label: 'Role & Access ', icon: KeyRound },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings2 },
-  { href: '/role_access', label: 'Role & Access Management', icon: KeyRound },
+
 ];
 
 export default function Sidebar({ open, collapsed, onToggle, onClose, role }) {
@@ -57,14 +58,6 @@ export default function Sidebar({ open, collapsed, onToggle, onClose, role }) {
         aria-label="Main navigation"
       >
         <div className="brand-block">
-          <Link
-            href="/bank_profile"
-            onClick={onClose}
-            aria-label="Open bank profile"
-            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            <div className="brand-mark"><span>AX</span></div>
-          </Link>
           <button
             className="icon-button sidebar-toggle"
             type="button"
@@ -76,6 +69,15 @@ export default function Sidebar({ open, collapsed, onToggle, onClose, role }) {
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
+          <Link
+            href="/bank_profile"
+            onClick={onClose}
+            aria-label="Open bank profile"
+            className="sidebar-brand"
+            title="Open bank profile"
+          >
+            <div className="brand-mark"><span>LOS</span></div>
+          </Link>
           <button
             className="icon-button mobile-close"
             type="button"
