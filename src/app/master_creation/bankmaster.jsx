@@ -277,7 +277,7 @@ export default function BankMaster() {
   return (
     <AppShell title="Bank Master">
       <div className="bank-master-page">
-        <PageHeader title="Interest Rate Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
+        <PageHeader title="Bank Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
 
         {pageError && (
           <div className="bank-master-alert" role="alert">

@@ -212,7 +212,7 @@ export default function ProductManagementPage() {
         @media(max-width:480px){.pm-form{padding:17px}.pm-grid{grid-template-columns:1fr;gap:15px}.pm-name,.pm-wide{grid-column:auto}.pm-tenure-control{grid-template-columns:minmax(0,1fr) 104px}}
       `}</style>
       <main className="pm-wrap">
-        <PageHeader title="Interest Rate Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
+        <PageHeader title="Product  Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
         <div className="pm-toolbar">
           <div className="pm-search-group">
             <label className="pm-search" htmlFor="pm-search"><Search size={16} aria-hidden="true" /><input id="pm-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search product code or name" /></label>

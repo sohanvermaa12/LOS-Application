@@ -10,11 +10,11 @@ import { assignLead, exportAllLeads, getAllLeads, getLeadById, importLeadsCsv, u
 import { getUsers } from '../../services/user_management';
 
 const leadTableColumns = [
+    ['srNo', 'Sr. No.'],
   ['id', 'Lead ID'],
   ['firstName', 'First Name'],
   ['lastName', 'Last Name'],
   ['mobileNumber', 'Mobile Number'],
-  ['assignedBy', 'Assigned By'],
   ['assignedToName', 'Assigned To'],
   ['status', 'Status'],
   ['date', 'Lead Date'],
@@ -574,7 +574,7 @@ export default function LeadManagementPage() {
         <main className="lm-page">
           <PageHeader
             className="lm-page-header"
-            title="Interest Rate Master"
+            title="Lead Management"
             description="Set effective-dated interest tiers by loan product and tenure."
             marquee
             action={
@@ -627,7 +627,7 @@ export default function LeadManagementPage() {
                       <td><div className="lm-actions">
                         <button type="button" className="lm-action" onClick={() => loadLeadDetails(lead).catch(() => {})} aria-label={`View lead ${lead.id}`} title="View lead"><Eye size={14} /></button>
                         <button type="button" className="lm-action" onClick={() => openLeadEditor(lead)} aria-label={`Edit lead ${lead.id}`} title="Edit lead"><Pencil size={14} /></button>
-                        <button type="button" className="lm-action" onClick={() => openAssignmentDialog(lead)} aria-label={`Assign lead ${lead.id}`} title="Assign lead"><UserRound size={14} /> Assigned To</button>
+                      <button type="button" className="lm-action" onClick={() => openAssignmentDialog(lead)} aria-label={`Assign lead ${lead.id}`} title="Assign lead">Assigned</button>
                       </div></td>
                     </tr>
                   )) : <tr><td className="lm-empty" colSpan={leadTableColumns.length + 1}>No leads match these filters.</td></tr>}
