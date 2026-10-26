@@ -485,7 +485,7 @@ export default function LookupManagementPage() {
             {isSubTab && (
               <div className="lookup-field">
                 <label htmlFor="lookup-parent">
-                  Lookup <span aria-hidden="true">*</span>
+                  Select Lookup <span aria-hidden="true">*</span>
                 </label>
                 <select
                   id="lookup-parent"
@@ -509,13 +509,14 @@ export default function LookupManagementPage() {
             )}
             <div className="lookup-field">
               <label htmlFor="lookup-code">
-                Code <span aria-hidden="true">*</span>
+                {isSubTab ? "Sublookup Code" : "Lookup Code"}
+                <span aria-hidden="true">*</span>
               </label>
               <input
                 id="lookup-code"
                 value={form.code}
                 onChange={(event) => updateField("code", event.target.value)}
-                placeholder="e.g. LOAN_TYPE"
+                placeholder="e.g. Value"
                 autoComplete="off"
                 readOnly={isEditing}
                 aria-invalid={Boolean(errors.code)}
@@ -531,7 +532,8 @@ export default function LookupManagementPage() {
             </div>
             <div className="lookup-field">
               <label htmlFor="lookup-name">
-                Name <span aria-hidden="true">*</span>
+                {isSubTab ? "Sublookup Name" : "Lookup Name"}
+                <span aria-hidden="true">*</span>
               </label>
               <input
                 id="lookup-name"
@@ -545,7 +547,9 @@ export default function LookupManagementPage() {
               )}
             </div>
             <div className="lookup-field">
-              <label htmlFor="lookup-status">Status</label>
+              <label htmlFor="lookup-status">
+                {isSubTab ? "Sublookup Status" : "Lookup Status"}
+              </label>
               <select
                 id="lookup-status"
                 value={form.status}
@@ -555,7 +559,7 @@ export default function LookupManagementPage() {
                 <option>Inactive</option>
               </select>
             </div>
-            <div className="lookup-field lookup-description">
+            {/* <div className="lookup-field lookup-description">
               <label htmlFor="lookup-description">Description</label>
               <textarea
                 id="lookup-description"
@@ -566,7 +570,7 @@ export default function LookupManagementPage() {
                 }
                 placeholder="Add a brief description (optional)"
               />
-            </div>
+            </div> */}
             <div className="lookup-form-actions">
               {isEditing && (
                 <button
@@ -578,7 +582,7 @@ export default function LookupManagementPage() {
                 </button>
               )}
               <button type="submit" className="lookup-button primary">
-                <Plus size={16} />
+                {/* <Plus size={16} /> */}
                 {isEditing
                   ? "Update"
                   : isSubTab
@@ -816,7 +820,7 @@ function LookupRow({
               onClick={onEdit}
             >
               <Pencil size={13} />
-              <span>Edit</span>
+              {/* <span>Edit</span> */}
             </button>
             <button
               type="button"
@@ -825,9 +829,9 @@ function LookupRow({
               onClick={onAddSub}
             >
               <Plus size={15} />
-              <span>Sub</span>
+              {/* <span>Sub</span> */}
             </button>
-            <button
+            {/* <button
               type="button"
               className="lookup-icon-action danger with-label"
               aria-label={`Delete ${lookup.name}`}
@@ -835,7 +839,7 @@ function LookupRow({
             >
               <Trash2 size={13} />
               <span>Delete</span>
-            </button>
+            </button> */}
           </div>
         </td>
       </tr>
@@ -888,8 +892,9 @@ function LookupRow({
                           onClick={() => onEditSub(lookup, subLookup)}
                         >
                           <Pencil size={14} />
+                          
                         </button>
-                        <button
+                        {/* <button
                           type="button"
                           className="lookup-icon-action danger"
                           aria-label={`Delete ${subLookup.name}`}
@@ -897,7 +902,7 @@ function LookupRow({
                           onClick={() => onDeleteSub(lookup, subLookup)}
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   ))}
