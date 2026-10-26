@@ -12,8 +12,7 @@ import {
   Plus,
   RotateCcw,
   Save,
-  SlidersHorizontal,
-  Trash2
+  SlidersHorizontal
 } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
@@ -26,11 +25,13 @@ const steps = [
   { id: 'limits', label: 'Limit Details', icon: SlidersHorizontal }
 ];
 
+const ACCOUNTS_PER_PAGE = 3;
+
 const emptyAccount = () => ({ bankName: '', accountType: '', accountNumber: '', micrCode: '', ifscCode: '' });
 const emptyForm = () => ({
   bankCode: '', bankName: '', bankType: '', licenseNumber: '', pan: '', gstNumber: '', branchCount: '',
   addressType: '', pincode: '', address: '', addressLine2: '', landmark: '', city: '', state: '',
-  accounts: [],
+  accounts: [], approvalAuthority: '',
   singlePartyLimit: '', groupExposureLimit: '', sanctionMargin: '', penaltyCharge: '', penaltyRate: '', delegationPowerLimit: ''
 });
 
@@ -70,6 +71,7 @@ function toForm(profile) {
     city: String(firstValue(profile, ['city'])),
     state: String(firstValue(profile, ['state', 'state_name'])),
     accounts,
+    approvalAuthority: String(firstValue(profile, ['approval_authority', 'approvalAuthority'])),
     singlePartyLimit: String(firstValue(profile, ['single_party_limit', 'singlePartyLimit'])),
     groupExposureLimit: String(firstValue(profile, ['group_exposure_limit', 'groupExposureLimit'])),
     sanctionMargin: String(firstValue(profile, ['sanction_margin', 'sanction_margin_percent', 'sanctionMargin'])),
@@ -142,7 +144,7 @@ function validateStep(stepIndex, values) {
   return errors;
 }
 
-function TextField({ label, field, value, onChange, error, required = false, type = 'text', ...props }) {
+function TextField({ label, field, value, onChange, error, hint, required = false, type = 'text', ...props }) {
   const errorId = `bank-master-${field}-error`;
   return (
     <label className="bank-master-field">
@@ -158,6 +160,7 @@ function TextField({ label, field, value, onChange, error, required = false, typ
         aria-describedby={error ? errorId : undefined}
         {...props}
       />
+      {hint && <small className="bank-master-field-hint">{hint}</small>}
       {error && <small className="bank-master-field-error" id={errorId}>{error}</small>}
     </label>
   );
@@ -170,6 +173,7 @@ export default function BankMaster() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [accountPage, setAccountPage] = useState(0);
   const [pageError, setPageError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -181,6 +185,7 @@ export default function BankMaster() {
       const loadedForm = toForm(response?.data || response || {});
       setForm(loadedForm);
       setOriginalForm(loadedForm);
+      setAccountPage(0);
     } catch (error) {
       setPageError(error.message || 'Unable to load bank details.');
     } finally {
@@ -209,13 +214,8 @@ export default function BankMaster() {
 
   function addAccount() {
     setForm((current) => ({ ...current, accounts: [...current.accounts, emptyAccount()] }));
+    setAccountPage(Math.floor(form.accounts.length / ACCOUNTS_PER_PAGE));
     setErrors((current) => ({ ...current, accounts: '' }));
-    setNotice('');
-  }
-
-  function removeAccount(index) {
-    setForm((current) => ({ ...current, accounts: current.accounts.filter((_, accountIndex) => accountIndex !== index) }));
-    setErrors((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith('account-'))));
     setNotice('');
   }
 
@@ -224,6 +224,12 @@ export default function BankMaster() {
     setErrors(nextErrors);
     const firstInvalidField = Object.keys(nextErrors)[0];
     if (firstInvalidField) {
+      const invalidAccount = firstInvalidField.match(/^account-(\d+)-/);
+      if (invalidAccount) {
+        setAccountPage(Math.floor(Number(invalidAccount[1]) / ACCOUNTS_PER_PAGE));
+        window.setTimeout(() => document.getElementById(`bank-master-${firstInvalidField}`)?.focus(), 0);
+        return false;
+      }
       const input = document.getElementById(`bank-master-${firstInvalidField}`);
       input?.focus();
       return false;
@@ -235,6 +241,26 @@ export default function BankMaster() {
     if (!validateCurrentStep()) return;
     setActiveStep((current) => Math.min(current + 1, steps.length - 1));
     setErrors({});
+  }
+
+  async function saveAccountsAndNext() {
+    if (saving || !validateCurrentStep()) return;
+
+    setSaving(true);
+    setPageError('');
+    setNotice('');
+    try {
+      const response = await updateBankMaster(form);
+      const savedForm = { ...form, accounts: form.accounts.map((account) => ({ ...account })) };
+      setOriginalForm(savedForm);
+      setNotice(response?.message || 'Bank account details saved successfully.');
+      setErrors({});
+      setActiveStep(3);
+    } catch (error) {
+      setPageError(error.message || 'Unable to save bank account details.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function cancelChanges() {
@@ -252,6 +278,8 @@ export default function BankMaster() {
     if (firstInvalidField) {
       const stepIndex = firstInvalidField.startsWith('account-') ? 2 : ['singlePartyLimit', 'groupExposureLimit', 'sanctionMargin', 'penaltyCharge', 'penaltyRate', 'delegationPowerLimit'].includes(firstInvalidField) ? 3 : 0;
       setActiveStep(stepIndex);
+      const invalidAccount = firstInvalidField.match(/^account-(\d+)-/);
+      if (invalidAccount) setAccountPage(Math.floor(Number(invalidAccount[1]) / ACCOUNTS_PER_PAGE));
       window.setTimeout(() => document.getElementById(`bank-master-${firstInvalidField}`)?.focus(), 0);
       return;
     }
@@ -273,16 +301,24 @@ export default function BankMaster() {
 
   const currentStep = steps[activeStep];
   const StepIcon = currentStep.icon;
+  const institutionOptions = [...new Set([
+    form.bankName,
+    ...form.accounts.map((account) => account.bankName)
+  ].map((name) => String(name || '').trim()).filter(Boolean))];
+  const accountPageCount = Math.max(1, Math.ceil(form.accounts.length / ACCOUNTS_PER_PAGE));
+  const visibleAccounts = form.accounts.slice(accountPage * ACCOUNTS_PER_PAGE, (accountPage + 1) * ACCOUNTS_PER_PAGE);
+  const firstVisibleAccount = form.accounts.length ? accountPage * ACCOUNTS_PER_PAGE + 1 : 0;
+  const lastVisibleAccount = Math.min((accountPage + 1) * ACCOUNTS_PER_PAGE, form.accounts.length);
 
   return (
     <AppShell title="Bank Master">
       <div className="bank-master-page">
-        <PageHeader title="Bank Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
+        <PageHeader title="Bank Master" description="Manage your bank profile, account details, and lending authority." marquee />
 
         {pageError && (
           <div className="bank-master-alert" role="alert">
             <span>{pageError}</span>
-            {!loading && <button type="button" onClick={loadBank}>Try again</button>}
+            {!loading && !originalForm && <button type="button" onClick={loadBank}>Try again</button>}
           </div>
         )}
         {notice && <p className="bank-master-success" role="status"><Check size={16} />{notice}</p>}
@@ -364,65 +400,102 @@ export default function BankMaster() {
                   {activeStep === 2 && (
                     <div className="bank-master-accounts">
                       <div className="bank-master-table-heading">
-                        <div><h3>Other Bank Details</h3><p>Add and maintain multiple bank accounts in the grid.</p></div>
+                        <div><h3>Bank Account Details</h3><p>Select a saved bank or NBFC, or enter another financial institution.</p></div>
                         <button className="bank-master-add-row" type="button" onClick={addAccount}><Plus size={16} /> Add account</button>
                       </div>
-                      <div className="bank-master-table-wrap">
-                        <table className="bank-master-table">
-                          <thead><tr><th scope="col">Particulars</th><th scope="col">Bank Name</th><th scope="col">Account Type</th><th scope="col">Account No.</th><th scope="col">MICR Code</th><th scope="col">IFSC Code</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead>
-                          <tbody>
-                            {form.accounts.map((account, index) => (
-                              <tr key={`account-${index}`}>
-                                <td>
-                                  <select id={`bank-master-account-${index}-particular`} value="" disabled aria-label={`Particular, account ${index + 1}`} title="Particular options will be loaded from the backend API when available.">
-                                    <option value="">Pending API options</option>
-                                  </select>
-                                </td>
-                                {[
-                                  ['bankName', 'Bank Name', 80],
-                                  ['accountType', 'Account Type', 40],
-                                  ['accountNumber', 'Account No.', 34],
-                                  ['micrCode', 'MICR Code', 9],
-                                  ['ifscCode', 'IFSC Code', 11]
-                                ].map(([field, label, maxLength]) => {
-                                  const errorKey = `account-${index}-${field}`;
-                                  return (
-                                    <td className="bank-master-grid-cell" key={field}>
-                                      <input
-                                        id={`bank-master-${errorKey}`}
-                                        aria-label={`${label}, account ${index + 1}`}
+                      <datalist id="bank-master-institutions">
+                        {institutionOptions.map((name) => <option value={name} key={name} />)}
+                      </datalist>
+                      {form.accounts.length ? (
+                        <div className="bank-master-account-list">
+                          {visibleAccounts.map((account, pageIndex) => {
+                            const index = accountPage * ACCOUNTS_PER_PAGE + pageIndex;
+                            return (
+                              <section className="bank-master-account-card" key={`account-${index}`} aria-labelledby={`bank-master-account-title-${index}`}>
+                                <h4 id={`bank-master-account-title-${index}`}>Account {index + 1}</h4>
+                                <div className="bank-master-account-fields">
+                                  {[
+                                    ['bankName', 'Bank / NBFC / Institution', 120],
+                                    ['accountNumber', 'Account Number', 34],
+                                    ['micrCode', 'MICR Code', 9],
+                                    ['ifscCode', 'IFSC Code', 11]
+                                  ].map(([field, label, maxLength]) => {
+                                    const errorKey = `account-${index}-${field}`;
+                                    return (
+                                      <TextField
+                                        key={field}
+                                        label={label}
+                                        field={errorKey}
                                         value={account[field]}
                                         maxLength={maxLength}
-                                        inputMode={field === 'micrCode' || field === 'accountNumber' ? 'numeric' : undefined}
-                                        aria-invalid={Boolean(errors[errorKey])}
-                                        aria-describedby={errors[errorKey] ? `bank-master-${errorKey}-error` : undefined}
+                                        list={field === 'bankName' ? 'bank-master-institutions' : undefined}
+                                        inputMode={field === 'micrCode' ? 'numeric' : undefined}
+                                        autoCapitalize={field === 'ifscCode' || field === 'micrCode' ? 'characters' : undefined}
+                                        error={errors[errorKey]}
                                         onChange={(event) => updateAccount(index, field, ['ifscCode', 'micrCode'].includes(field) ? event.target.value.toUpperCase() : event.target.value)}
                                       />
-                                      {errors[errorKey] && <small className="bank-master-field-error" id={`bank-master-${errorKey}-error`}>{errors[errorKey]}</small>}
-                                    </td>
-                                  );
-                                })}
-                                <td>
-                                  <button className="bank-master-remove-row" type="button" onClick={() => removeAccount(index)} aria-label={`Remove account ${index + 1}`} title="Remove account"><Trash2 size={15} /></button>
-                                </td>
-                              </tr>
-                            ))}
-                            {!form.accounts.length && <tr><td className="bank-master-table-empty" colSpan="7">No accounts added. Select Add account to add bank details.</td></tr>}
-                          </tbody>
-                        </table>
-                      </div>
-                      <p className="bank-master-api-note" role="note">Particulars dropdown options will be connected to the backend API when that lookup is available.</p>
+                                    );
+                                  })}
+                                  <label className="bank-master-field">
+                                    <span>Account Type<em aria-hidden="true"> *</em></span>
+                                    <select
+                                      id={`bank-master-account-${index}-accountType`}
+                                      value={account.accountType}
+                                      aria-required="true"
+                                      aria-invalid={Boolean(errors[`account-${index}-accountType`])}
+                                      aria-describedby={errors[`account-${index}-accountType`] ? `bank-master-account-${index}-accountType-error` : undefined}
+                                      onChange={(event) => updateAccount(index, 'accountType', event.target.value)}
+                                    >
+                                      <option value="">Select account type</option>
+                                      {[...new Set(['Current', 'Savings', 'Cash Credit', 'Overdraft', 'Fixed Deposit', 'Other', account.accountType].filter(Boolean))].map((type) => <option value={type} key={type}>{type}</option>)}
+                                    </select>
+                                    {errors[`account-${index}-accountType`] && <small className="bank-master-field-error" id={`bank-master-account-${index}-accountType-error`}>{errors[`account-${index}-accountType`]}</small>}
+                                  </label>
+                                </div>
+                              </section>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="bank-master-account-empty">
+                          <Landmark size={22} />
+                          <strong>No bank accounts added</strong>
+                          <span>Select “Add account” to enter bank and routing details.</span>
+                        </div>
+                      )}
+                      {form.accounts.length > ACCOUNTS_PER_PAGE && (
+                        <nav className="bank-master-account-pagination" aria-label="Bank account pages">
+                          <span>Showing {firstVisibleAccount}–{lastVisibleAccount} of {form.accounts.length} accounts</span>
+                          <div>
+                            <button type="button" onClick={() => setAccountPage((page) => Math.max(0, page - 1))} disabled={accountPage === 0}>Previous</button>
+                            <strong aria-live="polite">Page {accountPage + 1} of {accountPageCount}</strong>
+                            <button type="button" onClick={() => setAccountPage((page) => Math.min(accountPageCount - 1, page + 1))} disabled={accountPage + 1 === accountPageCount}>Next</button>
+                          </div>
+                        </nav>
+                      )}
                     </div>
                   )}
 
                   {activeStep === 3 && (
                     <div className="bank-master-fields">
+                      <label className="bank-master-field">
+                        <span>Loan Approval Authority</span>
+                        <select
+                          id="bank-master-approvalAuthority"
+                          value={form.approvalAuthority}
+                          onChange={(event) => updateField('approvalAuthority', event.target.value)}
+                        >
+                          <option value="">Select approval authority</option>
+                          {['Branch Manager', 'Branch Credit Committee', 'Regional Credit Committee', 'Zonal Credit Committee', 'Head Office Credit Committee', 'Board Credit Committee'].map((authority) => <option value={authority} key={authority}>{authority}</option>)}
+                        </select>
+                        <small className="bank-master-field-hint">Choose the approval level authorized to sanction loans under this delegation.</small>
+                      </label>
                       <TextField label="Single Party Limit" field="singlePartyLimit" value={form.singlePartyLimit} onChange={(event) => updateField('singlePartyLimit', event.target.value)} error={errors.singlePartyLimit} type="number" min="0" step="0.01" inputMode="decimal" />
                       <TextField label="Group Exposure Limit" field="groupExposureLimit" value={form.groupExposureLimit} onChange={(event) => updateField('groupExposureLimit', event.target.value)} error={errors.groupExposureLimit} type="number" min="0" step="0.01" inputMode="decimal" />
                       <TextField label="Sanction Margin %" field="sanctionMargin" value={form.sanctionMargin} onChange={(event) => updateField('sanctionMargin', event.target.value)} error={errors.sanctionMargin} type="number" min="0" max="100" step="0.01" inputMode="decimal" />
                       <TextField label="Penalty Charge" field="penaltyCharge" value={form.penaltyCharge} onChange={(event) => updateField('penaltyCharge', event.target.value)} error={errors.penaltyCharge} type="number" min="0" step="0.01" inputMode="decimal" />
                       <TextField label="Penalty Rate %" field="penaltyRate" value={form.penaltyRate} onChange={(event) => updateField('penaltyRate', event.target.value)} error={errors.penaltyRate} type="number" min="0" max="100" step="0.01" inputMode="decimal" />
-                      <TextField label="Delegation Power Limit (₹)" field="delegationPowerLimit" value={form.delegationPowerLimit} onChange={(event) => updateField('delegationPowerLimit', event.target.value)} error={errors.delegationPowerLimit} type="number" min="0" step="0.01" inputMode="decimal" placeholder="Enter limit" />
+                      <TextField label="Delegation Power Limit (₹)" field="delegationPowerLimit" value={form.delegationPowerLimit} onChange={(event) => updateField('delegationPowerLimit', event.target.value)} error={errors.delegationPowerLimit} hint="Maximum loan amount this authority may approve, as per your bank's credit policy." type="number" min="0" step="0.01" inputMode="decimal" placeholder="Enter maximum loan amount" />
                     </div>
                   )}
 
@@ -431,7 +504,11 @@ export default function BankMaster() {
                     <div>
                       {activeStep > 0 && <button className="bank-master-previous" type="button" onClick={() => { setActiveStep((step) => step - 1); setErrors({}); }}><ChevronLeft size={17} /> Previous</button>}
                       {activeStep < steps.length - 1 ? (
-                        <button className="bank-master-next" type="button" onClick={goNext}>Next <ChevronRight size={17} /></button>
+                        <button className="bank-master-next" type="button" onClick={activeStep === 2 ? saveAccountsAndNext : goNext} disabled={saving}>
+                          {activeStep === 2 && saving ? <LoaderCircle className="bank-master-spinner" size={16} /> : null}
+                          {activeStep === 2 ? saving ? 'Saving...' : 'Save & Next' : 'Next'}
+                          {!saving && <ChevronRight size={17} />}
+                        </button>
                       ) : (
                         <button className="bank-master-next" type="submit" disabled={saving}>{saving ? <LoaderCircle className="bank-master-spinner" size={16} /> : <Save size={16} />}{saving ? 'Saving...' : 'Submit'}</button>
                       )}

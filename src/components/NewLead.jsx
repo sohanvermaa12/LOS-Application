@@ -294,7 +294,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     if (!open) return undefined;
 
     setForm(getLeadFormValues(initialData));
-    setActiveStep(initialData ? 1 : 0);
+    setActiveStep(0);
     setOtpMessage('');
     setMobileMessage('');
     setAadhaarMessage('');
@@ -853,7 +853,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
   const renderFooter = () => (
     <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '28px', paddingTop: '10px' }}>
-      {activeStep > (initialData ? 1 : 0) && (
+      {activeStep > 0 && (
         <button type="button" className="lead-cancel-btn" onClick={() => setActiveStep((current) => current - 1)} style={{ minWidth: '120px' }}>
           <ChevronLeft size={16} /> Previous
         </button>
@@ -909,6 +909,20 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
     if (initialData) {
       const updates = {
+        customerName,
+        mobileNumber: form.mobileNumber,
+        dateOfBirth: form.dateOfBirth || null,
+        age: numericValue(computedAge),
+        customerType: computedCustomerType || null,
+        panNumber: form.panCard || null,
+        aadhaarNumber: form.aadhaarCard || null,
+        residentialStatus: form.residentialStatus || null,
+        gender: form.gender || null,
+        maritalStatus: form.maritalStatus || null,
+        passportNumber: form.passportNo || null,
+        passportExpiryDate: form.passportExpiryDate || null,
+        emailAddress: form.email || null,
+        numberOfDependents: numericValue(form.dependents),
         loanAmount: numericValue(form.loanAmount),
         tenure: numericValue(tenureMonths),
         numberOfInstalments: numericValue(computedInstalments),
@@ -1018,8 +1032,7 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
                   type="button"
                   key={step.title}
                   className={`lead-step-item${index === activeStep ? ' active' : ''}${index < activeStep ? ' complete' : ''}`}
-                  disabled={Boolean(initialData && index === 0)}
-                  onClick={() => index < activeStep && !(initialData && index === 0) && setActiveStep(index)}
+                  onClick={() => index < activeStep && setActiveStep(index)}
                   aria-current={index === activeStep ? 'step' : undefined}
                   aria-label={`Step ${index + 1}: ${step.title}`}
                 >

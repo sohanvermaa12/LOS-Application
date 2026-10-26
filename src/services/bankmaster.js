@@ -42,6 +42,7 @@ function toApiPayload(form) {
         micr_code: account.micrCode.trim(),
         ifsc_code: account.ifscCode.trim().toUpperCase()
       })),
+    approval_authority: form.approvalAuthority || null,
     single_party_limit: form.singlePartyLimit === '' ? null : Number(form.singlePartyLimit),
     group_exposure_limit: form.groupExposureLimit === '' ? null : Number(form.groupExposureLimit),
     sanction_margin: form.sanctionMargin === '' ? null : Number(form.sanctionMargin),
