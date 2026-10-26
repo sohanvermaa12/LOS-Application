@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Calendar from 'react-calendar';
 import {
   ArrowLeft,
+  Calendar as CalendarIcon,
   Check,
   Eye,
   EyeOff,
@@ -30,6 +32,30 @@ import {
   validatePasswordStrength
 } from '../utils/validation';
 
+function parseLocalDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value ?? ''));
+  if (!match) return null;
+
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (
+    date.getFullYear() !== Number(year)
+    || date.getMonth() !== Number(month) - 1
+    || date.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function formatLocalDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function UserForm({ mode = 'add', initialData = null }) {
   const router = useRouter();
 
@@ -37,6 +63,12 @@ export default function UserForm({ mode = 'add', initialData = null }) {
 
   // Dynamic max date for 18 years requirement (calculated from current date so it never needs manual updates)
   const maxDobDate = useMemo(() => getMaxDateFor18YearsOld(), []);
+  const maxDobCalendarDate = useMemo(() => parseLocalDate(maxDobDate), [maxDobDate]);
+  const minDobCalendarDate = useMemo(() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 100);
+    return date;
+  }, []);
   const maxDobFormatted = useMemo(() => {
     try {
       const parts = maxDobDate.split('-');
@@ -82,6 +114,22 @@ export default function UserForm({ mode = 'add', initialData = null }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const submittingRef = useRef(false);
+  const dobPickerRef = useRef(null);
+  const [isDobCalendarOpen, setIsDobCalendarOpen] = useState(false);
+  const selectedDob = parseLocalDate(form.dateOfBirth);
+
+  useEffect(() => {
+    if (!isDobCalendarOpen) return undefined;
+
+    const handleClickOutside = (event) => {
+      if (!dobPickerRef.current?.contains(event.target)) {
+        setIsDobCalendarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDobCalendarOpen]);
 
   // Validate single field
   const validateField = (name, value, values = form) => {
@@ -341,6 +389,38 @@ export default function UserForm({ mode = 'add', initialData = null }) {
         else delete nextErrors.password;
       }
 
+      return nextErrors;
+    });
+  };
+
+  const handleDateOfBirthChange = (date) => {
+    if (!(date instanceof Date)) return;
+
+    const value = formatLocalDate(date);
+    const nextForm = { ...form, dateOfBirth: value };
+    const error = validateField('dateOfBirth', value, nextForm);
+
+    setForm((prev) => ({ ...prev, dateOfBirth: value }));
+    setTouched((prev) => ({ ...prev, dateOfBirth: true }));
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+      if (error) nextErrors.dateOfBirth = error;
+      else delete nextErrors.dateOfBirth;
+      return nextErrors;
+    });
+    setSubmitError('');
+    setIsDobCalendarOpen(false);
+  };
+
+  const handleDateOfBirthBlur = (event) => {
+    if (dobPickerRef.current?.contains(event.relatedTarget)) return;
+
+    setTouched((prev) => ({ ...prev, dateOfBirth: true }));
+    const error = validateField('dateOfBirth', form.dateOfBirth);
+    setErrors((prev) => {
+      const nextErrors = { ...prev };
+      if (error) nextErrors.dateOfBirth = error;
+      else delete nextErrors.dateOfBirth;
       return nextErrors;
     });
   };
@@ -692,18 +772,46 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                 Date of Birth <span>*</span>{' '}
                 <small style={{ color: '#167c78', fontWeight: 600 }}>(Min. 18 years old)</small>
               </label>
-              <input
-                id="field-dateOfBirth"
-                name="dateOfBirth"
-                type="date"
-                max={maxDobDate}
-                className={`form-input ${errors.dateOfBirth ? 'has-error' : ''}`}
-                value={form.dateOfBirth}
-                onChange={handleChange}
-                onBlur={handleBlur}
-              />
+              <div className="dob-picker" ref={dobPickerRef}>
+                <button
+                  id="field-dateOfBirth"
+                  type="button"
+                  className={`dob-picker-trigger ${errors.dateOfBirth ? 'has-error' : ''}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={isDobCalendarOpen}
+                  aria-invalid={Boolean(errors.dateOfBirth)}
+                  aria-describedby={errors.dateOfBirth ? 'field-dateOfBirth-error' : undefined}
+                  onClick={() => setIsDobCalendarOpen((open) => !open)}
+                  onBlur={handleDateOfBirthBlur}
+                >
+                  <span className={selectedDob ? '' : 'dob-picker-placeholder'}>
+                    {selectedDob
+                      ? selectedDob.toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+                      : 'Select date of birth'}
+                  </span>
+                  <CalendarIcon size={16} aria-hidden="true" />
+                </button>
+                <input type="hidden" name="dateOfBirth" value={form.dateOfBirth} />
+                {isDobCalendarOpen && (
+                  <div className="dob-calendar-popover" role="dialog" aria-label="Choose date of birth">
+                    <Calendar
+                      className="loan-birth-calendar"
+                      value={selectedDob}
+                      onChange={handleDateOfBirthChange}
+                      minDate={minDobCalendarDate}
+                      maxDate={maxDobCalendarDate}
+                      defaultActiveStartDate={selectedDob || maxDobCalendarDate}
+                      locale="en-IN"
+                    />
+                  </div>
+                )}
+              </div>
               {errors.dateOfBirth ? (
-                <span className="field-error-text">{errors.dateOfBirth}</span>
+                <span id="field-dateOfBirth-error" className="field-error-text">{errors.dateOfBirth}</span>
               ) : (
                 <span style={{ fontSize: '11px', color: '#647e82', marginTop: '4px', display: 'block' }}>
                   Applicant must be at least 18 years old (born on or before {maxDobFormatted}).

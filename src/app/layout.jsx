@@ -1,3 +1,4 @@
+import 'react-calendar/dist/Calendar.css';
 import './globals.css';
 
 export const metadata = {
