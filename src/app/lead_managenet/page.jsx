@@ -49,7 +49,7 @@ const statusKeys = {
   CONVERTED: 'qualified',
 };
 
-const LEADS_PER_PAGE = 5;
+const LEADS_PER_PAGE = 10;
 
 const getUserRows = (result) => [
   result?.data?.users,
