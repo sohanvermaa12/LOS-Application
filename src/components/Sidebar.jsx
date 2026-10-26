@@ -17,13 +17,15 @@ import {
   Settings2,
   ShieldCheck,
   UsersRound,
+  KeyRound,
 } from 'lucide-react';
+import { getRoutePermission, hasRolePermission } from '../lib/rbac';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
   { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
-  { label: 'Loan Application', icon: FilePlus2 },
+  { href: '/customer_management/customer_onboarding', label: 'Loan Application', icon: FilePlus2 },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
   { href: '/user_management', label: 'User Management', icon: UsersRound },
   { href: '/master_creation', label: 'Bank Master', icon: ClipboardList },
@@ -33,9 +35,10 @@ const items = [
   { href: '/lookup_management', label: 'Lookup Management', icon: BookOpen },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings2 },
+  { href: '/role_access', label: 'Role & Access Management', icon: KeyRound },
 ];
 
-export default function Sidebar({ open, collapsed, onToggle, onClose }) {
+export default function Sidebar({ open, collapsed, onToggle, onClose, role }) {
   const pathname = usePathname();
 
   return (
@@ -83,24 +86,11 @@ export default function Sidebar({ open, collapsed, onToggle, onClose }) {
           </button>
         </div>
         <nav className="main-nav" aria-label="Primary">
-          {items.map(({ href, label, icon: Icon }) => {
-            const isActive = href && (pathname === href || pathname?.startsWith(`${href}/`));
-
-            if (!href) {
-              return (
-                <button
-                  className="nav-item"
-                  type="button"
-                  key={label}
-                  disabled
-                  aria-label={`${label} unavailable`}
-                  title={`${label} is not linked to a page`}
-                >
-                  <Icon size={18} strokeWidth={1.8} />
-                  <span>{label}</span>
-                </button>
-              );
-            }
+          {items.filter(({ href }) => {
+            const requiredPermission = getRoutePermission(href);
+            return !requiredPermission || hasRolePermission(role, ...requiredPermission);
+          }).map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href || pathname?.startsWith(`${href}/`);
 
             return (
               <Link

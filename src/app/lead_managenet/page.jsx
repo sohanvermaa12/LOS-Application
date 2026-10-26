@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Pencil, Plus, Search, Upload, UserRound, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
+import { PermissionGate } from '../../components/AccessControl';
 import NewLead from '../../components/NewLead';
 import LeadDetails from '../../components/LeadDetails';
 import { saveLeads } from '../../services/leadService';
@@ -578,8 +579,10 @@ export default function LeadManagementPage() {
                 setExportError('');
                 setShowExportDialog(true);
               }}><Download size={16} /> Export Lead</button>
-              <button type="button" className="lm-add-button" onClick={() => setShowNewLead(true)}><Plus size={16} /> Add New Lead</button>
-              <button type="button" className="lm-export-button" onClick={openBulkImport}><Upload size={16} /> Upload Bulk Lead</button>
+              <PermissionGate module="lead-management" action="create">
+                <button type="button" className="lm-add-button" onClick={() => setShowNewLead(true)}><Plus size={16} /> Add New Lead</button>
+                <button type="button" className="lm-export-button" onClick={openBulkImport}><Upload size={16} /> Upload Bulk Lead</button>
+              </PermissionGate>
             </div>
           </header>
 
@@ -619,8 +622,10 @@ export default function LeadManagementPage() {
                       ))}
                       <td><div className="lm-actions">
                         <button type="button" className="lm-action" onClick={() => loadLeadDetails(lead).catch(() => {})} aria-label={`View lead ${lead.id}`} title="View lead"><Eye size={14} /></button>
-                        <button type="button" className="lm-action" onClick={() => openLeadEditor(lead)} aria-label={`Edit lead ${lead.id}`} title="Edit lead"><Pencil size={14} /></button>
-                        <button type="button" className="lm-action" onClick={() => openAssignmentDialog(lead)} aria-label={`Assign lead ${lead.id}`} title="Assign lead"><UserRound size={14} /> Assigned To</button>
+                        <PermissionGate module="lead-management" action="edit">
+                          <button type="button" className="lm-action" onClick={() => openLeadEditor(lead)} aria-label={`Edit lead ${lead.id}`} title="Edit lead"><Pencil size={14} /></button>
+                          <button type="button" className="lm-action" onClick={() => openAssignmentDialog(lead)} aria-label={`Assign lead ${lead.id}`} title="Assign lead"><UserRound size={14} /> Assigned To</button>
+                        </PermissionGate>
                       </div></td>
                     </tr>
                   )) : <tr><td className="lm-empty" colSpan={leadTableColumns.length + 1}>No leads match these filters.</td></tr>}

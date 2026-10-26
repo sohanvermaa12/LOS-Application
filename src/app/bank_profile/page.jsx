@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Building2, ChevronRight, ExternalLink, FileText, Fingerprint, Globe2, Home, Landmark, Mail, MapPin, Network, Phone, Plus, ShieldCheck, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
+import { PermissionGate } from '../../components/AccessControl';
 import { getBankProfile } from '../../services/bankProfile';
 
 const fieldLabels = {
@@ -213,10 +214,12 @@ export default function BankProfilePage() {
               <ChevronRight size={14} />
               <span>Bank Profile</span>
             </nav>
-            <button className="bank-profile-add-button" type="button" onClick={() => setAddBranchOpen(true)}>
-              <Plus size={18} />
-              Add Branch
-            </button>
+            <PermissionGate module="bank-management" action="create">
+              <button className="bank-profile-add-button" type="button" onClick={() => setAddBranchOpen(true)}>
+                <Plus size={18} />
+                Add Branch
+              </button>
+            </PermissionGate>
           </div>
           {loading ? (
             <div className="bank-profile-message">Loading bank profile...</div>
