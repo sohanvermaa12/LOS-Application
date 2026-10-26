@@ -533,7 +533,7 @@ export default function RuleEngine() {
               </tbody>
             </table>
           </div>
-          <div className="rl-foot">
+          {/* <div className="rl-foot">
             <button
               className="btn ghost"
               onClick={() => {
@@ -546,7 +546,7 @@ export default function RuleEngine() {
             <button className="btn primary" onClick={saveAll}>
               Save rules
             </button>
-          </div>
+          </div> */}
         </section>
 
         {toast && (
