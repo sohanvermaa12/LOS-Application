@@ -21,7 +21,7 @@ import {
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
-  { href: '/lead_managenet', label: 'Lead Management', icon: BriefcaseBusiness },
+  { href: '/lead_management', label: 'Lead Management', icon: BriefcaseBusiness },
   { href: '/customer_management', label: 'Customer Management', icon: UsersRound },
   { label: 'Loan Application', icon: FilePlus2 },
   { href: '/rule_engine', label: 'Rule Engine', icon: ShieldCheck },
