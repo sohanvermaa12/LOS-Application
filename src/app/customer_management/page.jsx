@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Eye, FilePlus2, Mail, Pencil, Search, Trash2, UserRound, UsersRound, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
-import PageHeader from '../../components/PageHeader';
 import Card from '../../components/Card';
 import Modal from '../../components/Modal';
 import { api } from '../../services/api.js';
@@ -110,12 +109,10 @@ export default function CustomerManagementPage() {
 
   return (
     <AppShell title="Customer Management">
-      <PageHeader
-        eyebrow="CUSTOMERS"
-        title="Customer Management"
-        description="Review customer profiles, KYC status, and active lending relationships."
-        action={<Link className="primary-button" href="/customer_management/customer_onboarding"><FilePlus2 size={16} /> Loan Application</Link>}
-      />
+      <div style={{ marginTop: '-15px', marginBottom: '26px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ margin: 0, color: '#23474C', font: '700 23px Manrope' }}>Customer Management</h1>
+        <Link className="primary-button customer-add-button" href="/customer_management/customer_onboarding"><FilePlus2 size={16} /> Add Customer</Link>
+      </div>
 
       <div className="metric-grid">
         <div className="metric-card"><div className="metric-icon teal"><UsersRound size={17} /></div><div className="metric-label">Total customers</div><div className="metric-value">{customers.length}</div></div>
@@ -127,7 +124,7 @@ export default function CustomerManagementPage() {
       <Card className="table-panel">
         <div className="panel-heading">
           <div><h2>Customer directory</h2><p>{filteredCustomers.length} of {customers.length} customers</p></div>
-          <div className="workspace-toolbar">
+          <div className="workspace-toolbar customer-management-toolbar">
             <label className="input-wrap" aria-label="Search customers"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, ID, or phone" /></label>
             <select className="filter-select" value={kycFilter} onChange={(event) => setKycFilter(event.target.value)} aria-label="Filter by KYC status">
               <option>All</option><option>Verified</option><option>Pending</option>
@@ -213,7 +210,7 @@ export default function CustomerManagementPage() {
         </Modal>
       )}
 
-      <style>{`.customer-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px}.customer-row-actions .icon-button{width:34px;height:34px;border:1px solid transparent}.customer-row-actions .icon-button:hover{border-color:var(--line);background:#f2f8f6;color:var(--teal)}.customer-row-actions .customer-delete:hover,.customer-delete-confirm{border-color:#b83b3b;background:#b83b3b;color:#fff}.customer-row-actions .customer-delete:hover,.customer-delete-confirm:hover{background:#992d2d;color:#fff}`}</style>
+      <style>{`.customer-add-button{border:0;background:#368262;box-shadow:0 4px 12px #36826225}.customer-add-button:hover{background:#2c6d52}.customer-add-button:focus-visible{outline:2px solid #368262;outline-offset:2px}.customer-management-toolbar{align-items:center;margin-bottom:0}.customer-management-toolbar .input-wrap{height:34px;margin-top:0}.customer-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px}.customer-row-actions .icon-button{width:34px;height:34px;border:1px solid transparent}.customer-row-actions .icon-button:hover{border-color:var(--line);background:#f2f8f6;color:var(--teal)}.customer-row-actions .customer-delete:hover,.customer-delete-confirm{border-color:#b83b3b;background:#b83b3b;color:#fff}.customer-row-actions .customer-delete:hover,.customer-delete-confirm:hover{background:#992d2d;color:#fff}`}</style>
     </AppShell>
   );
 }

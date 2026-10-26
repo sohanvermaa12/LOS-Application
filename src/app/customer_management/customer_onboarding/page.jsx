@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,12 +20,12 @@ import {
 import AppShell from '../../../components/AppShell';
 
 const wizardSteps = [
-  { id: 'personal', label: 'Personal Details', title: 'Individual Customer Onboarding', icon: UserIcon },
-  { id: 'address', label: 'Address Details', title: 'Individual Customer Onboarding', icon: Home },
-  { id: 'employment', label: 'Employment info', title: 'Individual Customer Onboarding', icon: Briefcase },
-  { id: 'income', label: 'Income Details', title: 'Individual Customer Onboarding', icon: Wallet },
-  { id: 'documents', label: 'Documents', title: 'Individual Customer Onboarding', icon: FileText },
-  { id: 'loan', label: 'Loan Details', title: 'Individual Customer Onboarding', icon: Landmark }
+  { id: 'personal', label: 'Personal Details', icon: UserIcon },
+  { id: 'address', label: 'Address Details', icon: Home },
+  { id: 'employment', label: 'Employment info', icon: Briefcase },
+  { id: 'income', label: 'Income Details', icon: Wallet },
+  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'loan', label: 'Loan Details', icon: Landmark }
 ];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -155,6 +155,7 @@ const createTaxReturns = () => {
 const createInitialForm = () => ({
   leadId: '',
   panCard: '',
+  title: '',
   fullName: '',
   middleName: '',
   lastName: '',
@@ -327,7 +328,7 @@ const validateStep = (stepIndex, values) => {
         errors[key] = `${label} can contain letters and spaces only.`;
       }
     });
-    required('customerType', values.customerType, 'Select a customer type.');
+    required('customerType', values.customerType, 'Customer type is required.');
     required('dob', values.dob, 'Date of birth is required.');
 
     if (values.dob && !isValidDate(values.dob)) {
@@ -809,7 +810,6 @@ function FileUpload({ label, file, onChange, error }) {
 }
 
 export default function LoanApplicationPage() {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(0);
   const [form, setForm] = useState(createInitialForm);
   const [validationErrors, setValidationErrors] = useState({});
@@ -928,7 +928,6 @@ export default function LoanApplicationPage() {
     updateArrayItem('documents', index, 'file', file);
   };
 
-  const activeStep = wizardSteps[currentStep];
   const isLastStep = currentStep === wizardSteps.length - 1;
   const currentStepErrors = validationErrors[currentStep] || {};
 
@@ -1051,11 +1050,14 @@ export default function LoanApplicationPage() {
   return (
     <AppShell title="Individual Customer Onboarding">
       <div className="loan-application-shell">
+        <div className="loan-onboarding-heading" style={{ marginTop: '-15px', marginBottom: '26px', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ margin: 0, color: '#23474C', font: '700 23px Manrope' }}>Individual Customer Onboarding</h1>
+          <Link href="/customer_management" className="loan-back-button" style={{ height: '32px', minWidth: 'auto', padding: '0 10px', gap: '5px', fontSize: '13px', background: '#368262', borderColor: '#368262', color: '#fff', textDecoration: 'none' }}>
+            <ArrowLeft size={14} />
+            Back
+          </Link>
+        </div>
         <div className="loan-application-card">
-          <div className="loan-application-header">
-            <h1>{activeStep.title}</h1>
-          </div>
-
           <div className="loan-stepper" aria-label="Application progress">
             {wizardSteps.map((step, index) => {
               const Icon = step.icon;
@@ -1070,10 +1072,9 @@ export default function LoanApplicationPage() {
                   }`}
                 >
                   <span className="loan-step-bubble">
-                    {isDone ? '✓' : index + 1}
+                    <Icon size={16} aria-hidden="true" />
                   </span>
                   <span className="loan-step-text">{step.label}</span>
-                  <Icon size={14} className="loan-step-icon" />
                 </div>
               );
             })}
@@ -1111,7 +1112,14 @@ export default function LoanApplicationPage() {
                 />
               </div>
 
-                <div className="field-grid name-three-col">
+              <div className="field-grid name-four-col">
+                <SelectField
+                  label="Title"
+                  value={form.title}
+                  onChange={(value) => updateField('title', value)}
+                  options={['Mr', 'Miss', 'Mrs']}
+                />
+
                 <Field
                   label="First Name *"
                   value={form.fullName}
@@ -1180,10 +1188,11 @@ export default function LoanApplicationPage() {
                   error={currentStepErrors.email}
                 />
 
-                <SelectField
+                <Field
                   label="Customer Type *"
                   value={form.customerType}
-                  options={['']}
+                  onChange={(value) => updateField('customerType', value)}
+                  placeholder="Enter Customer Type"
                   error={currentStepErrors.customerType}
                 />
 
@@ -2182,27 +2191,26 @@ export default function LoanApplicationPage() {
           )}
 
           {/* Navigation */}
-          <div className="loan-form-actions">
-            <button
-              type="button"
-              className="loan-back-button"
-              onClick={
-                currentStep === 0
-                  ? () => router.push('/dashboard')
-                  : goBack
-              }
-            >
-              <ArrowLeft size={16} />
-              {currentStep === 0 ? 'Cancel' : 'Back'}
-            </button>
+          <div className={`loan-form-actions ${currentStep === 0 ? 'first-step' : ''}`}>
+            {currentStep > 0 && (
+              <button
+                type="button"
+                className="loan-back-button"
+                onClick={goBack}
+              >
+                <ArrowLeft size={16} />
+                Back
+              </button>
+            )}
 
             <button
               type="button"
               className="loan-continue-button"
               onClick={goNext}
+              style={{ height: '36px', minWidth: '112px', width: 'auto', padding: '0 14px', gap: '6px', borderRadius: '7px', fontSize: '13px', background: '#368262', borderColor: '#368262' }}
             >
               {isLastStep ? 'Submit' : 'Continue'}
-              <ArrowRight size={16} />
+              <ArrowRight size={14} />
             </button>
           </div>
         </div>
