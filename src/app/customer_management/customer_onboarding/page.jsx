@@ -1183,8 +1183,7 @@ export default function LoanApplicationPage() {
                 <SelectField
                   label="Customer Type *"
                   value={form.customerType}
-                  onChange={(value) => updateField('customerType', value)}
-                  options={['Individual', 'Non-Individual']}
+                  options={['']}
                   error={currentStepErrors.customerType}
                 />
 
