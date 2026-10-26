@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Pencil, Plus, Search, Upload, UserRound, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
+import { PermissionGate } from '../../components/AccessControl';
 import PageHeader from '../../components/PageHeader';
 import NewLead from '../../components/NewLead';
 import LeadDetails from '../../components/LeadDetails';

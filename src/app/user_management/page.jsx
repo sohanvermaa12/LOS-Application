@@ -28,6 +28,7 @@ import AppShell from '../../components/AppShell';
 import PageHeader from '../../components/PageHeader';
 
 import Card from '../../components/Card';
+import { PermissionGate } from '../../components/AccessControl';
 import { api } from '../../services/api.js';
 import { getLeads, getUsers } from '../../services/leadService';
 
@@ -539,13 +540,11 @@ export default function UserManagementPage() {
 
         </div>
 
-        <button
-
-          type="button"
-
-          className="primary-button"
-
-          onClick={() => router.push('/user_management/add')}
+        <PermissionGate module="user-management" action="create">
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => router.push('/user_management/add')}
 
           style={{
 
@@ -572,6 +571,7 @@ export default function UserManagementPage() {
           Add User
 
         </button>
+        </PermissionGate>
 
       </div>
 
@@ -807,6 +807,7 @@ export default function UserManagementPage() {
 
                       <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
 
+                        <PermissionGate module="user-management" action="edit">
                         <button
 
                           type="button"
@@ -874,6 +875,7 @@ export default function UserManagementPage() {
                           <Edit3 size={15} />
 
                         </button>
+                        </PermissionGate>
 
                       </div>
 
