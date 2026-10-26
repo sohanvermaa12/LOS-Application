@@ -431,12 +431,12 @@ export default function LookupManagementPage() {
     <AppShell>
       <main className="lookup-page">
         <header className="lookup-heading">
-          <div>
-            <p className="lookup-eyebrow">ADMINISTRATION / CONFIGURATION</p>
-            <h1>Lookup Master</h1>
-            <p className="lookup-subtitle">
-              Manage lookup values used throughout your application.
-            </p>
+          <div style={{ marginTop: "-15px", marginBottom: "26px" }}>
+            <h1
+              style={{ margin: 0, color: "#23474C", font: "700 23px Manrope" }}
+            >
+              Lookup Management
+            </h1>
           </div>
           <div className="lookup-summary">
             <Layers3 size={17} />

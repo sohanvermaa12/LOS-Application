@@ -228,13 +228,12 @@ export default function RuleEngine() {
     <AppShell>
       <div className="rl-page">
         <header className="rl-head">
-          <div>
-            <span className="rl-eyebrow">Administration / Configuration</span>
-            <h1>Rule Engine</h1>
-            <p>
-              Set the checks every loan application must pass, and the rate
-              added when it doesn't fully qualify.
-            </p>
+          <div style={{ marginTop: "-15px", marginBottom: "26px" }}>
+            <h1
+              style={{ margin: 0, color: "#23474C", font: "700 23px Manrope" }}
+            >
+              Rule Engine
+            </h1>
           </div>
           <span className="rl-badge big">{rules.length} rules</span>
         </header>
