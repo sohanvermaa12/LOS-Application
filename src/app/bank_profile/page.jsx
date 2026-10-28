@@ -264,6 +264,8 @@ export default function BankProfilePage() {
           })),
       }))
     : [];
+  
+  console.log("sections", sections);
 
   useEffect(() => {
     let mounted = true;
@@ -289,6 +291,7 @@ export default function BankProfilePage() {
     };
   }, []);
 
+  
   async function submitBranch(event) {
     event.preventDefault();
     setBranchSubmitting(true);
