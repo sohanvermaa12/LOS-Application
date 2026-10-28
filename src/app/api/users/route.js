@@ -1,17 +1,14 @@
-import path from 'node:path';
 import nextEnv from '@next/env';
 
+const DEFAULT_API_BASE_URL = 'https://los-backend-at5n.onrender.com';
+
 function getUsersApiUrl(request, create = false) {
-  nextEnv.loadEnvConfig(path.join(process.cwd(), 'src'), undefined, undefined, true);
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!apiBaseUrl) {
-    throw new Error('NEXT_PUBLIC_API_URL is not configured.');
-  }
-
-  const baseUrl = apiBaseUrl.replace(/\/+$/, '');
+  nextEnv.loadEnvConfig(process.cwd(), undefined, undefined, true);
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL
+  ).replace(/\/+$/, '');
   const versionedBaseUrl = /\/api\/v\d+$/i.test(baseUrl) ? baseUrl : `${baseUrl}/api/v1`;
-  const endpoint = create ? '/administration/users/users' : '/administration/users';
+  const endpoint = create ? '/users' : '/administration/users';
   const query = new URL(request.url).search;
   return `${versionedBaseUrl}${endpoint}${query}`;
 }
@@ -26,11 +23,23 @@ async function proxyUsersRequest(request, method) {
   try {
     url = getUsersApiUrl(request, method === 'POST');
   } catch (error) {
+    console.error('Unable to configure the users API proxy.', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
     return Response.json({ message: error.message }, { status: 500 });
   }
 
   let body;
-  if (method === 'POST') body = await request.text();
+  if (method === 'POST') {
+    try {
+      body = await request.text();
+    } catch (error) {
+      console.error('Unable to read the users API request body.', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+      return Response.json({ message: 'Unable to read the user request.' }, { status: 400 });
+    }
+  }
 
   let upstream;
   try {
@@ -44,23 +53,46 @@ async function proxyUsersRequest(request, method) {
       ...(body ? { body } : {}),
       cache: 'no-store',
     });
-  } catch {
+  } catch (error) {
+    console.error(`Users API ${method} request failed to reach the backend.`, {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
     return Response.json({ message: 'Unable to connect to the user service.' }, { status: 502 });
   }
 
-  if (upstream.status === 204) return new Response(null, { status: 204 });
+  if ([204, 205, 304].includes(upstream.status)) {
+    return new Response(null, { status: upstream.status });
+  }
 
-  let result;
+  let responseBody;
   try {
-    result = await upstream.json();
-  } catch {
+    responseBody = await upstream.text();
+  } catch (error) {
+    console.error(`Unable to read the users API ${method} response.`, {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
     return Response.json(
       { message: 'The user service returned an unreadable response.' },
       { status: upstream.ok ? 502 : upstream.status },
     );
   }
 
-  return Response.json(result, { status: upstream.status });
+  if (!responseBody) {
+    return new Response(null, { status: upstream.status });
+  }
+
+  const headers = new Headers();
+  const contentType = upstream.headers.get('content-type');
+  if (contentType) headers.set('content-type', contentType);
+
+  if (!upstream.ok) {
+    console.error(`Users API ${method} request returned HTTP ${upstream.status}.`);
+  }
+
+  return new Response(responseBody, {
+    status: upstream.status,
+    headers,
+  });
 }
 
 export async function GET(request) {

@@ -19,8 +19,6 @@ import {
   UsersRound,
   KeyRound,
 } from 'lucide-react';
-import { getRoutePermission, hasRolePermission } from '../lib/rbac';
-
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: House },
   { href: '/lead_management', label: 'Lead Management', icon: BriefcaseBusiness },
@@ -39,7 +37,7 @@ const items = [
 
 ];
 
-export default function Sidebar({ open, collapsed, onToggle, onClose, role }) {
+export default function Sidebar({ open, collapsed, onToggle, onClose }) {
   const pathname = usePathname();
 
   return (
@@ -88,10 +86,7 @@ export default function Sidebar({ open, collapsed, onToggle, onClose, role }) {
           </button>
         </div>
         <nav className="main-nav" aria-label="Primary">
-          {items.filter(({ href }) => {
-            const requiredPermission = getRoutePermission(href);
-            return !requiredPermission || hasRolePermission(role, ...requiredPermission);
-          }).map(({ href, label, icon: Icon }) => {
+          {items.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname?.startsWith(`${href}/`);
 
             return (

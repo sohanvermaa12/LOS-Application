@@ -59,14 +59,15 @@ function getServerErrorMessage(result) {
   return '';
 }
 
-async function requestUsersApi(path, options, defaultMessage) {
-  if (!API_BASE_URL) {
+async function requestUsersApi(path, options, defaultMessage, useAppApiRoute = false) {
+  if (!useAppApiRoute && !API_BASE_URL) {
     throw new Error('NEXT_PUBLIC_API_URL is not configured.');
   }
 
+  const url = useAppApiRoute ? path : `${API_BASE_URL}${path}`;
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(url, {
       ...options,
       headers: { ...getHeaders(), ...options.headers },
       cache: 'no-store',
@@ -135,9 +136,10 @@ function getUserList(result) {
 
 export async function getUsers() {
   const result = await requestUsersApi(
-    '/api/v1/users',
+    '/api/users',
     { method: 'GET', headers: { Accept: 'application/json' } },
     'Unable to load users.',
+    true,
   );
 
   return getUserList(result);
