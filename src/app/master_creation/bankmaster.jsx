@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import { getBankMaster, updateBankMaster } from '../../services/bankmaster';
+import { getLookupOptions, getLookupTypes } from '../../services/lookups';
 
 const steps = [
   { id: 'bank', label: 'Bank Info', icon: Building2 },
@@ -24,7 +25,7 @@ const steps = [
   { id: 'limits', label: 'Limit Details', icon: SlidersHorizontal }
 ];
 
-const emptyAccount = () => ({ bankName: '', accountType: '', accountNumber: '', micrCode: '', ifscCode: '' });
+const emptyAccount = () => ({ particulars: '', bankName: '', accountType: '', accountNumber: '', micrCode: '', ifscCode: '' });
 const validateAccount = (account, prefix = 'account-draft-') => {
   const errors = {};
   for (const [key, label] of [['bankName', 'Bank name'], ['accountType', 'Account type'], ['accountNumber', 'Account number'], ['micrCode', 'MICR code'], ['ifscCode', 'IFSC code']]) {
@@ -58,6 +59,7 @@ function toForm(profile) {
   const form = emptyForm();
   const accountData = firstValue(profile, ['other_bank_details', 'otherBankDetails', 'account_details', 'accountDetails']);
   const accounts = Array.isArray(accountData) ? accountData.map((account) => ({
+    particulars: String(firstValue(account, ['particulars', 'particular', 'purpose'])),
     bankName: firstValue(account, ['bank_name', 'bankName']),
     accountType: firstValue(account, ['account_type', 'accountType']),
     accountNumber: firstValue(account, ['account_number', 'account_no', 'accountNumber']),
@@ -178,6 +180,10 @@ export default function BankMaster() {
   const [editingAccountIndex, setEditingAccountIndex] = useState(null);
   const [pageError, setPageError] = useState('');
   const [notice, setNotice] = useState('');
+  const [particularOptions, setParticularOptions] = useState([]);
+  const [particularsLoading, setParticularsLoading] = useState(true);
+  const [particularsError, setParticularsError] = useState('');
+  const [particularsRetry, setParticularsRetry] = useState(0);
 
   async function loadBank() {
     setLoading(true);
@@ -200,6 +206,49 @@ export default function BankMaster() {
     loadBank();
   }, []);
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadParticularOptions() {
+      setParticularsLoading(true);
+      setParticularsError('');
+      setParticularOptions([]);
+      try {
+        const lookupTypes = await getLookupTypes(controller.signal);
+        const normalize = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const candidates = lookupTypes
+          .filter((lookup) => lookup.status === 'Active' && normalize(`${lookup.code} ${lookup.name}`).includes('particular'))
+          .sort((first, second) => {
+            const firstExact = ['particular', 'particulars'].includes(normalize(first.code)) || ['particular', 'particulars'].includes(normalize(first.name));
+            const secondExact = ['particular', 'particulars'].includes(normalize(second.code)) || ['particular', 'particulars'].includes(normalize(second.name));
+            return Number(secondExact) - Number(firstExact);
+          });
+        if (!candidates.length) {
+          throw new Error('Create an active “Particulars” lookup type in Lookup Management to populate this dropdown.');
+        }
+
+        const options = await getLookupOptions(candidates[0].code, controller.signal);
+        if (!controller.signal.aborted) {
+          const activeOptions = options.filter((option) => option.status === 'Active');
+          if (activeOptions.length === 0) {
+            throw new Error('The active “Particulars” lookup has no options. Add active options in Lookup Management and retry.');
+          }
+          setParticularOptions(activeOptions);
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setParticularOptions([]);
+          setParticularsError(error.message || 'Unable to load Particulars options from the backend.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setParticularsLoading(false);
+      }
+    }
+
+    loadParticularOptions();
+    return () => controller.abort();
+  }, [particularsRetry]);
+
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: '' }));
@@ -212,6 +261,10 @@ export default function BankMaster() {
     setNotice('');
   }
 
+  function retryParticulars() {
+    setParticularsRetry((current) => current + 1);
+  }
+
   function addAccount() {
     const accountErrors = validateAccount(accountDraft);
     setErrors(accountErrors);
@@ -222,6 +275,7 @@ export default function BankMaster() {
     }
     const account = {
       ...accountDraft,
+      particulars: accountDraft.particulars.trim(),
       bankName: accountDraft.bankName.trim(),
       accountType: accountDraft.accountType.trim(),
       accountNumber: accountDraft.accountNumber.trim(),
@@ -354,11 +408,6 @@ export default function BankMaster() {
 
   const currentStep = steps[activeStep];
   const StepIcon = currentStep.icon;
-  const institutionOptions = [...new Set([
-    form.bankName,
-    ...form.accounts.map((account) => account.bankName)
-  ].map((name) => String(name || '').trim()).filter(Boolean))];
-
   return (
     <AppShell title="">
       <div className="bank-master-page">
@@ -462,15 +511,30 @@ export default function BankMaster() {
                       <div className="bank-master-table-heading">
                         <div><h3>Bank Account Details</h3><p>Add accounts one at a time. Saved accounts appear in the list below.</p></div>
                       </div>
-                      <datalist id="bank-master-institutions">
-                        {institutionOptions.map((name) => <option value={name} key={name} />)}
-                      </datalist>
-                      <section className="bank-master-account-entry" aria-label="Add bank account">
-                        <h4>{editingAccountIndex === null ? 'New account' : `Edit account ${editingAccountIndex + 1}`}</h4>
-                        <div className="bank-master-account-fields">
-                          {[
-                            ['bankName', 'Bank / NBFC / Institution', 120],
-                            ['accountNumber', 'Account Number', 34],
+                                      <section className="bank-master-account-entry" aria-label="Add bank account">
+                                        <h4>{editingAccountIndex === null ? 'New account' : `Edit account ${editingAccountIndex + 1}`}</h4>
+                                        {particularsError && (
+                                          <p className="bank-master-particulars-error" role="alert">
+                                            <span>{particularsError}</span>
+                                            <button type="button" onClick={retryParticulars} disabled={particularsLoading}>Retry</button>
+                                          </p>
+                                        )}
+                                        <div className="bank-master-account-fields">
+                                          <label className="bank-master-field">
+                                            <span>Particulars</span>
+                                            <select
+                                              id="bank-master-account-draft-particulars"
+                                              value={accountDraft.particulars}
+                                              disabled={particularsLoading || particularOptions.length === 0}
+                                              onChange={(event) => updateAccountDraft('particulars', event.target.value)}
+                                            >
+                                              <option value="">{particularsLoading ? 'Loading particulars...' : 'Select particulars'}</option>
+                                              {particularOptions.map((option) => <option value={option.name} key={String(option.id)}>{option.name}</option>)}
+                                            </select>
+                                          </label>
+                                          {[
+                                            ['bankName', 'Bank Name', 120],
+                                            ['accountNumber', 'Account Number', 34],
                             ['micrCode', 'MICR Code', 9],
                             ['ifscCode', 'IFSC Code', 11]
                           ].map(([field, label, maxLength]) => {
@@ -483,7 +547,6 @@ export default function BankMaster() {
                                 value={accountDraft[field]}
                                 maxLength={maxLength}
                                 required
-                                list={field === 'bankName' ? 'bank-master-institutions' : undefined}
                                 inputMode={field === 'micrCode' ? 'numeric' : undefined}
                                 autoCapitalize={field === 'ifscCode' || field === 'micrCode' ? 'characters' : undefined}
                                 error={errors[errorKey]}
@@ -528,16 +591,16 @@ export default function BankMaster() {
                       {form.accounts.length ? (
                         <div className="bank-master-account-table-wrap">
                           <table className="bank-master-account-table">
-                            <thead><tr><th>Sr. No.</th><th>Bank / Institution</th><th>Account Number</th><th>MICR Code</th><th>IFSC Code</th><th>Account Type</th><th>Actions</th></tr></thead>
+                            <thead><tr><th>Particulars</th><th>Bank Name</th><th>Account Type</th><th>Account No.</th><th>MICR Code</th><th>IFSC Code</th><th>Actions</th></tr></thead>
                             <tbody>
                               {form.accounts.map((account, index) => (
                                 <tr key={`${account.accountNumber}-${index}`}>
-                                  <td>{index + 1}</td>
+                                  <td>{account.particulars || '—'}</td>
                                   <td>{account.bankName}</td>
+                                  <td>{account.accountType}</td>
                                   <td>{account.accountNumber}</td>
                                   <td>{account.micrCode}</td>
                                   <td>{account.ifscCode}</td>
-                                  <td>{account.accountType}</td>
                                   <td className="bank-master-account-actions">
                                     <button type="button" onClick={() => editAccount(index)}>Edit</button>
                                     <button type="button" onClick={() => removeAccount(index)}>Remove</button>
@@ -551,7 +614,7 @@ export default function BankMaster() {
                         <div className="bank-master-account-empty">
                           <Landmark size={22} />
                           <strong>No bank accounts added</strong>
-                          <span>Complete the account details above and select “Add account”.</span>
+                          <span>Complete the account details above and select “Save”.</span>
                         </div>
                       )}
                     </div>
@@ -605,6 +668,8 @@ export default function BankMaster() {
         .bank-master-account-entry h4{margin:0 0 16px;color:#315250;font-size:12px;font-weight:800}
         .bank-master-account-entry-actions{display:flex;align-items:center;gap:12px;margin-top:16px}
         .bank-master-account-entry>.bank-master-field-error{display:block;margin-top:8px}
+        .bank-master-particulars-error{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:10px 12px;border:1px solid #e8cbcb;border-radius:5px;background:#fff7f7;color:#a43838;font-size:11px;line-height:1.5}
+        .bank-master-particulars-error button{flex:none;color:#176d67;font-size:11px;font-weight:700;text-decoration:underline}
         .bank-master-account-cancel-edit,.bank-master-account-actions button{color:#176d67;font-size:11px;font-weight:700;text-decoration:underline}
         .bank-master-account-table-wrap{overflow:auto;border:1px solid #dce7e3;border-radius:8px}
         .bank-master-account-table{width:100%;min-width:800px;border-collapse:collapse;background:#fff}
