@@ -15,9 +15,12 @@ import {
 } from "lucide-react";
 import AppShell from "../../components/AppShell";
 import {
+  createLookupSubType,
   createLookupType,
   getLookupOptions,
   getLookupTypes,
+  setLookupSubTypeActive,
+  setLookupTypeActive,
 } from "../../services/lookups";
 import "./lookup-management.css";
 
@@ -230,8 +233,8 @@ export default function LookupManagementPage() {
           code: values.code,
           name: values.name,
           status: values.status.toUpperCase(),
-          isFixed: false,
-          permissions: ["VIEW", "CREATE", "EDIT", "DELETE"],
+          // isFixed: false,
+          // permissions: ["VIEW", "CREATE", "EDIT", "DELETE"],
         });
         setToast("Lookup created successfully.");
         resetForm();
@@ -243,6 +246,53 @@ export default function LookupManagementPage() {
           setExpanded([]);
         } catch {
           setToast("Lookup created, but the list could not be refreshed.");
+        }
+        return;
+      }
+
+      if (activeTab === "sub" && !editing) {
+        const parent = lookups.find(
+          (lookup) => String(lookup.id) === form.lookupId,
+        );
+        if (!parent?.code) throw new Error("Select a valid lookup.");
+
+        await createLookupSubType(parent.code, {
+          code: values.code,
+          name: values.name,
+          status: values.status.toUpperCase(),
+        });
+
+        const createdSubLookup = {
+          id: nextId,
+          ...values,
+        };
+        setLookups((current) =>
+          current.map((lookup) =>
+            lookup.code === parent.code
+              ? {
+                  ...lookup,
+                  subLookups: [...lookup.subLookups, createdSubLookup],
+                }
+              : lookup,
+          ),
+        );
+        setExpanded((current) =>
+          current.includes(parent.id) ? current : [...current, parent.id],
+        );
+        resetForm();
+        setPage(1);
+
+        try {
+          const subLookups = await getLookupOptions(parent.code);
+          loadedOptionCodes.current.add(parent.code);
+          setLookups((current) =>
+            current.map((lookup) =>
+              lookup.code === parent.code ? { ...lookup, subLookups } : lookup,
+            ),
+          );
+          setToast("Sub lookup created successfully.");
+        } catch {
+          setToast("Sub lookup created, but the list could not be refreshed.");
         }
         return;
       }
@@ -303,31 +353,47 @@ export default function LookupManagementPage() {
     }
   }
 
-  function toggleLookupStatus(lookup) {
+  async function toggleLookupStatus(lookup) {
     const nextStatus = lookup.status === "Active" ? "Inactive" : "Active";
-    setLookups((current) =>
-      current.map((item) =>
-        item.id === lookup.id ? { ...item, status: nextStatus } : item,
-      ),
-    );
-    setToast(`${lookup.name} marked ${nextStatus.toLowerCase()}.`);
+    try {
+      await setLookupTypeActive(lookup, nextStatus === "Active");
+      setLookups((current) =>
+        current.map((item) =>
+          item.id === lookup.id ? { ...item, status: nextStatus } : item,
+        ),
+      );
+      setToast(`${lookup.name} marked ${nextStatus.toLowerCase()}.`);
+    } catch (error) {
+      setToast(
+        error.message || `Unable to ${nextStatus.toLowerCase()} lookup.`,
+      );
+    }
   }
 
-  function toggleSubStatus(parentId, subLookup) {
+  async function toggleSubStatus(parentId, subLookup) {
     const nextStatus = subLookup.status === "Active" ? "Inactive" : "Active";
-    setLookups((current) =>
-      current.map((lookup) =>
-        lookup.id === parentId
-          ? {
-              ...lookup,
-              subLookups: lookup.subLookups.map((sub) =>
-                sub.id === subLookup.id ? { ...sub, status: nextStatus } : sub,
-              ),
-            }
-          : lookup,
-      ),
-    );
-    setToast(`${subLookup.name} marked ${nextStatus.toLowerCase()}.`);
+    try {
+      await setLookupSubTypeActive(subLookup.id, nextStatus === "Active");
+      setLookups((current) =>
+        current.map((lookup) =>
+          lookup.id === parentId
+            ? {
+                ...lookup,
+                subLookups: lookup.subLookups.map((sub) =>
+                  sub.id === subLookup.id
+                    ? { ...sub, status: nextStatus }
+                    : sub,
+                ),
+              }
+            : lookup,
+        ),
+      );
+      setToast(`${subLookup.name} marked ${nextStatus.toLowerCase()}.`);
+    } catch (error) {
+      setToast(
+        error.message || `Unable to ${nextStatus.toLowerCase()} sub lookup.`,
+      );
+    }
   }
 
   function deleteLookup(lookup) {
@@ -510,7 +576,7 @@ export default function LookupManagementPage() {
               <span className="lookup-hint">
                 {isEditing
                   ? "Code cannot be changed after creation."
-                  : "Codes are unique and automatically converted to uppercase."}
+                  : "Codes are unique and should be integers."}
               </span>
             </div>
             <div className="lookup-field">

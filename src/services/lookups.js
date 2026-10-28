@@ -35,6 +35,9 @@ async function requestLookupApi(path, options = {}) {
     headers: getRequestHeaders(),
     cache: "no-store",
   });
+  console.log(`Lookup API request to ${path} returned status ${response.status}`);
+  console.log(response, "ad");
+  console.log(options, "options");
 
   const result = await response.json().catch(() => null);
   if (!response.ok || result?.success === false) {
@@ -81,7 +84,7 @@ export async function getLookupOptions(lookupTypeCode, signal) {
   return result.data.map((option, index) => {
     const name = option.description ?? option.name ?? option.code ?? "";
     return {
-      id: option.id ?? `${lookupTypeCode}-${option.code ?? index}`,
+      id: option.id ?? option.code ?? `${lookupTypeCode}-${index}`,
       code: option.code ?? "",
       name,
       description: option.description ?? "",
@@ -95,4 +98,31 @@ export async function createLookupType(lookupType) {
     method: "POST",
     body: JSON.stringify(lookupType),
   });
+}
+
+export async function createLookupSubType(lookupTypeCode, subType) {
+  return requestLookupApi(
+    `/administration/lookups/types/${encodeURIComponent(lookupTypeCode)}/sub-types`,
+    {
+      method: "POST",
+      body: JSON.stringify(subType),
+    },
+  );
+}
+
+export async function setLookupTypeActive(lookupType, active) {
+  const action = active ? "activate" : "deactivate";
+  return requestLookupApi(
+    `/administration/lookups/types/${encodeURIComponent(lookupType.code)}/${action}`,
+    { method: "PATCH" },
+  );
+}
+
+export async function setLookupSubTypeActive(subTypeId, active) {
+  console.log("setLookupSubTypeActive", subTypeId, active);
+  const action = active ? "activate" : "deactivate";
+  return requestLookupApi(
+    `/administration/lookups/sub-types/${encodeURIComponent(subTypeId)}/${action}`,
+    { method: "PATCH" },
+  );
 }

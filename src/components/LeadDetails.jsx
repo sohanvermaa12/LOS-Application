@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Pencil, X } from 'lucide-react';
+import { Copy, Check } from "lucide-react";
+
 
 const leadDetailsStyles = `
 .lead-detail-backdrop{padding:clamp(12px,3vw,32px);background:rgba(12,31,34,.62);backdrop-filter:blur(4px)}
@@ -44,9 +46,11 @@ const leadDetailsStyles = `
 @media(max-width:480px){.lead-detail-header{align-items:flex-start;flex-direction:column}.lead-detail-actions{width:100%;justify-content:flex-end}.lead-detail-header h2{font-size:18px}.lead-detail-hero{align-items:flex-start;flex-wrap:wrap}.lead-detail-hero .lead-status{margin-left:70px}.lead-detail-modal .detail-grid{grid-template-columns:1fr}.lead-detail-modal .detail-row{grid-template-columns:minmax(90px,.8fr) 8px minmax(0,1.2fr)}}
 `;
 
+
 export default function LeadDetails({ lead, open, onClose, onEdit, loading = false, error = '', onRetry }) {
   const [tab, setTab] = useState('lead');
 
+const [copied, setCopied] = useState(false);
   if (!open || !lead) return null;
 
   const tabs = [
@@ -142,41 +146,132 @@ export default function LeadDetails({ lead, open, onClose, onEdit, loading = fal
   return (
     <div className="lead-detail-backdrop" onMouseDown={onClose}>
       <style>{leadDetailsStyles}</style>
-      <div className="lead-detail-modal" role="dialog" aria-modal="true" aria-labelledby="lead-detail-title" onMouseDown={(event) => event.stopPropagation()}>
+      <div
+        className="lead-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lead-detail-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
         <div className="lead-detail-header">
           <div>
             <span className="lead-detail-eyebrow">LEAD RECORD</span>
-            <h2 id="lead-detail-title">Lead Details <span>{lead.id}</span></h2>
+            {/* <h2 id="lead-detail-title">Lead Details
+              <span>{lead.id}</span></h2> */}
+            <h2 id="lead-detail-title">
+              Lead Details
+              <span
+                onClick={async () => {
+                  await navigator.clipboard.writeText(String(lead.id));
+                  setCopied(true);
+
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                title="Click to copy Lead ID"
+                style={{
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  marginLeft: "10px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  background: "#f3f4f6",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#4b5563",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#e5e7eb";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#f3f4f6";
+                }}
+              >
+                {lead.id}
+
+                {copied ? (
+                  <Check size={14} color="green" />
+                ) : (
+                  <Copy size={14} />
+                )}
+              </span>
+            </h2>
           </div>
           <div className="lead-detail-actions">
             {onEdit && (
-              <button type="button" className="lead-detail-edit" onClick={() => onEdit(lead)} disabled={loading}>
+              <button
+                type="button"
+                className="lead-detail-edit"
+                onClick={() => onEdit(lead)}
+                disabled={loading}
+              >
                 <Pencil size={15} /> Edit Lead
               </button>
             )}
-            <button type="button" className="lead-detail-back" aria-label="Close lead details" onClick={onClose}>
+            <button
+              type="button"
+              className="lead-detail-back"
+              aria-label="Close lead details"
+              onClick={onClose}
+            >
               <X size={18} /> Close
             </button>
           </div>
         </div>
 
         {loading || error ? (
-          <div role={error ? 'alert' : 'status'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 20px', borderBottom: '1px solid #e4ece9', color: error ? '#9d3030' : '#52696b', fontSize: '12px' }}>
-            <span>{error || 'Loading full lead details...'}</span>
-            {error && onRetry ? <button type="button" className="lead-detail-edit" onClick={onRetry}>Retry</button> : null}
+          <div
+            role={error ? "alert" : "status"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              padding: "12px 20px",
+              borderBottom: "1px solid #e4ece9",
+              color: error ? "#9d3030" : "#52696b",
+              fontSize: "12px",
+            }}
+          >
+            <span>{error || "Loading full lead details..."}</span>
+            {error && onRetry ? (
+              <button
+                type="button"
+                className="lead-detail-edit"
+                onClick={onRetry}
+              >
+                Retry
+              </button>
+            ) : null}
           </div>
         ) : null}
 
         <section className="lead-detail-hero" aria-label="Lead summary">
-          <div className="lead-detail-avatar" aria-hidden="true">{initials || 'L'}</div>
+          <div className="lead-detail-avatar" aria-hidden="true">
+            {initials || "L"}
+          </div>
           <div className="lead-detail-identity">
             <h3>{customerName}</h3>
             <div className="lead-detail-contact">
-              <span>Mobile <strong>{lead.mobileNumber || lead.mobile || 'Not provided'}</strong></span>
-              <span>Email <strong>{lead.email || lead.emailAddress || 'Not provided'}</strong></span>
+              <span>
+                Mobile{" "}
+                <strong>
+                  {lead.mobileNumber || lead.mobile || "Not provided"}
+                </strong>
+              </span>
+              <span>
+                Email{" "}
+                <strong>
+                  {lead.email || lead.emailAddress || "Not provided"}
+                </strong>
+              </span>
             </div>
           </div>
-          <span className={`lead-status status-${lead.statusKey || 'new'}`}>{lead.status || 'New'}</span>
+          <span className={`lead-status status-${lead.statusKey || "new"}`}>
+            {lead.status || "New"}
+          </span>
         </section>
 
         <div className="lead-detail-body">
@@ -184,12 +279,40 @@ export default function LeadDetails({ lead, open, onClose, onEdit, loading = fal
             <h3>Basic Information</h3>
 
             <div className="detail-grid">
-              <div className="detail-row"><span>Lead ID</span><strong>:</strong><em>{lead.id}</em></div>
-              <div className="detail-row"><span>Customer Name</span><strong>:</strong><em>{lead.customerName || lead.name || '—'}</em></div>
-              <div className="detail-row"><span>Mobile Number</span><strong>:</strong><em>{lead.mobileNumber || lead.mobile || '—'}</em></div>
-              <div className="detail-row"><span>Acquisition Channel</span><strong>:</strong><em>{lead.acquisitionChannel || lead.source || '—'}</em></div>
-              <div className="detail-row"><span>Lead Date</span><strong>:</strong><em>{lead.date || '—'}</em></div>
-              <div className="detail-row"><span>Status</span><strong>:</strong><em><span className={`lead-status status-${lead.statusKey}`}>{lead.status}</span></em></div>
+              <div className="detail-row">
+                <span>Lead ID</span>
+                <strong>:</strong>
+                <em>{lead.id}</em>
+              </div>
+              <div className="detail-row">
+                <span>Customer Name</span>
+                <strong>:</strong>
+                <em>{lead.customerName || lead.name || "—"}</em>
+              </div>
+              <div className="detail-row">
+                <span>Mobile Number</span>
+                <strong>:</strong>
+                <em>{lead.mobileNumber || lead.mobile || "—"}</em>
+              </div>
+              <div className="detail-row">
+                <span>Acquisition Channel</span>
+                <strong>:</strong>
+                <em>{lead.acquisitionChannel || lead.source || "—"}</em>
+              </div>
+              <div className="detail-row">
+                <span>Lead Date</span>
+                <strong>:</strong>
+                <em>{lead.date || "—"}</em>
+              </div>
+              <div className="detail-row">
+                <span>Status</span>
+                <strong>:</strong>
+                <em>
+                  <span className={`lead-status status-${lead.statusKey}`}>
+                    {lead.status}
+                  </span>
+                </em>
+              </div>
             </div>
           </div>
 
@@ -199,7 +322,9 @@ export default function LeadDetails({ lead, open, onClose, onEdit, loading = fal
                 <button
                   key={item.id}
                   type="button"
-                  className={tab === item.id ? 'detail-tab active' : 'detail-tab'}
+                  className={
+                    tab === item.id ? "detail-tab active" : "detail-tab"
+                  }
                   onClick={() => setTab(item.id)}
                 >
                   {item.label}
@@ -207,25 +332,33 @@ export default function LeadDetails({ lead, open, onClose, onEdit, loading = fal
               ))}
             </div>
 
-            {tab === 'lead' && detailSections.map((section) => {
-              const populatedFields = section.fields.filter(([, value]) => value !== null && value !== undefined && value !== '');
-              if (!populatedFields.length) return null;
-              return (
-                <section className="lead-detail-section" key={section.title}>
-                  <h3>{section.title}</h3>
-                  <div className="detail-grid detail-grid-secondary">
-                    {populatedFields.map(([label, value]) => (
-                      <div className="detail-row" key={label}>
-                        <span>{label}</span><strong>:</strong><em>{renderDetailValue(value)}</em>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
+            {tab === "lead" &&
+              detailSections.map((section) => {
+                const populatedFields = section.fields.filter(
+                  ([, value]) =>
+                    value !== null && value !== undefined && value !== "",
+                );
+                if (!populatedFields.length) return null;
+                return (
+                  <section className="lead-detail-section" key={section.title}>
+                    <h3>{section.title}</h3>
+                    <div className="detail-grid detail-grid-secondary">
+                      {populatedFields.map(([label, value]) => (
+                        <div className="detail-row" key={label}>
+                          <span>{label}</span>
+                          <strong>:</strong>
+                          <em>{renderDetailValue(value)}</em>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
 
-            {tab === 'activity' && (
-              <div className="detail-empty-state">No activity recorded yet.</div>
+            {tab === "activity" && (
+              <div className="detail-empty-state">
+                No activity recorded yet.
+              </div>
             )}
           </div>
         </div>

@@ -585,7 +585,9 @@ export default function LeadManagementPage() {
                   setExportError('');
                   setShowExportDialog(true);
                 }}><Download size={16} /> Export Lead</button>
-                <button type="button" className="lm-add-button" onClick={() => setShowNewLead(true)}><Plus size={16} /> Add New Lead</button>
+                <button type="button"
+                  className="lm-add-button"
+                  onClick={() => setShowNewLead(true)}><Plus size={16} /> Add New Lead</button>
                 <button type="button" className="lm-export-button" onClick={openBulkImport}><Upload size={16} /> Upload Bulk Lead</button>
               </div>
             }

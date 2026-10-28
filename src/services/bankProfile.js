@@ -51,3 +51,18 @@ export async function getBankProfile() {
 
   return result;
 }
+
+export async function createBankBranch(branch) {
+  const response = await fetch('/api/bank-profile/branch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(branch),
+  });
+
+  const result = await response.json().catch(() => null);
+  if (!response.ok || result?.success === false) {
+    throw new Error(result?.message || 'Unable to submit the bank branch.');
+  }
+
+  return result;
+}
