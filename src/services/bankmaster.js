@@ -47,8 +47,7 @@ function toApiPayload(form) {
     group_exposure_limit: form.groupExposureLimit === '' ? null : Number(form.groupExposureLimit),
     sanction_margin: form.sanctionMargin === '' ? null : Number(form.sanctionMargin),
     penalty_charge: form.penaltyCharge === '' ? null : Number(form.penaltyCharge),
-    penalty_rate: form.penaltyRate === '' ? null : Number(form.penaltyRate),
-    delegation_power_limit: form.delegationPowerLimit === '' ? null : Number(form.delegationPowerLimit)
+    penalty_rate: form.penaltyRate === '' ? null : Number(form.penaltyRate)
   };
 }
 

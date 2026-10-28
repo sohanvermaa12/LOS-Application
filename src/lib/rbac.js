@@ -117,7 +117,7 @@ export function getRoutePermission(pathname) {
   if (pathname === '/user_management/add') return ['user-management', 'create'];
   if (pathname.startsWith('/user_management/edit/')) return ['user-management', 'edit'];
   if (pathname.startsWith('/user_management')) return ['user-management', 'view'];
-  if (pathname.startsWith('/lead_managenet') || pathname.startsWith('/lead_generation')) return ['lead-management', 'view'];
+  if (pathname.startsWith('/lead_management') || pathname.startsWith('/lead_managenet') || pathname.startsWith('/lead_generation')) return ['lead-management', 'view'];
   if (pathname.startsWith('/customer_management/customer_onboarding')) return ['loan-applications', 'create'];
   if (pathname.startsWith('/customer_management')) return ['applicant-management', 'view'];
   if (pathname.startsWith('/master_creation')) return ['bank-management', 'edit'];
