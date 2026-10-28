@@ -27,6 +27,79 @@ const currencyFormatter = new Intl.NumberFormat('en-IN', {
   currency: 'INR',
   maximumFractionDigits: 2,
 });
+const GOLD_LOAN_STORAGE_KEY = 'los.goldLoanApplications';
+
+function isGoldLoanApplication(application) {
+  return String(application.product || application.loanType || '').trim().toLowerCase() === 'gold loan';
+}
+
+function readSavedGoldLoanApplications() {
+  const savedApplications = window.localStorage.getItem(GOLD_LOAN_STORAGE_KEY);
+  if (!savedApplications) return [];
+
+  const parsedApplications = JSON.parse(savedApplications);
+  if (!Array.isArray(parsedApplications)) {
+    throw new Error('Saved Gold Loan applications have an invalid format.');
+  }
+
+  return parsedApplications;
+}
+
+function createApplicationForm(application) {
+  const savedForm = application.goldLoanForm
+    && typeof application.goldLoanForm === 'object'
+    && !Array.isArray(application.goldLoanForm)
+    ? application.goldLoanForm
+    : {};
+  const initialForm = createInitialForm();
+  const borrowerName = getCustomerName(application);
+  const nameParts = borrowerName === 'Not available' ? [] : borrowerName.trim().split(/\s+/);
+  const savedSecurity = savedForm.security && typeof savedForm.security === 'object'
+    ? savedForm.security
+    : {};
+  const savedCharges = savedForm.charges && typeof savedForm.charges === 'object'
+    ? savedForm.charges
+    : {};
+  const savedBasicDetails = savedForm.basicDetails && typeof savedForm.basicDetails === 'object'
+    ? savedForm.basicDetails
+    : {};
+  const savedDisbursement = savedForm.disbursement && typeof savedForm.disbursement === 'object'
+    ? savedForm.disbursement
+    : {};
+  const relatedParties = Array.isArray(savedForm.relatedParties)
+    ? savedForm.relatedParties.map((party, index) => ({
+      ...initialForm.relatedParties[index],
+      ...(party && typeof party === 'object' ? party : {}),
+      id: party?.id || `party-${index + 1}`,
+    }))
+    : initialForm.relatedParties;
+  const inventoryItems = Array.isArray(savedSecurity.inventoryItems)
+    ? savedSecurity.inventoryItems.map((item, index) => ({
+      ...initialForm.security.inventoryItems[index],
+      ...(item && typeof item === 'object' ? item : {}),
+      id: item?.id || `inventory-${index + 1}`,
+    }))
+    : initialForm.security.inventoryItems;
+
+  return {
+    ...initialForm,
+    ...savedForm,
+    customerId: savedForm.customerId || application.customerId || '',
+    firstName: savedForm.firstName || nameParts[0] || '',
+    lastName: savedForm.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''),
+    sanctionLimit: savedForm.sanctionLimit
+      || String(application.amount || '').replace(/[^\d.]/g, ''),
+    relatedParties,
+    charges: { ...initialForm.charges, ...savedCharges },
+    basicDetails: { ...initialForm.basicDetails, ...savedBasicDetails },
+    security: {
+      ...initialForm.security,
+      ...savedSecurity,
+      inventoryItems,
+    },
+    disbursement: { ...initialForm.disbursement, ...savedDisbursement },
+  };
+}
 
 function getApplicationId(application) {
   return application.id || application.applicationId || 'Not available';
@@ -131,6 +204,10 @@ export default function LoanDashboardPage() {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [applicationEdit, setApplicationEdit] = useState(null);
   const [applicationEditErrors, setApplicationEditErrors] = useState({});
+  const [applicationRoute, setApplicationRoute] = useState(null);
+  const [savedApplicationsLoaded, setSavedApplicationsLoaded] = useState(false);
+  const [persistenceError, setPersistenceError] = useState('');
+  const [applicationSaveNotice, setApplicationSaveNotice] = useState('');
   const [categorySelectorOpen, setCategorySelectorOpen] = useState(false);
   const [corporateUnavailable, setCorporateUnavailable] = useState(false);
   const [showRetailForm, setShowRetailForm] = useState(false);
@@ -139,6 +216,41 @@ export default function LoanDashboardPage() {
   const applicationsAvailable = Array.isArray(api.applications);
   const applications = applicationsAvailable ? dashboardApplications : [];
   const customers = Array.isArray(api.customers) ? api.customers : [];
+
+  useEffect(() => {
+    try {
+      const savedApplications = readSavedGoldLoanApplications();
+      setDashboardApplications((currentApplications) => currentApplications.map((application) => {
+        const savedApplication = savedApplications.find(
+          (saved) => getApplicationId(saved) === getApplicationId(application),
+        );
+        return savedApplication ? { ...application, ...savedApplication } : application;
+      }));
+    } catch {
+      setPersistenceError('Saved Gold Loan changes could not be loaded from this browser.');
+    } finally {
+      setSavedApplicationsLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    const syncApplicationRoute = () => {
+      const params = new URLSearchParams(window.location.search);
+      const viewId = params.get('view');
+      const editId = params.get('edit');
+      if (viewId && !editId) {
+        setApplicationRoute({ mode: 'view', id: viewId });
+      } else if (editId && !viewId) {
+        setApplicationRoute({ mode: 'edit', id: editId });
+      } else {
+        setApplicationRoute(null);
+      }
+    };
+
+    syncApplicationRoute();
+    window.addEventListener('popstate', syncApplicationRoute);
+    return () => window.removeEventListener('popstate', syncApplicationRoute);
+  }, []);
 
   useEffect(() => {
     if (!categorySelectorOpen) return undefined;
@@ -237,6 +349,43 @@ export default function LoanDashboardPage() {
     setApplicationEditErrors({});
   };
 
+  const openApplication = (application, index, mode) => {
+    if (!isGoldLoanApplication(application)) {
+      openApplicationDialog(application, index, mode);
+      return;
+    }
+
+    const id = getApplicationId(application);
+    if (id === 'Not available') {
+      setPersistenceError('This Gold Loan application does not have an application ID and cannot be opened.');
+      return;
+    }
+
+    setSelectedApplication(null);
+    setApplicationRoute({ mode, id });
+    router.push(`/loan_application?${mode}=${encodeURIComponent(id)}`);
+  };
+
+  const returnToLoanDashboard = () => {
+    setApplicationRoute(null);
+    router.push('/loan_application');
+  };
+
+  const saveGoldLoanApplication = (updatedApplication) => {
+    const savedApplications = readSavedGoldLoanApplications().filter(
+      (application) => getApplicationId(application) !== getApplicationId(updatedApplication),
+    );
+    const nextSavedApplications = [...savedApplications, updatedApplication];
+    window.localStorage.setItem(GOLD_LOAN_STORAGE_KEY, JSON.stringify(nextSavedApplications));
+    setDashboardApplications((currentApplications) => currentApplications.map((application) => (
+      getApplicationId(application) === getApplicationId(updatedApplication)
+        ? { ...application, ...updatedApplication }
+        : application
+    )));
+    setApplicationSaveNotice(`${getApplicationId(updatedApplication)} was saved in this browser.`);
+    setPersistenceError('');
+  };
+
   const saveApplicationEdit = (event) => {
     event.preventDefault();
     const errors = {};
@@ -265,6 +414,71 @@ export default function LoanDashboardPage() {
     setSelectedApplication(null);
   };
 
+  if (applicationRoute) {
+    const application = applications.find(
+      (record) => getApplicationId(record) === applicationRoute.id,
+    );
+
+    if (!savedApplicationsLoaded) {
+      return (
+        <AppShell title="Loan Application">
+          <Card className="gold-application-message">
+            <p>Loading application details...</p>
+          </Card>
+        </AppShell>
+      );
+    }
+
+    if (!application || !isGoldLoanApplication(application)) {
+      return (
+        <AppShell title="Application Not Found">
+          <PageHeader
+            title="Gold Loan Application Not Found"
+            action={(
+              <button
+                className="icon-button loan-dashboard-back"
+                type="button"
+                onClick={returnToLoanDashboard}
+                aria-label="Back to Loan Dashboard"
+              >
+                <ArrowLeft size={19} aria-hidden="true" />
+              </button>
+            )}
+          />
+          <Card className="gold-application-message">
+            <p>
+              {application
+                ? 'This application is not a Gold Loan application.'
+                : 'The requested application could not be found.'}
+            </p>
+            <button className="loan-secondary-btn" type="button" onClick={returnToLoanDashboard}>
+              <ArrowLeft size={16} aria-hidden="true" />
+              Return to Loan Dashboard
+            </button>
+          </Card>
+        </AppShell>
+      );
+    }
+
+    if (applicationRoute.mode === 'view') {
+      return (
+        <GoldLoanApplicationView
+          application={application}
+          onBack={returnToLoanDashboard}
+        />
+      );
+    }
+
+    return (
+      <LoanApplicationFormPage
+        key={applicationRoute.id}
+        application={application}
+        onBack={returnToLoanDashboard}
+        onSave={saveGoldLoanApplication}
+      />
+    );
+  }
+
   if (showRetailForm) {
     return <LoanApplicationFormPage onBack={() => setShowRetailForm(false)} />;
   }
@@ -272,6 +486,12 @@ export default function LoanDashboardPage() {
   return (
     <AppShell title="Loan Dashboard">
       <div className="loan-dashboard">
+        {persistenceError && (
+          <div className="bank-master-alert" role="alert">{persistenceError}</div>
+        )}
+        {applicationSaveNotice && (
+          <div className="bank-master-alert" role="status">{applicationSaveNotice}</div>
+        )}
         <PageHeader
           // eyebrow="LOAN ORIGINATION"
           title=" Loan Dashboard "
@@ -309,7 +529,7 @@ export default function LoanDashboardPage() {
           <div className="loan-table-heading">
             <div>
               <h2>Loan Applications</h2>
-              <p>Review application details and current status.</p>
+              {/* <p>Review application details and current status.</p> */}
             </div>
             <span className="sample-data-label">Development sample data</span>
           </div>
@@ -406,7 +626,7 @@ export default function LoanDashboardPage() {
                             <button
                               className="application-action-button"
                               type="button"
-                              onClick={() => openApplicationDialog(application, sourceIndex, 'view')}
+                              onClick={() => openApplication(application, sourceIndex, 'view')}
                               aria-label={`View application ${id}`}
                               title="View application"
                             >
@@ -415,7 +635,7 @@ export default function LoanDashboardPage() {
                             <button
                               className="application-action-button"
                               type="button"
-                              onClick={() => openApplicationDialog(application, sourceIndex, 'edit')}
+                              onClick={() => openApplication(application, sourceIndex, 'edit')}
                               aria-label={`Edit application ${id}`}
                               title="Edit application"
                             >
@@ -1795,9 +2015,703 @@ const modesOfOperation = [
 ].map((value) => ({ value, label: value }));
 const yesNoOptions = ['Yes', 'No'].map((value) => ({ value, label: value }));
 
-function LoanApplicationFormPage({ onBack }) {
+const goldLoanDetailLabels = {
+  loanAccountNumber: 'Loan Account Number',
+  effectiveDate: 'Effective Date',
+  accountStatus: 'Account Status',
+  lastTransactionDate: 'Last Transaction Date',
+  customerId: 'Customer ID',
+  title: 'Title',
+  firstName: 'First Name',
+  middleName: 'Middle Name',
+  lastName: 'Last Name',
+  productCode: 'Product Code',
+  productName: 'Product Description',
+  schemeCode: 'Scheme Code',
+  schemeDescription: 'Scheme Description',
+  modeOfOperation: 'Mode of Operation',
+  sanctionLimit: 'Sanction Limit',
+  tenureMonths: 'Tenure',
+  interestRate: 'Interest Rate',
+  sanctionAuthority: 'Sanction Authority',
+  instalments: 'Number of Instalments',
+  sanctionedDate: 'Sanctioned Date',
+  emi: 'EMI',
+  instalmentAmount: 'Instalment Amount',
+  expiryDate: 'Expiry Date',
+  repaymentType: 'Repayment Type',
+  customerSourced: 'Customer Sourced',
+  repaymentStartDate: 'Repayment Start Date',
+  interestPayment: 'Interest Payment',
+  accountClosure: 'Account Closure',
+  securityId: 'Security ID',
+  securityType: 'Security Type',
+  valuerCode: 'Valuer Code',
+  valuerDescription: 'Valuer Description',
+  marginPercent: 'Margin',
+  limitAvailable: 'Limit Available for Sanction',
+  itemId: 'Inventory Item ID',
+  ornamentDescription: 'Ornament Description',
+  grossWeight: 'Gross Weight',
+  netWeight: 'Net Weight',
+  appraisalDate: 'Appraisal Date',
+  purity: 'Assessed Purity',
+  rate: 'Rate',
+  amount: 'Amount',
+  limit: 'Item Limit',
+  processingFees: 'Processing Fees',
+  penalInterestPercent: 'Penal Interest',
+  valuationCharges: 'Valuation Charges',
+  purposeLoan: 'Purpose of Loan',
+  sectorCode: 'Sector Code',
+  womenSector: 'Women Sector',
+  termCode: 'Term Code',
+  subSectorCode: 'Sub-Sector Code',
+  accountNumber: 'Account Number',
+  accountType: 'Type of Account',
+  bankName: 'Bank Name',
+  ifscCode: 'IFSC Code',
+  mode: 'Mode of Disbursement',
+  type: 'Disbursement Type',
+  mobileNumber: 'Mobile Number',
+};
+
+function hasDetailValue(value) {
+  if (typeof value === 'string') return value.trim() !== '';
+  if (typeof value === 'number') return Number.isFinite(value);
+  return typeof value === 'boolean';
+}
+
+function formatGoldLoanDetail(field, value) {
+  if (field.toLowerCase().includes('date')) return formatApplicationDate(value);
+  if (
+    ['sanctionLimit', 'instalmentAmount', 'limitAvailable', 'processingFees', 'valuationCharges', 'rate', 'amount', 'limit']
+      .includes(field)
+  ) {
+    return formatAmount(value);
+  }
+  if (['interestRate', 'marginPercent', 'penalInterestPercent'].includes(field)) {
+    return `${value}%`;
+  }
+  if (['grossWeight', 'netWeight'].includes(field)) return `${value} g`;
+  if (field === 'tenureMonths') return `${value} months`;
+  return String(value);
+}
+
+function getGoldLoanDetailEntries(values, fields) {
+  return fields
+    .filter(([field]) => hasDetailValue(values[field]))
+    .map(([field, label]) => ({
+      label: label || goldLoanDetailLabels[field] || field,
+      value: formatGoldLoanDetail(field, values[field]),
+    }));
+}
+
+function GoldLoanDetailSection({ title, entries, children }) {
+  if (!entries.length && !children) return null;
+
+  return (
+    <section className="gold-view-section">
+      <h2>{title}</h2>
+      {entries.length > 0 && (
+        <dl className="gold-view-detail-grid">
+          {entries.map(({ label, value }) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function GoldLoanApplicationView({ application, onBack }) {
+  const [activeTab, setActiveTab] = useState('overview');
+  const form = createApplicationForm(application);
+  const applicationId = getApplicationId(application);
+  const customerName = getCustomerName(application) === 'Not available'
+    ? [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ')
+    : getCustomerName(application);
+  const loanType = application.product || application.loanType || 'Gold Loan';
+  const loanAmount = formatAmount(application.amount || form.sanctionLimit);
+  const populatedParties = form.relatedParties.filter((party) => (
+    Object.entries(party).some(([field, value]) => field !== 'id' && hasDetailValue(value))
+  ));
+  const populatedInventory = form.security.inventoryItems.filter((item) => (
+    Object.entries(item).some(([field, value]) => field !== 'id' && hasDetailValue(value))
+  ));
+  const applicationInfo = getGoldLoanDetailEntries({
+    loanAccountNumber: form.loanAccountNumber,
+    effectiveDate: form.effectiveDate,
+    accountStatus: form.accountStatus,
+    lastTransactionDate: form.lastTransactionDate,
+  }, [
+    ['loanAccountNumber'],
+    ['effectiveDate'],
+    ['accountStatus'],
+    ['lastTransactionDate'],
+  ]);
+  const overviewDetails = [
+    { label: 'Application ID', value: applicationId },
+    { label: 'Customer', value: customerName },
+    ...getGoldLoanDetailEntries(form, [['customerId']]),
+    { label: 'Loan Amount', value: loanAmount },
+    { label: 'Loan Type', value: loanType },
+    ...applicationInfo.slice(0, 1),
+    ...(hasDetailValue(application.branch) ? [{ label: 'Branch', value: application.branch }] : []),
+    ...(hasDetailValue(application.status)
+      ? [{ label: 'Current Status', value: getStatusLabel(application.status) }]
+      : []),
+    ...getGoldLoanDetailEntries(form, [
+      ['productName'],
+      ['schemeCode'],
+      ['interestRate'],
+      ['tenureMonths'],
+    ]),
+  ];
+  const applicationInformation = [
+    ...applicationInfo,
+    ...(hasDetailValue(application.applicationDate || application.createdAt || application.date)
+      ? [{
+        label: 'Application Date',
+        value: formatApplicationDate(application.applicationDate || application.createdAt || application.date),
+      }]
+      : []),
+    ...(hasDetailValue(application.updated)
+      ? [{ label: 'Last Updated', value: application.updated }]
+      : []),
+    ...(hasDetailValue(application.branch) ? [{ label: 'Branch', value: application.branch }] : []),
+    ...(hasDetailValue(application.status)
+      ? [{ label: 'Application Status', value: getStatusLabel(application.status) }]
+      : []),
+  ];
+  const borrowerDetails = getGoldLoanDetailEntries(form, [
+    ['customerId'],
+    ['title'],
+    ['firstName'],
+    ['middleName'],
+    ['lastName'],
+  ]);
+  const productDetails = getGoldLoanDetailEntries(form, [
+    ['productCode'],
+    ['productName'],
+    ['schemeCode'],
+    ['schemeDescription'],
+    ['modeOfOperation'],
+  ]);
+  const securityDetails = getGoldLoanDetailEntries(form.security, [
+    ['securityId'],
+    ['securityType'],
+    ['valuerCode'],
+    ['valuerDescription'],
+    ['marginPercent'],
+    ['limitAvailable'],
+  ]);
+  const financialDetails = getGoldLoanDetailEntries(form, [
+    ['sanctionLimit'],
+    ['tenureMonths'],
+    ['interestRate'],
+    ['sanctionAuthority'],
+    ['instalments'],
+    ['sanctionedDate'],
+    ['emi'],
+    ['instalmentAmount'],
+    ['expiryDate'],
+    ['repaymentType'],
+    ['customerSourced'],
+    ['repaymentStartDate'],
+    ['interestPayment'],
+    ['accountClosure'],
+  ]);
+  const chargeDetails = getGoldLoanDetailEntries(form.charges, [
+    ['sanctionLimit'],
+    ['tenureMonths', 'Tenure'],
+    ['processingFees'],
+    ['valuationCharges'],
+    ['penalInterestPercent'],
+  ]);
+  const basicDetails = getGoldLoanDetailEntries(form.basicDetails, [
+    ['purposeLoan'],
+    ['sectorCode'],
+    ['womenSector'],
+    ['termCode'],
+    ['subSectorCode'],
+  ]);
+  const bankDetails = getGoldLoanDetailEntries(form.disbursement, [
+    ['accountNumber'],
+    ['accountType'],
+    ['bankName'],
+    ['ifscCode'],
+    ['mode'],
+    ['type'],
+    ['amount', 'Disbursement Amount'],
+    ['mobileNumber'],
+  ]);
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'borrower', label: 'Borrower Details' },
+    { id: 'security', label: 'Security Details' },
+    { id: 'loan', label: 'Loan Details' },
+    { id: 'charges', label: 'Charges & Fees' },
+    { id: 'basic', label: 'Basic Details' },
+    { id: 'related', label: 'Related Party' },
+    { id: 'disbursement', label: 'Disbursement' },
+  ];
+  useEffect(() => {
+    setActiveTab('overview');
+  }, [applicationId]);
+
+  const handleTabKeyDown = (event) => {
+    const currentIndex = tabs.findIndex((tab) => tab.id === activeTab);
+    let targetIndex = currentIndex;
+    if (event.key === 'ArrowRight') targetIndex = (currentIndex + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft') targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') targetIndex = 0;
+    else if (event.key === 'End') targetIndex = tabs.length - 1;
+    else return;
+
+    event.preventDefault();
+    setActiveTab(tabs[targetIndex].id);
+    event.currentTarget.parentElement
+      ?.querySelectorAll('[role="tab"]')
+      [targetIndex]?.focus();
+  };
+
+  return (
+    <AppShell title={`View: ${getApplicationId(application)}`}>
+      <div className="gold-view-page">
+        <PageHeader
+          title="View Gold Loan Application"
+          description={`Application ID: ${getApplicationId(application)}`}
+          action={(
+            <button
+              className="icon-button loan-dashboard-back"
+              type="button"
+              onClick={onBack}
+              aria-label="Back to Loan Dashboard"
+              title="Back to Loan Dashboard"
+            >
+              <ArrowLeft size={19} aria-hidden="true" />
+            </button>
+          )}
+        />
+        <Card className="gold-view-card">
+          <div className="gold-view-summary" aria-label="Application summary">
+            <div className="gold-view-summary-item gold-view-summary-customer">
+              <span>Customer</span><strong>{customerName || 'Not provided'}</strong>
+            </div>
+            <div className="gold-view-summary-item gold-view-summary-amount">
+              <span>Loan Amount</span><strong>{loanAmount}</strong>
+            </div>
+            <div className="gold-view-summary-item">
+              <span>Loan Type</span><strong>{loanType}</strong>
+            </div>
+            <div className="gold-view-summary-item">
+              <span>Branch</span><strong>{application.branch || 'Not provided'}</strong>
+            </div>
+            <div className="gold-view-summary-item">
+              <span>Status</span>
+              <strong>
+                <span className={`gold-view-status ${getStatusClass(application.status)}`}>
+                  {getStatusLabel(application.status)}
+                </span>
+              </strong>
+            </div>
+            <div className="gold-view-summary-item">
+              <span>Loan Account</span>
+              <strong>{form.loanAccountNumber || 'Not provided'}</strong>
+            </div>
+          </div>
+
+          <nav className="gold-view-tabs" role="tablist" aria-label="Application details sections">
+            {tabs.map((tab) => (
+              <button
+                className={`gold-view-tab ${activeTab === tab.id ? 'active' : ''}`}
+                id={`gold-view-tab-${tab.id}`}
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls="gold-view-tabpanel"
+                tabIndex={activeTab === tab.id ? 0 : -1}
+                onClick={() => setActiveTab(tab.id)}
+                onKeyDown={handleTabKeyDown}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+
+          <div
+            className="gold-view-tabpanel"
+            id="gold-view-tabpanel"
+            role="tabpanel"
+            aria-labelledby={`gold-view-tab-${activeTab}`}
+            tabIndex={0}
+          >
+            {activeTab === 'overview' && (
+              <GoldLoanDetailSection title="Application Overview" entries={overviewDetails}>
+                <div className="gold-view-overview-caption">
+                  Select a section above to review the complete application details.
+                </div>
+              </GoldLoanDetailSection>
+            )}
+            {activeTab === 'borrower' && (
+              <>
+                <GoldLoanDetailSection title="Application Information" entries={applicationInformation} />
+                <GoldLoanDetailSection title="Borrower Details" entries={borrowerDetails} />
+              </>
+            )}
+            {activeTab === 'security' && (
+              <GoldLoanDetailSection title="Security Details" entries={securityDetails}>
+                {populatedInventory.length > 0 && (
+                  <div className="gold-view-table-wrap">
+                    <table className="gold-view-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Item ID</th>
+                          <th scope="col">Ornament</th>
+                          <th scope="col">Gross Weight</th>
+                          <th scope="col">Net Weight</th>
+                          <th scope="col">Appraisal Date</th>
+                          <th scope="col">Purity</th>
+                          <th scope="col">Rate</th>
+                          <th scope="col">Appraised Value</th>
+                          <th scope="col">Eligible Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {populatedInventory.map((item, index) => (
+                          <tr key={item.id || `inventory-${index}`}>
+                            <td>{item.itemId || '—'}</td>
+                            <td>{item.ornamentDescription || '—'}</td>
+                            <td>{hasDetailValue(item.grossWeight) ? `${item.grossWeight} g` : '—'}</td>
+                            <td>{hasDetailValue(item.netWeight) ? `${item.netWeight} g` : '—'}</td>
+                            <td>{hasDetailValue(item.appraisalDate) ? formatApplicationDate(item.appraisalDate) : '—'}</td>
+                            <td>{item.purity || '—'}</td>
+                            <td>{hasDetailValue(item.rate) ? formatAmount(item.rate) : '—'}</td>
+                            <td>{hasDetailValue(item.amount) ? formatAmount(item.amount) : '—'}</td>
+                            <td>{hasDetailValue(item.limit) ? formatAmount(item.limit) : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </GoldLoanDetailSection>
+            )}
+            {activeTab === 'loan' && (
+              <>
+                <GoldLoanDetailSection title="Product and Scheme Details" entries={productDetails} />
+                <GoldLoanDetailSection title="Loan and Repayment Details" entries={financialDetails} />
+              </>
+            )}
+            {activeTab === 'charges' && (
+              <GoldLoanDetailSection title="Charges and Fees" entries={chargeDetails} />
+            )}
+            {activeTab === 'basic' && (
+              <GoldLoanDetailSection title="Basic Details" entries={basicDetails} />
+            )}
+            {activeTab === 'related' && (
+              <GoldLoanDetailSection title="Related Parties" entries={[]}>
+                {populatedParties.length > 0 && (
+                  <div className="gold-view-table-wrap">
+                    <table className="gold-view-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Party Type</th>
+                          <th scope="col">Customer Number</th>
+                          <th scope="col">Title</th>
+                          <th scope="col">First Name</th>
+                          <th scope="col">Middle Name</th>
+                          <th scope="col">Last Name</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {populatedParties.map((party, index) => (
+                          <tr key={party.id || `party-${index}`}>
+                            <td>{party.nameType || '—'}</td>
+                            <td>{party.customerNo || '—'}</td>
+                            <td>{party.salutation || '—'}</td>
+                            <td>{party.firstName || '—'}</td>
+                            <td>{party.middleName || '—'}</td>
+                            <td>{party.lastName || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </GoldLoanDetailSection>
+            )}
+            {activeTab === 'disbursement' && (
+              <GoldLoanDetailSection title="Disbursement and Bank Details" entries={bankDetails} />
+            )}
+          </div>
+          {!application.goldLoanForm && (
+            <p className="gold-view-readonly-note">
+              This development record contains dashboard details only; no additional Gold Loan form data is saved yet.
+            </p>
+          )}
+          <p className="gold-view-readonly-note">This application is read-only.</p>
+        </Card>
+        <style jsx>{`
+          .gold-view-page { min-width: 0; }
+          :global(.gold-view-card) {
+            min-width: 0;
+            padding: 22px;
+          }
+          :global(.loan-dashboard-back) {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #dfe8e8;
+            border-radius: 8px;
+            background: #fff;
+            transition: background .16s ease, border-color .16s ease, color .16s ease;
+          }
+          :global(.loan-dashboard-back:hover) {
+            border-color: #b8d4cf;
+            color: #165f5c;
+            background: #edf6f4;
+          }
+          .gold-view-page :global(.page-header) {
+            align-items: flex-start;
+            margin-bottom: 22px;
+          }
+          .gold-view-page :global(.page-header h1) {
+            margin-bottom: 5px;
+            color: #173e46;
+            font-size: 25px;
+          }
+          .gold-view-page :global(.page-header p) {
+            color: #718185;
+            font-size: 12px;
+          }
+          .gold-view-summary {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 11px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid #e8eeee;
+          }
+          .gold-view-summary-item {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 7px;
+            min-height: 82px;
+            padding: 13px 15px;
+            border: 1px solid #e5ecec;
+            border-radius: 8px;
+            background: #fcfdfd;
+            box-shadow: 0 2px 7px rgb(23 63 73 / 3%);
+            transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+          }
+          .gold-view-summary-item:hover {
+            border-color: #c9dedb;
+            box-shadow: 0 4px 12px rgb(23 63 73 / 6%);
+            transform: translateY(-1px);
+          }
+          .gold-view-summary-item > span {
+            color: #718185;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.35;
+          }
+          .gold-view-summary-item strong {
+            max-width: 100%;
+            overflow-wrap: anywhere;
+            color: #34565b;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.45;
+          }
+          .gold-view-summary-customer { border-left: 3px solid #5b9c91; }
+          .gold-view-summary-amount { border-left: 3px solid #7195b4; }
+          .gold-view-summary-amount strong { color: #173f49; font-size: 15px; }
+          .gold-view-status {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 5px 9px;
+            border-radius: 20px;
+            color: #617377;
+            background: #eef2f2;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            white-space: normal;
+          }
+          .gold-view-status.approved, .gold-view-status.disbursed { color: #31815e; background: #e7f3eb; }
+          .gold-view-status.pending, .gold-view-status.awaiting-kyc, .gold-view-status.returned { color: #a16f35; background: #fbf1e2; }
+          .gold-view-status.under-review { color: #4d7c9f; background: #eaf1f7; }
+          .gold-view-status.rejected { color: #a95757; background: #faeaea; }
+          .gold-view-tabs {
+            display: flex;
+            gap: 5px;
+            width: 100%;
+            margin: 18px 0 14px;
+            padding: 5px;
+            overflow-x: auto;
+            border: 1px solid #e3ebea;
+            border-radius: 9px;
+            background: #f7faf9;
+            scrollbar-width: thin;
+            scrollbar-color: #bdcfcc transparent;
+          }
+          .gold-view-tab {
+            flex: 0 0 auto;
+            min-height: 37px;
+            padding: 8px 13px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: #65777a;
+            background: transparent;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: color .16s ease, background .16s ease, border-color .16s ease;
+          }
+          .gold-view-tab:hover {
+            border-color: #d7e6e3;
+            color: #165f5c;
+            background: #edf6f4;
+          }
+          .gold-view-tab.active {
+            border-color: #c5ddda;
+            color: #145e5b;
+            background: #e8f3f1;
+            box-shadow: inset 0 -2px 0 #177e7a;
+            font-weight: 700;
+          }
+          .gold-view-tab:focus-visible {
+            outline: 3px solid rgb(23 126 122 / 22%);
+            outline-offset: 1px;
+          }
+          .gold-view-tabpanel { min-width: 0; }
+          .gold-view-tabpanel:focus-visible {
+            outline: 2px solid rgb(23 126 122 / 28%);
+            outline-offset: 3px;
+          }
+          .gold-view-tabpanel :global(.gold-view-section + .gold-view-section) { margin-top: 13px; }
+          :global(.gold-view-section) {
+            min-width: 0;
+            padding: 17px;
+            border: 1px solid #e2eaea;
+            border-radius: 9px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgb(23 63 73 / 3%);
+          }
+          :global(.gold-view-section h2) {
+            margin: 0 0 13px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #edf2f1;
+            color: #173e46;
+            font: 700 14px Manrope, sans-serif;
+          }
+          :global(.gold-view-detail-grid) {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 9px;
+            margin: 0;
+          }
+          :global(.gold-view-detail-grid > div) {
+            min-width: 0;
+            padding: 10px 11px;
+            border: 1px solid #edf2f1;
+            border-radius: 7px;
+            background: #fbfdfd;
+          }
+          :global(.gold-view-detail-grid dt) {
+            margin-bottom: 5px;
+            color: #718185;
+            font-size: 11px;
+            line-height: 1.4;
+          }
+          :global(.gold-view-detail-grid dd) {
+            margin: 0;
+            overflow-wrap: anywhere;
+            color: #34565b;
+            font-size: 12px;
+            font-weight: 650;
+            line-height: 1.5;
+          }
+          .gold-view-overview-caption {
+            margin-top: 13px;
+            color: #718185;
+            font-size: 11px;
+          }
+          .gold-view-table-wrap {
+            width: 100%;
+            margin-top: 15px;
+            overflow-x: auto;
+            border: 1px solid #e7eeed;
+            border-radius: 7px;
+          }
+          .gold-view-table {
+            width: 100%;
+            min-width: 780px;
+            border-collapse: collapse;
+            color: #405d61;
+            font-size: 11px;
+            text-align: left;
+          }
+          .gold-view-table th {
+            padding: 11px 12px;
+            border: 0;
+            border-bottom: 1px solid #e7eeed;
+            color: #718185;
+            background: #f7faf9;
+            font-size: 9px;
+            letter-spacing: .45px;
+            text-transform: uppercase;
+            white-space: nowrap;
+          }
+          .gold-view-table td {
+            padding: 11px 12px;
+            border-bottom: 1px solid #edf2f1;
+            color: #34565b;
+            line-height: 1.45;
+            vertical-align: top;
+          }
+          .gold-view-table tbody tr:last-child td { border-bottom: 0; }
+          .gold-view-table tbody tr:hover { background: #fbfdfd; }
+          .gold-view-readonly-note {
+            margin: 15px 0 0;
+            color: #718185;
+            font-size: 11px;
+          }
+          @media (max-width: 850px) {
+            .gold-view-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            :global(.gold-view-detail-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          }
+          @media (max-width: 520px) {
+            :global(.gold-view-card) { padding: 14px; }
+            .gold-view-summary { grid-template-columns: 1fr; }
+            .gold-view-page :global(.page-header) { align-items: center; gap: 12px; }
+            .gold-view-page :global(.page-header h1) { font-size: 21px; }
+            .gold-view-tabs { margin-top: 14px; }
+            .gold-view-tab { min-height: 35px; padding: 7px 11px; }
+            :global(.gold-view-detail-grid) { grid-template-columns: 1fr; }
+            :global(.gold-view-section) { padding: 14px; }
+          }
+        `}</style>
+      </div>
+    </AppShell>
+  );
+}
+
+function LoanApplicationFormPage({ onBack, application, onSave }) {
   const router = useRouter();
-  const [form, setForm] = useState(createInitialForm);
+  const isEditMode = Boolean(application);
+  const [form, setForm] = useState(() => (
+    application ? createApplicationForm(application) : createInitialForm()
+  ));
   const [currentStep, setCurrentStep] = useState(0);
   const [validationErrors, setValidationErrors] = useState({});
   const [products, setProducts] = useState([]);
@@ -1806,6 +2720,7 @@ function LoanApplicationFormPage({ onBack }) {
   const [showFrontendSuccess, setShowFrontendSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const nextPartyId = useRef(5);
   const nextInventoryId = useRef(form.security.inventoryItems.length);
   const cancelDeleteButtonRef = useRef(null);
@@ -1933,6 +2848,8 @@ function LoanApplicationFormPage({ onBack }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (isSubmitting) return;
+
     const allErrors = steps.reduce((errors, _, index) => (
       { ...errors, ...validateStep(index, form) }
     ), {});
@@ -1946,7 +2863,38 @@ function LoanApplicationFormPage({ onBack }) {
       return;
     }
 
-    // Frontend-only confirmation: no backend endpoint is called and nothing is persisted.
+    if (isEditMode) {
+      if (typeof onSave !== 'function') {
+        setSaveError('Changes could not be saved because the local save handler is unavailable.');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setSaveError('');
+      try {
+        const customerName = [form.firstName, form.middleName, form.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        onSave({
+          ...application,
+          ...(customerName ? { customer: customerName, customerName } : {}),
+          ...(form.sanctionLimit ? { amount: String(form.sanctionLimit) } : {}),
+          goldLoanForm: form,
+        });
+        setIsFormDirty(false);
+        setShowFrontendSuccess(true);
+      } catch (error) {
+        setSaveError(
+          `Changes could not be saved in this browser${error instanceof Error ? `: ${error.message}` : '.'}`,
+        );
+        setShowFrontendSuccess(false);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     setShowFrontendSuccess(true);
     setIsSubmitting(false);
   };
@@ -2054,7 +3002,9 @@ function LoanApplicationFormPage({ onBack }) {
   const handleReturnToDashboard = () => {
     if (
       isFormDirty
-      && !window.confirm('Return to the Loan Dashboard and discard this application?')
+      && !window.confirm(
+        `Return to the Loan Dashboard and discard ${isEditMode ? 'unsaved changes' : 'this application'}?`,
+      )
     ) {
       return;
     }
@@ -2070,9 +3020,8 @@ function LoanApplicationFormPage({ onBack }) {
     <AppShell>
       <div className="loan-application-shell">
         <PageHeader
-          // eyebrow="LOAN OPERATIONS"
-          title="Gold Loan Application"
-          // description="Capture borrower, related-party, security, and repayment details."
+          title={isEditMode ? 'Edit Gold Loan Application' : 'Gold Loan Application'}
+          description={isEditMode ? `Application ID: ${getApplicationId(application)}` : undefined}
           action={
             <button
               className="icon-button loan-dashboard-back"
@@ -2118,11 +3067,16 @@ function LoanApplicationFormPage({ onBack }) {
             </div>
           )}
           {showFrontendSuccess && (
-            <div className="bank-master-alert" role="status">
+            <div className="bank-master-success" role="status">
               <Check size={17} aria-hidden="true" />
-              <span>All fields are valid. This is a frontend preview; no data has been saved.</span>
+              <span>
+                {isEditMode
+                  ? 'Changes saved in this browser.'
+                  : 'All fields are valid. This is a frontend preview; no data has been saved.'}
+              </span>
             </div>
           )}
+          {saveError && <div className="bank-master-alert" role="alert">{saveError}</div>}
 
           <form onSubmit={handleSubmit} noValidate>
             {currentStep === 0 && (
@@ -2665,7 +3619,8 @@ function LoanApplicationFormPage({ onBack }) {
                 </button>
               ) : (
                 <button className="loan-primary-btn" type="submit" disabled={isSubmitting}>
-                  Submit <Check size={16} aria-hidden="true" />
+                  {isSubmitting ? 'Saving...' : isEditMode ? 'Save Changes' : 'Submit'}
+                  <Check size={16} aria-hidden="true" />
                 </button>
               )}
             </div>
