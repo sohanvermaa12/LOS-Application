@@ -1,6 +1,12 @@
 node_modules/
 .next/
 out/
-.env*.local
 dist/
+
+# Environment variables
 .env
+.env.*
+!.env.example
+C:\Users\Akash Suryawanshi\LOS-Application\src\.env
+src\.env
+src\.env

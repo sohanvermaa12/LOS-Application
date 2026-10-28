@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-<<<<<<< HEAD
+import { useRef, useState } from "react";
 import {
   LockKeyhole,
   UserRound,
@@ -9,7 +8,8 @@ import {
   EyeOff,
 } from "lucide-react";
 import loginImage from "../public/asset/login page12.png";
-import { login } from "../services/login";
+import { login, verifyOtp, LOGOUT_PENDING_KEY } from "../services/login";
+import ForgotPasswordRequest from "./ForgotPasswordRequest";
 
 export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +17,64 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [otpStep, setOtpStep] = useState(false);
+  const [tempSessionToken, setTempSessionToken] = useState("");
+  const [devOtp, setDevOtp] = useState("");
+  const [otp, setOtp] = useState("");
+  const otpInputRefs = useRef([]);
+
+  function updateOtpFromPaste(pastedValue, startIndex = 0) {
+    const pastedDigits = pastedValue.replace(/\D/g, "");
+    const targetIndex = pastedDigits.length >= 6 ? 0 : startIndex;
+    const digits = pastedDigits.slice(0, 6 - targetIndex);
+    const nextOtp = otp.padEnd(6, " ").split("");
+
+    digits.split("").forEach((digit, offset) => {
+      nextOtp[targetIndex + offset] = digit;
+    });
+
+    setOtp(nextOtp.join(""));
+    otpInputRefs.current[Math.min(targetIndex + digits.length, 5)]?.focus();
+  }
+
+  function handleOtpChange(event, index) {
+    const digits = event.target.value.replace(/\D/g, "");
+
+    if (digits.length > 1) {
+      updateOtpFromPaste(digits, index);
+      return;
+    }
+
+    const nextOtp = otp.padEnd(6, " ").split("");
+    nextOtp[index] = digits || " ";
+    setOtp(nextOtp.join(""));
+
+    if (digits && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  }
+
+  function handleOtpKeyDown(event, index) {
+    if (event.key === "Backspace" && otp[index]?.trim()) {
+      event.preventDefault();
+      const nextOtp = otp.padEnd(6, " ").split("");
+      nextOtp[index] = " ";
+      setOtp(nextOtp.join(""));
+    } else if (event.key === "Backspace" && index > 0) {
+      event.preventDefault();
+      const nextOtp = otp.padEnd(6, " ").split("");
+      nextOtp[index - 1] = " ";
+      setOtp(nextOtp.join(""));
+      otpInputRefs.current[index - 1]?.focus();
+    } else if (event.key === "ArrowLeft" && index > 0) {
+      event.preventDefault();
+      otpInputRefs.current[index - 1]?.focus();
+    } else if (event.key === "ArrowRight" && index < 5) {
+      event.preventDefault();
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -24,8 +82,34 @@ export default function LoginForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await login({ email, password });
-      window.localStorage.setItem("authData", JSON.stringify(response.data));
+      if (otpStep) {
+        const response = await verifyOtp({ tempSessionToken, otp: otp.replace(/\D/g, "") });
+        window.localStorage.setItem("authData", JSON.stringify(response.data));
+      } else {
+        const response = await login({ email, password });
+        if (response.data?.otpRequired) {
+          if (!response.data.tempSessionToken) {
+            throw new Error("The login response did not include a temporary session token");
+          }
+
+          setTempSessionToken(response.data.tempSessionToken);
+          const returnedDevOtp = response.data.devOtp;
+          const visibleDevOtp =
+            typeof returnedDevOtp === "string" ||
+            typeof returnedDevOtp === "number"
+              ? String(returnedDevOtp)
+              : "";
+          const isSixDigitDevOtp = /^\d{6}$/.test(visibleDevOtp);
+          setDevOtp(isSixDigitDevOtp ? visibleDevOtp : "");
+          setOtp(isSixDigitDevOtp ? visibleDevOtp : "");
+          setOtpStep(true);
+          return;
+        }
+
+        window.localStorage.setItem("authData", JSON.stringify(response.data));
+      }
+
+      window.sessionStorage.removeItem(LOGOUT_PENDING_KEY);
       window.location.assign("/dashboard");
     } catch (requestError) {
       setError(requestError.message || "Unable to sign in");
@@ -99,14 +183,18 @@ export default function LoginForm() {
           >
             <h2
               style={{
-                margin: "0",
+               margin: "12px 0 0",
                 color: "#202938",
                 fontSize: "30px",
                 fontWeight: "700",
                 lineHeight: "1.2",
               }}
             >
-              Welcome Back
+                {showForgotPassword
+                  ? "Forgot Password?"
+                  : otpStep
+                    ? "Verify your identity"
+                    : "Welcome Back"}
             </h2>
 
             <p
@@ -117,12 +205,138 @@ export default function LoginForm() {
                 lineHeight: "1.5",
               }}
             >
-              Login to your account to continue
-              <br />
-              with your loan application.
+              {showForgotPassword
+                ? "Enter your email address and we will send you a password reset link."
+                  : otpStep
+                   ? (
+  <>
+    Enter the 6-digit OTP sent to{" "}
+    <span
+      style={{
+        color: "#2563EB",
+        fontWeight: "400",
+      }}
+    >
+      {email}
+    </span>
+  </>
+)
+                    : "Login to your account to continue with your loan application."}
             </p>
           </div>
 
+          {showForgotPassword ? (
+            <ForgotPasswordRequest onBack={() => setShowForgotPassword(false)} />
+            ) : otpStep ? (
+              <>
+                <div
+                  style={{
+                    marginBottom: "24px",
+                    color: "#111827",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                  }}
+                >
+                  <span id="otp-label">One-time password</span>
+                  <div className="otp-inputs" role="group" aria-labelledby="otp-label">
+                    {Array.from({ length: 6 }, (_, index) => (
+                      <input
+                        key={index}
+                        ref={(element) => {
+                          otpInputRefs.current[index] = element;
+                        }}
+                        className="otp-input"
+                        type="text"
+                        value={otp[index]?.trim() || ""}
+                        onChange={(event) => handleOtpChange(event, index)}
+                        onKeyDown={(event) => handleOtpKeyDown(event, index)}
+                        onPaste={(event) => {
+                          event.preventDefault();
+                          updateOtpFromPaste(event.clipboardData.getData("text"), index);
+                        }}
+                        aria-label={`OTP digit ${index + 1}`}
+                        autoFocus={index === 0}
+                        inputMode="numeric"
+                        pattern="[0-9]"
+                        maxLength={6}
+                        autoComplete={index === 0 ? "one-time-code" : "off"}
+                        required
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {devOtp && (
+                  <p
+                    style={{
+                      margin: "0 0 20px",
+                      padding: "12px 14px",
+                      borderRadius: "8px",
+                      background: "#eef4ff",
+                      color: "#202938",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Development OTP: <strong>{devOtp}</strong>
+                  </p>
+                )}
+
+                {error && (
+                  <p
+                    role="alert"
+                    style={{
+                      margin: "0 0 20px",
+                      color: "#c62828",
+                      fontSize: "14px",
+                    }}
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={{
+                    width: "100%",
+                    height: "63px",
+                    border: "none",
+                    borderRadius: "9px",
+                    background: "#2864e6",
+                    color: "#ffffff",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    cursor: isSubmitting ? "wait" : "pointer",
+                    opacity: isSubmitting ? 0.7 : 1,
+                  }}
+                >
+                  {isSubmitting ? "Verifying..." : "Verify OTP"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpStep(false);
+                    setTempSessionToken("");
+                    setDevOtp("");
+                    setOtp("");
+                    setError("");
+                  }}
+                  style={{
+                    display: "block",
+                    margin: "18px auto 0",
+                    border: "none",
+                    background: "transparent",
+                    color: "#2864e6",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Back to login
+                </button>
+              </>
+          ) : (
+            <>
           {/* USERNAME / EMAIL */}
           <label
             style={{
@@ -154,7 +368,8 @@ export default function LoginForm() {
               />
 
               <input
-                type="email"
+                type="text"
+                autoComplete="username"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="Enter your username or email"
@@ -327,6 +542,7 @@ export default function LoginForm() {
 
             <button
               type="button"
+              onClick={() => setShowForgotPassword(true)}
               style={{
                 border: "none",
                 background: "transparent",
@@ -400,6 +616,8 @@ export default function LoginForm() {
           >
             {isSubmitting ? "Logging in..." : "Login"}
           </button>
+            </>
+          )}
 
           {/* OR */}
           <div
@@ -460,6 +678,7 @@ export default function LoginForm() {
         </div>
 >>>>>>> fa76eb3 (s)
       </div>
+
     </div>
   );
 }
