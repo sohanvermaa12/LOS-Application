@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { CirclePlus, Eye, LoaderCircle, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
-import PageHeader from '../../components/PageHeader';
 import { saveInterestRateMaster } from '../../services/interestRateMaster';
 
 const emptyBand = (id) => ({ id, upToMonths: '', normalInterest: '', penalRate: '', adhocRate: '' });
@@ -191,11 +190,22 @@ export default function InterestRateMasterPage() {
   }
 
   return (
-    <AppShell title="Interest Rate Master">
+    <AppShell title="">
       <style>{styles}</style>
       <main className="irm-wrap">
         <div className="irm-heading">
-          <PageHeader title="Interest Rate Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
+          <div style={{ marginTop: '-15px', marginBottom: '26px' }}>
+            <h1 style={{ margin: 0, color: '#23474C', font: '700 23px Manrope' }}>
+              Interest Rate Master
+            </h1>
+            <div className="page-header-marquee" role="note" aria-label="Set effective-dated interest tiers by loan product and tenure.">
+              <div className="page-header-marquee-window" aria-hidden="true">
+                <div className="page-header-marquee-track">
+                  <span>Set effective-dated interest tiers by loan product and tenure.</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <button className="irm-create" type="button" onClick={openCreate}><Plus size={16} /> Create interest rate master</button>
         </div>
         {message && !dialog && <div className={`irm-message ${message.type}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div>}

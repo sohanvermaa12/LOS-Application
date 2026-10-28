@@ -16,7 +16,6 @@ import {
   Trash2
 } from 'lucide-react';
 import AppShell from '../../components/AppShell';
-import PageHeader from '../../components/PageHeader';
 import { getBankMaster, updateBankMaster } from '../../services/bankmaster';
 
 const steps = [
@@ -275,9 +274,20 @@ export default function BankMaster() {
   const StepIcon = currentStep.icon;
 
   return (
-    <AppShell title="Bank Master">
+    <AppShell title="">
       <div className="bank-master-page">
-        <PageHeader title="Bank Master" description="Set effective-dated interest tiers by loan product and tenure." marquee />
+        <div style={{ marginTop: '-15px', marginBottom: '26px' }}>
+          <h1 style={{ margin: 0, color: '#23474C', font: '700 23px Manrope' }}>
+            Bank Master
+          </h1>
+          <div className="page-header-marquee" role="note" aria-label="Set effective-dated interest tiers by loan product and tenure.">
+            <div className="page-header-marquee-window" aria-hidden="true">
+              <div className="page-header-marquee-track">
+                <span>Set effective-dated interest tiers by loan product and tenure.</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {pageError && (
           <div className="bank-master-alert" role="alert">
