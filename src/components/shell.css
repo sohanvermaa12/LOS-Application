@@ -2,26 +2,38 @@
 
 .los-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   background: #f5f7f9;
 }
 
 .los-workspace {
   display: flex;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
   flex: 1;
   flex-direction: column;
 }
 
 .los-main-content {
   width: 100%;
+  min-height: 0;
   min-width: 0;
   flex: 1;
+  height: auto;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 .los-page-wrap {
   width: 100%;
   max-width: 1500px;
+  min-height: auto;
+  flex: none;
+  overflow: visible;
   padding: 32px 36px 48px;
 }
 
