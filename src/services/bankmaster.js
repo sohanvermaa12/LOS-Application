@@ -36,6 +36,7 @@ function toApiPayload(form) {
     other_bank_details: form.accounts
       .filter((account) => Object.values(account).some((value) => String(value).trim()))
       .map((account) => ({
+        particulars: account.particulars.trim(),
         bank_name: account.bankName.trim(),
         account_type: account.accountType.trim(),
         account_number: account.accountNumber.trim(),
