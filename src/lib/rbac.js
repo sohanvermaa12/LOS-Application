@@ -126,7 +126,8 @@ export function getRoutePermission(pathname) {
   }
   if (pathname.startsWith('/reports') || pathname.startsWith('/audit_logs')) return ['reports', 'view'];
   if (pathname.startsWith('/settings') || pathname.startsWith('/profile') || pathname.startsWith('/rule_engine')
-    || pathname.startsWith('/interest_rate_master') || pathname.startsWith('/lookup_management')) {
+    || pathname.startsWith('/interest_rate_master') || pathname.startsWith('/gold_rate_master')
+    || pathname.startsWith('/lookup_management')) {
     return ['settings', 'view'];
   }
   if (pathname.startsWith('/loan_eligibility')) return ['loan-applications', 'view'];
