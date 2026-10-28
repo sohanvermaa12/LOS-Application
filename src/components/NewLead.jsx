@@ -815,10 +815,32 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
         return <>
       <label className="lead-field lead-referral-channel">
         <span>Lead Acquisition Channel <em>*</em></span>
-        <select name="acquisitionChannel" value={form.acquisitionChannel} onChange={handleChange} required={!initialData}>
-          <option value="">Select channel</option>
-          {includeCurrentOption(['Bank Generated', 'Branch', 'Website', 'Mobile App', 'Customer Referral', 'Direct Sales', 'Partner / Agent', 'Other'], form.acquisitionChannel).map((channel) => <option key={channel} value={channel}>{channel}</option>)}
-        </select>
+  
+<select
+  name="acquisitionChannel"
+  value={form.acquisitionChannel}
+  onChange={handleChange}
+>
+  <option value="">Select channel</option>
+  {includeCurrentOption(
+    [
+      'Bank Generated',
+      'Branch',
+      'Website',
+      'Mobile App',
+      'Customer Referral',
+      'Direct Sales',
+      'Partner / Agent',
+      'Other'
+    ],
+    form.acquisitionChannel
+  ).map((channel) => (
+    <option key={channel} value={channel}>
+      {channel}
+    </option>
+  ))}
+</select>
+
       </label>
 
       <label className="lead-field lead-referral-date">

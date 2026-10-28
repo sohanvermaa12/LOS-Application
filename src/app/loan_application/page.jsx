@@ -4,12 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Banknote,
-  Building2,
   CheckCircle2,
   FilePlus2,
   Search,
-  UserRound,
-  X,
   ArrowLeft,
   ArrowRight,
   Check,
@@ -17,6 +14,7 @@ import {
   Trash2,
   Eye,
   Pencil,
+  X,
 } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import Card from '../../components/Card';
@@ -276,13 +274,16 @@ export default function LoanDashboardPage() {
       <div className="loan-dashboard">
         <PageHeader
           // eyebrow="LOAN ORIGINATION"
-          title="Loan Dashboard"
+          title=" Loan Dashboard "
           // description="Track loan applications, approvals, and disbursements in one place."
           action={
             <button
               className="primary-button apply-button"
               type="button"
-              onClick={openCategorySelector}
+              onClick={() => {
+                setSelectedLoanType('');
+                setLoanTypeSelectorOpen(true);
+              }}
             >
               <FilePlus2 size={16} />
               Apply for Loan
@@ -596,17 +597,6 @@ export default function LoanDashboardPage() {
                   </div>
                 </div>
               )}
-              <button
-                className="category-back"
-                type="button"
-                onClick={() => {
-                  setLoanTypeSelectorOpen(false);
-                  setCategorySelectorOpen(true);
-                }}
-              >
-                <ArrowLeft size={13} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />
-                Back to Customer Category
-              </button>
             </section>
           </div>
         )}
@@ -1016,39 +1006,27 @@ export default function LoanDashboardPage() {
             margin-top: 4px;
           }
 
-          .data-note {
-            margin: 13px 0 0;
-            color: #899799;
-            font-size: 10px;
-            line-height: 1.5;
-          }
-
-          .loan-table-message {
-            min-height: 190px;
+          .application-actions {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 24px;
-            border: 1px dashed #dfe8e8;
+            gap: 6px;
+          }
+
+          .application-action-button {
+            width: 30px;
+            height: 30px;
+            display: inline-grid;
+            place-items: center;
+            border: 1px solid #dfe8e8;
             border-radius: 6px;
-            color: #8a999b;
-            text-align: center;
+            color: #267a7a;
+            background: #fff;
           }
 
-          .loan-table-message strong {
-            color: #395b60;
-            font-size: 13px;
-          }
-
-          .loan-table-message span {
-            font-size: 11px;
-          }
-
-          .loan-table-message.error-message {
-            color: #a95757;
-            background: #fffafa;
+          .application-action-button:hover {
+            border-color: #8bbab4;
+            color: #165f5c;
+            background: #edf6f4;
           }
 
           .category-overlay {
@@ -2093,7 +2071,7 @@ function LoanApplicationFormPage({ onBack }) {
       <div className="loan-application-shell">
         <PageHeader
           // eyebrow="LOAN OPERATIONS"
-          title="Loan Application"
+          title="Gold Loan Application"
           // description="Capture borrower, related-party, security, and repayment details."
           action={
             <button

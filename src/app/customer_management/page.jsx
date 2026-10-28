@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Building2, Eye, FilePlus2, Mail, Pencil, Search, Trash2, UserRound, UsersRound, X } from 'lucide-react';
+import { Eye, FilePlus2, Mail, Pencil, Search, Trash2, UserRound, UsersRound, X } from 'lucide-react';
 import AppShell from '../../components/AppShell';
 import Card from '../../components/Card';
 import Modal from '../../components/Modal';
@@ -28,36 +28,10 @@ export default function CustomerManagementPage() {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [deleteCustomer, setDeleteCustomer] = useState(null);
-  const [categorySelectorOpen, setCategorySelectorOpen] = useState(false);
-  const [corporateUnavailable, setCorporateUnavailable] = useState(false);
   const [formError, setFormError] = useState('');
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', type: 'Individual', kyc: 'Pending' });
 
   useEffect(() => setCustomers(readCustomers()), []);
-
-  useEffect(() => {
-    if (!categorySelectorOpen) return undefined;
-
-    const closeOnEscape = (event) => {
-      if (event.key === 'Escape') {
-        setCategorySelectorOpen(false);
-        setCorporateUnavailable(false);
-      }
-    };
-
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [categorySelectorOpen]);
-
-  const openCategorySelector = () => {
-    setCorporateUnavailable(false);
-    setCategorySelectorOpen(true);
-  };
-
-  const closeCategorySelector = () => {
-    setCorporateUnavailable(false);
-    setCategorySelectorOpen(false);
-  };
 
   const storeCustomers = (nextCustomers) => {
     setCustomers(nextCustomers);
@@ -137,7 +111,7 @@ export default function CustomerManagementPage() {
     <AppShell title="Customer Management">
       <div style={{ marginTop: '-15px', marginBottom: '26px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ margin: 0, color: '#23474C', font: '700 23px Manrope' }}>Customer Management</h1>
-        <button className="primary-button customer-add-button" type="button" onClick={openCategorySelector}><FilePlus2 size={16} /> Add Customer</button>
+        <Link className="primary-button customer-add-button" href="/customer_management/customer_onboarding"><FilePlus2 size={16} /> Add Individual Customer</Link>
       </div>
 
       <div className="metric-grid">
@@ -236,112 +210,10 @@ export default function CustomerManagementPage() {
         </Modal>
       )}
 
-      {categorySelectorOpen && (
-        <div
-          className="category-overlay"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) closeCategorySelector();
-          }}
-        >
-          <section
-            className="category-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="category-dialog-title"
-          >
-            <button
-              className="category-close"
-              type="button"
-              onClick={closeCategorySelector}
-              autoFocus
-              aria-label="Close customer category selection"
-            >
-              <X size={19} />
-            </button>
-            <div className="category-dialog-icon">
-              <FilePlus2 size={21} aria-hidden="true" />
-            </div>
-            <h2 id="category-dialog-title">Select Customer Category</h2>
-            <p className="category-dialog-description">
-              Choose the type of customer to onboard.
-            </p>
-
-            <div className="category-options">
-              <Link
-                className="category-option"
-                href="/customer_management/customer_onboarding"
-                onClick={closeCategorySelector}
-              >
-                <span className="category-option-icon retail">
-                  <UserRound size={19} aria-hidden="true" />
-                </span>
-                <span className="category-option-copy">
-                  <strong>Individual Customer Onboarding</strong>
-                  <span>Apply for an individual customer.</span>
-                </span>
-                <span className="category-option-arrow" aria-hidden="true">→</span>
-              </Link>
-              <button
-                className={`category-option ${corporateUnavailable ? 'selected' : ''}`}
-                type="button"
-                onClick={() => setCorporateUnavailable(true)}
-              >
-                <span className="category-option-icon corporate">
-                  <Building2 size={19} aria-hidden="true" />
-                </span>
-                <span className="category-option-copy">
-                  <strong>Corporate Customer Onboarding</strong>
-                  <span>Onboard a business or corporate customer.</span>
-                </span>
-                <span className="category-option-arrow" aria-hidden="true">→</span>
-              </button>
-            </div>
-
-            {corporateUnavailable && (
-              <div className="corporate-notice" role="status">
-                <Building2 size={18} aria-hidden="true" />
-                <div>
-                  <strong>Corporate Customer Onboarding is not yet available</strong>
-                  <span>
-                    Only Individual Customer Onboarding is configured in this project.
-                  </span>
-                </div>
-              </div>
-            )}
-
-            <button
-              className="category-back"
-              type="button"
-              onClick={closeCategorySelector}
-            >
-              Return to Customer Management
-            </button>
-          </section>
-        </div>
-      )}
-
       <style>{`
-        .customer-add-button{border:0;background:#368262;box-shadow:0 4px 12px #36826225}.customer-add-button:hover{background:#2c6d52}.customer-add-button:focus-visible{outline:2px solid #368262;outline-offset:2px}
+        .customer-add-button{display:inline-flex;align-items:center;gap:8px;border:0;background:#368262;box-shadow:0 4px 12px #36826225;text-decoration:none}.customer-add-button:hover{background:#2c6d52}.customer-add-button:focus-visible{outline:2px solid #368262;outline-offset:2px}
         .customer-management-toolbar{align-items:center;margin-bottom:0}.customer-management-toolbar .input-wrap{height:34px;margin-top:0}
         .customer-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px}.customer-row-actions .icon-button{width:34px;height:34px;border:1px solid transparent}.customer-row-actions .icon-button:hover{border-color:var(--line);background:#f2f8f6;color:var(--teal)}.customer-row-actions .customer-delete:hover,.customer-delete-confirm{border-color:#b83b3b;background:#b83b3b;color:#fff}.customer-row-actions .customer-delete:hover,.customer-delete-confirm:hover{background:#992d2d;color:#fff}
-        .category-overlay{position:fixed;z-index:100;inset:0;display:grid;place-items:center;padding:20px;background:rgb(18 39 43 / 45%)}
-        .category-dialog{position:relative;width:min(100%,490px);padding:30px;border:1px solid #e5ecec;border-radius:12px;background:#fff;box-shadow:0 20px 60px rgb(23 63 73 / 20%)}
-        .category-close{position:absolute;top:14px;right:14px;width:34px;height:34px;display:grid;place-items:center;border-radius:6px;color:#718185}.category-close:hover{color:#173e46;background:#f1f6f5}
-        .category-dialog-icon{width:42px;height:42px;display:grid;place-items:center;margin-bottom:17px;border-radius:9px;color:#177e7a;background:#e5f2f0}
-        .category-dialog h2{margin:0;color:#173e46;font:700 20px Manrope,sans-serif;letter-spacing:-.4px}
-        .category-dialog-description{margin:8px 0 21px;color:#718185;font-size:12px;line-height:1.5}
-        .category-options{display:grid;gap:10px}
-        .category-option{width:100%;min-height:76px;display:flex;align-items:center;gap:13px;padding:13px;border:1px solid #e2eaea;border-radius:8px;background:#fff;text-align:left;text-decoration:none;transition:border-color .16s ease,background-color .16s ease}
-        .category-option:hover,.category-option.selected{border-color:#8bbab4;background:#fbfefd}
-        .category-option-icon{width:38px;height:38px;display:grid;flex:0 0 auto;place-items:center;border-radius:8px}
-        .category-option-icon.retail{color:#177e7a;background:#e5f2f0}.category-option-icon.corporate{color:#4e7da2;background:#e8f0f7}
-        .category-option-copy{display:grid;gap:5px}.category-option-copy strong{color:#34565b;font-size:12px}.category-option-copy span{color:#849497;font-size:11px}
-        .category-option-arrow{margin-left:auto;color:#819396;font-size:18px}
-        .corporate-notice{display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:12px;border:1px solid #f0dfc5;border-radius:7px;color:#a16f35;background:#fffaf2}
-        .corporate-notice svg{flex:0 0 auto;margin-top:1px}.corporate-notice div{display:grid;gap:5px}.corporate-notice strong{font-size:11px}.corporate-notice span{color:#8d795f;font-size:10px;line-height:1.5}
-        .category-back{margin-top:19px;padding:7px 0;color:#177e7a;font-size:11px;font-weight:700}.category-back:hover{color:#0c5d5d;text-decoration:underline}
-        .category-option:focus-visible,.category-close:focus-visible,.category-back:focus-visible{outline:3px solid #177e7a55;outline-offset:2px}
-        @media(max-width:640px){.category-dialog{padding:24px 20px}.category-option-copy strong{font-size:11px}}
       `}</style>
     </AppShell>
   );

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Pencil, X } from 'lucide-react';
 
+import { Copy, Check } from "lucide-react";
+
 const leadDetailsStyles = `
 .lead-detail-backdrop{padding:clamp(12px,3vw,32px);background:rgba(12,31,34,.62);backdrop-filter:blur(4px)}
 .lead-detail-modal{width:min(1280px,96vw);max-height:min(92dvh,1000px);border:1px solid #dce8e5;border-radius:16px;background:#f5f8f7;box-shadow:0 28px 90px rgba(8,31,34,.34)}
@@ -46,6 +48,9 @@ const leadDetailsStyles = `
 
 export default function LeadDetails({ lead, open, onClose, onEdit, loading = false, error = '', onRetry }) {
   const [tab, setTab] = useState('lead');
+
+  
+const [copied, setCopied] = useState(false);
 
   if (!open || !lead) return null;
 
@@ -146,7 +151,46 @@ export default function LeadDetails({ lead, open, onClose, onEdit, loading = fal
         <div className="lead-detail-header">
           <div>
             <span className="lead-detail-eyebrow">LEAD RECORD</span>
-            <h2 id="lead-detail-title">Lead Details <span>{lead.id}</span></h2>
+           <h2 id="lead-detail-title">
+              Lead Details
+              <span
+                onClick={async () => {
+                  await navigator.clipboard.writeText(String(lead.id));
+                  setCopied(true);
+
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                title="Click to copy Lead ID"
+                style={{
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  marginLeft: "10px",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  background: "#f3f4f6",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  color: "#4b5563",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#e5e7eb";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#f3f4f6";
+                }}
+              >
+                {lead.id}
+
+                {copied ? (
+                  <Check size={14} color="green" />
+                ) : (
+                  <Copy size={14} />
+                )}
+              </span>
+            </h2>
           </div>
           <div className="lead-detail-actions">
             {onEdit && (
