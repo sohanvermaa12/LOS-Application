@@ -90,6 +90,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
 
     userName: initialData?.userName || '',
     password: '',
+    confirmPassword: '',
     email: initialData?.email || '',
     allow2FA: initialData?.allow2FA ?? (initialData?.twoFAEnabled === 'Y'),
 
@@ -237,6 +238,14 @@ export default function UserForm({ mode = 'add', initialData = null }) {
         }
         break;
 
+      case 'confirmPassword':
+        if (!isEdit && !value) {
+          err = 'Confirm Password is required.';
+        } else if (!isEdit && value !== values.password) {
+          err = 'Passwords do not match.';
+        }
+        break;
+
       case 'email':
         if (!value || !String(value).trim()) {
           err = 'Email ID is required.';
@@ -341,12 +350,26 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       return;
     }
 
-    if (hasSubmitted || touched[name] || name === 'password') {
+    if (hasSubmitted || touched[name] || name === 'password' || name === 'confirmPassword') {
       setErrors((prev) => {
         const nextErrors = { ...prev };
         const error = validateField(name, val, nextForm);
         if (error) nextErrors[name] = error;
         else delete nextErrors[name];
+
+        if (
+          name === 'password'
+          && !isEdit
+          && (hasSubmitted || touched.confirmPassword || nextForm.confirmPassword)
+        ) {
+          const confirmPasswordError = validateField(
+            'confirmPassword',
+            nextForm.confirmPassword,
+            nextForm,
+          );
+          if (confirmPasswordError) nextErrors.confirmPassword = confirmPasswordError;
+          else delete nextErrors.confirmPassword;
+        }
 
         if (name === 'userName' && (hasSubmitted || touched.password)) {
           const passwordError = validateField('password', nextForm.password, nextForm);
@@ -387,6 +410,16 @@ export default function UserForm({ mode = 'add', initialData = null }) {
         const passwordError = validateField('password', nextForm.password, nextForm);
         if (passwordError) nextErrors.password = passwordError;
         else delete nextErrors.password;
+      }
+
+      if (name === 'password' && !isEdit && (hasSubmitted || touched.confirmPassword)) {
+        const confirmPasswordError = validateField(
+          'confirmPassword',
+          nextForm.confirmPassword,
+          nextForm,
+        );
+        if (confirmPasswordError) nextErrors.confirmPassword = confirmPasswordError;
+        else delete nextErrors.confirmPassword;
       }
 
       return nextErrors;
@@ -453,6 +486,9 @@ export default function UserForm({ mode = 'add', initialData = null }) {
 
     if (!isEdit || form.password) {
       fieldsToValidate.push('password');
+    }
+    if (!isEdit) {
+      fieldsToValidate.push('confirmPassword');
     }
 
     if (!form.allowMultiBranch) {
@@ -578,6 +614,13 @@ export default function UserForm({ mode = 'add', initialData = null }) {
       }
 
       saveEmployee(employeeRecord);
+      if (!isEdit) {
+        setForm((currentForm) => ({
+          ...currentForm,
+          password: '',
+          confirmPassword: '',
+        }));
+      }
 
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem(
@@ -831,7 +874,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
             <span>Login Information</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px' }}>
+          <div className={`login-information-grid${isEdit ? ' edit' : ''}`}>
             <div>
               <label className="form-label" htmlFor="field-userName">
                 User Name <span>*</span>
@@ -906,6 +949,37 @@ export default function UserForm({ mode = 'add', initialData = null }) {
                 </span>
               )}
             </div>
+
+            {!isEdit && (
+              <div>
+                <label className="form-label" htmlFor="field-confirmPassword">
+                  Confirm Password <span>*</span>
+                </label>
+                <input
+                  id="field-confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  maxLength={128}
+                  autoComplete="new-password"
+                  aria-invalid={Boolean(errors.confirmPassword)}
+                  aria-describedby={errors.confirmPassword ? 'field-confirmPassword-error' : undefined}
+                  className={`form-input ${errors.confirmPassword ? 'has-error' : ''}`}
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  placeholder="Re-enter password"
+                />
+                {errors.confirmPassword ? (
+                  <span id="field-confirmPassword-error" className="field-error-text">
+                    {errors.confirmPassword}
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '11px', color: '#647e82', marginTop: '4px', display: 'block' }}>
+                    Enter the same password again.
+                  </span>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="form-label" htmlFor="field-email">
