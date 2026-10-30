@@ -85,6 +85,7 @@ function createApplicationForm(application) {
     ...initialForm,
     ...savedForm,
     customerId: savedForm.customerId || application.customerId || '',
+    branch: savedForm.branch || application.branch || '',
     firstName: savedForm.firstName || nameParts[0] || '',
     lastName: savedForm.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''),
     sanctionLimit: savedForm.sanctionLimit
@@ -1501,6 +1502,7 @@ const createInitialForm = () => ({
   loanAccountNumber: '',
   effectiveDate: '',
   customerId: '',
+  branch: '',
   title: '',
   firstName: '',
   middleName: '',
@@ -2880,6 +2882,7 @@ function LoanApplicationFormPage({ onBack, application, onSave }) {
           ...application,
           ...(customerName ? { customer: customerName, customerName } : {}),
           ...(form.sanctionLimit ? { amount: String(form.sanctionLimit) } : {}),
+          branch: form.branch,
           goldLoanForm: form,
         });
         setIsFormDirty(false);
@@ -3135,6 +3138,14 @@ function LoanApplicationFormPage({ onBack, application, onSave }) {
                       strictCode
                       onInvalidCodeInput={() => invalidCodeInput('customerId')}
                       required
+                    />
+                    <LoanField
+                      id="branch"
+                      label="Branch"
+                      value={form.branch}
+                      onChange={(value) => updateField('branch', value)}
+                      error={validationErrors.branch}
+                      maxLength={MAX_TEXT_LENGTH}
                     />
                   </div>
                 </div>

@@ -330,7 +330,7 @@ export function LeadManagementPage({ corporate = false }) {
         date,
         status: response?.leadStatus || response?.data?.leadStatus || 'NEW',
         statusKey: statusKeys[response?.leadStatus || response?.data?.leadStatus || 'NEW'],
-        branch: '',
+        branch: form.branch || '',
         product: form.loanProductType,
         amount: Number(form.loanAmount).toLocaleString('en-IN'),
         remarks: '',
@@ -614,6 +614,19 @@ export function LeadManagementPage({ corporate = false }) {
     <>
       <AppShell title="Lead Management">
         <style>{leadManagementStyles}</style>
+        {!corporate && (showNewLead || Boolean(editingLead)) ? (
+          <NewLead
+            key={editingLead?.id || 'new-lead'}
+            open
+            initialData={editingLead}
+            onClose={() => {
+              setShowNewLead(false);
+              setEditingLead(null);
+            }}
+            onCreate={handleCreateLead}
+            onUpdate={handleUpdateLead}
+          />
+        ) : (
         <main className="lm-page">
           <PageHeader
             className="lm-page-header"
@@ -629,7 +642,7 @@ export function LeadManagementPage({ corporate = false }) {
                   setExportError('');
                   setShowExportDialog(true);
                 }}><Download size={16} /> Export Lead</button>
-                <button type="button" className="lm-add-button" onClick={() => corporate ? setEditingCorporateLead({}) : setShowNewLead(true)}><Plus size={16} /> Add New Lead</button>
+                <button type="button" className="lm-add-button" onClick={() => corporate ? setEditingCorporateLead({}) : setShowNewLead(true)}><Plus size={16} /> Add Lead</button>
                 <button type="button" className="lm-export-button" onClick={openBulkImport}><Upload size={16} /> Upload Bulk Lead</button>
               </div>
             }
@@ -691,19 +704,9 @@ export function LeadManagementPage({ corporate = false }) {
             </footer>
           </section>
         </main>
+        )}
       </AppShell>
 
-      <NewLead
-        key={editingLead?.id || 'new-lead'}
-        open={!corporate && (showNewLead || Boolean(editingLead))}
-        initialData={editingLead}
-        onClose={() => {
-          setShowNewLead(false);
-          setEditingLead(null);
-        }}
-        onCreate={handleCreateLead}
-        onUpdate={handleUpdateLead}
-      />
       {corporate ? (
         <CorporateLeadWizard
           open={Boolean(editingCorporateLead)}

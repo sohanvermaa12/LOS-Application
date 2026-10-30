@@ -155,6 +155,7 @@ const createTaxReturns = () => {
 const createInitialForm = () => ({
   leadId: '',
   panCard: '',
+    branch: '',
   title: '',
   fullName: '',
   middleName: '',
@@ -1100,6 +1101,8 @@ export default function LoanApplicationPage() {
                   placeholder="Enter Lead ID"
                 />
 
+               
+
                 <Field
                   label="PAN Card *"
                   value={form.panCard}
@@ -1109,6 +1112,12 @@ export default function LoanApplicationPage() {
                   placeholder="ABCDE1234F"
                   maxLength={10}
                   error={currentStepErrors.panCard}
+                />
+                 <Field
+                  label="Branch"
+                  value={form.branch}
+                  onChange={(value) => updateField('branch', value)}
+                  placeholder="Enter Branch"
                 />
               </div>
 

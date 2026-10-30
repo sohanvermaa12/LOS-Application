@@ -60,6 +60,35 @@ const [copied, setCopied] = useState(false);
     { id: 'activity', label: 'Activity Log' },
   ];
 
+  const addressSummary = (Array.isArray(lead.addressDetails) ? lead.addressDetails : [])
+    .map((address, index) => {
+      if (!address || typeof address !== 'object') return '';
+      const values = [
+        address.addressType,
+        address.flatBuildingName,
+        address.streetRoad,
+        address.landmark,
+        address.city,
+        address.state,
+        address.pinCode,
+      ].filter(Boolean);
+      return values.length ? `Address ${index + 1}: ${values.join(', ')}` : '';
+    })
+    .filter(Boolean)
+    .join('; ');
+  const facilitySummary = (facilities) => (Array.isArray(facilities) ? facilities : [])
+    .filter((facility) => facility && typeof facility === 'object')
+    .map((facility) => [
+      facility.bankName,
+      facility.accountNumber,
+      facility.loanType,
+      facility.limit,
+      facility.emi,
+      facility.outstanding,
+    ].filter(Boolean).join(' / '))
+    .filter(Boolean)
+    .join('; ');
+
   const detailSections = [
     {
       title: 'Customer Information',
@@ -81,6 +110,7 @@ const [copied, setCopied] = useState(false);
         ['Aadhaar Card', lead.aadhaarCard || lead.aadhaarNumber],
         ['Passport Number', lead.passportNo || lead.passportNumber],
         ['Passport Expiry Date', lead.passportExpiryDate],
+        ['Address Details', addressSummary],
       ],
     },
     {
@@ -102,6 +132,7 @@ const [copied, setCopied] = useState(false);
       title: 'Income and Employment',
       fields: [
         ['Employment Type', lead.employmentType],
+        ['Income Source', lead.incomeSource || lead.income_source],
         ['Annual Income', lead.annualIncome],
         ['Designation', lead.designation],
         ['Employer / Business Name', lead.employerName],
@@ -111,6 +142,8 @@ const [copied, setCopied] = useState(false);
         ['Deductions', lead.deductions ?? lead.deductionsOrEmisPayable],
         ['Bank Name', lead.bankName],
         ['Primary Bank Account', lead.primaryBankAccount || lead.accountNumber],
+        ['Existing Bank Credit Facilities', facilitySummary(lead.existingBankCreditFacilities || lead.creditFacilities)],
+        ['Other Bank Credit Facilities', facilitySummary(lead.otherBankCreditFacilities)],
       ],
     },
     {
