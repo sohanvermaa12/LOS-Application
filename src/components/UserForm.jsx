@@ -610,6 +610,7 @@ export default function UserForm({ mode = 'add', initialData = null }) {
           inactiveSessionTimeout: employeeRecord.sessionTimeout,
         };
 
+        console.log('Creating user with payload:', userPayload);
         await createUser(userPayload);
       }
 

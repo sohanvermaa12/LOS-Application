@@ -12,6 +12,7 @@ function authHeaders() {
 }
 
 export async function saveProductManagementProduct(product) {
+  console.log('Saving product management product:', product);
   if (!API_URL) return { configured: false };
   const response = await fetch(API_URL, {
     method: 'POST',

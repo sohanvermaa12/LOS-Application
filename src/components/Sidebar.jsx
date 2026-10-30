@@ -25,71 +25,113 @@ import {
   UsersRound,
   WalletCards,
   X,
-} from 'lucide-react';
+  ScrollText,
+} from "lucide-react";
 import { getRoutePermission, hasRolePermission } from '../lib/rbac';
 import './sidebar.css';
 
 const NAV = [
-  { type: 'link', label: 'Dashboard', icon: Gauge, href: '/dashboard' },
+  { type: "link", label: "Dashboard", icon: Gauge, href: "/dashboard" },
   {
-    type: 'group',
-    label: 'Retail',
+    type: "group",
+    label: "Retail",
     icon: WalletCards,
     children: [
-      { label: 'Lead management', icon: UsersRound, href: '/lead_management' },
-      { label: 'Customer onboarding', icon: UserPlus, href: '/customer_management' },
-      { label: 'Loan application', icon: FilePlus2, href: '/loan_application' },
+      { label: "Lead management", icon: UsersRound, href: "/lead_management" },
+      {
+        label: "Customer onboarding",
+        icon: UserPlus,
+        href: "/customer_management",
+      },
+      { label: "Loan application", icon: FilePlus2, href: "/loan_application" },
     ],
   },
   {
-    type: 'group',
-    label: 'Corporate',
+    type: "group",
+    label: "Corporate",
     icon: Building2,
     children: [
-      { label: 'Lead management', icon: UsersRound, href: '/lead_management/corporate' },
-      { label: 'Customer onboarding', icon: UserPlus, disabled: true, permissionHref: '/customer_management' },
-      { label: 'Loan application', icon: FilePlus2, href: '/loan_application' },
+      {
+        label: "Lead management",
+        icon: UsersRound,
+        href: "/lead_management/corporate",
+      },
+      {
+        label: "Customer onboarding",
+        icon: UserPlus,
+        disabled: true,
+        permissionHref: "/customer_management",
+      },
+      { label: "Loan application", icon: FilePlus2, href: "/loan_application" },
     ],
   },
   {
-    type: 'group',
-    label: 'Eligibility & sanctioning',
+    type: "group",
+    label: "Eligibility & sanctioning",
     icon: ClipboardCheck,
     children: [
-      { label: 'Loan eligibility', icon: ShieldCheck, href: '/loan_eligibility' },
+      {
+        label: "Loan eligibility",
+        icon: ShieldCheck,
+        href: "/loan_eligibility",
+      },
     ],
   },
   {
-    type: 'group',
-    label: 'User management',
+    type: "group",
+    label: "User management",
     icon: UsersRound,
     children: [
-      { label: 'User creation', icon: UserPlus, href: '/user_management' },
+      { label: "User creation", icon: UserPlus, href: "/user_management" },
     ],
   },
   {
-    type: 'group',
-    label: 'Masters',
+    type: "group",
+    label: "Masters",
     icon: Landmark,
     children: [
-      { label: 'Product management', icon: WalletCards, href: '/product_management' },
-      { label: 'Lookup', icon: BookOpen, href: '/lookup_management' },
-      { label: 'Rule engine', icon: Activity, href: '/rule_engine' },
-      { label: 'Interest rate master', icon: Percent, href: '/interest_rate_master' },
-      { label: 'Gold rate master', icon: Coins, href: '/gold_rate_master' },
-      { label: 'Bank branch master', icon: Building2, href: '/master_creation' },
+      {
+        label: "Product management",
+        icon: WalletCards,
+        href: "/product_management",
+      },
+      { label: "Lookup", icon: BookOpen, href: "/lookup_management" },
+      { label: "Rule engine", icon: Activity, href: "/rule_engine" },
+      {
+        label: "Interest rate master",
+        icon: Percent,
+        href: "/interest_rate_master",
+      },
+      { label: "Gold rate master", icon: Coins, href: "/gold_rate_master" },
+      {
+        label: "Bank branch master",
+        icon: Building2,
+        href: "/master_creation",
+      },
     ],
   },
-  { type: 'link', label: 'Reports', icon: BarChart3, href: '/reports' },
   {
-    type: 'group',
-    label: 'Settings',
+    type: "link",
+    label: "Document management",
+    icon: ScrollText,
+    href: "/document_management",
+  },
+  { type: "link", label: "Reports", icon: BarChart3, href: "/reports" },
+  {
+    type: "link",
+    label: "Activity Log",
+    icon: BarChart3,
+    href: "/activity-log",
+  },
+  {
+    type: "group",
+    label: "Settings",
     icon: Settings,
     children: [
-      { label: 'Roles & access', icon: ShieldCheck, href: '/role_access' },
-      { label: 'Profile', icon: UsersRound, href: '/profile' },
-      { label: 'Change password', icon: KeyRound, href: '/settings' },
-      { label: 'Logout', icon: LogOut, action: 'logout' },
+      { label: "Roles & access", icon: ShieldCheck, href: "/role_access" },
+      { label: "Profile", icon: UsersRound, href: "/profile" },
+      { label: "Change password", icon: KeyRound, href: "/settings" },
+      { label: "Logout", icon: LogOut, action: "logout" },
     ],
   },
 ];

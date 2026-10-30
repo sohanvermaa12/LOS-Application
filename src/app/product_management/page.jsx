@@ -231,6 +231,7 @@ export default function ProductManagementPage() {
         interest_calculation_frequency: form.interestFrequency, interest_calculation_mode: form.calculationMode,
         delegation_of_power: form.delegationPower.map(({ limit, power }) => ({ limit: Number(limit), power: power.trim() }))
       });
+      console.log('Product Management API response:', result);
       storeProducts([record, ...products]);
       setSearch('');
       setDialog(null);
