@@ -188,6 +188,8 @@ export default function InterestRateMasterPage() {
         })).sort((left, right) => left.up_to_amount - right.up_to_amount || left.up_to_months - right.up_to_months)
       };
       const result = await saveInterestRateMaster(payload);
+      console.log('Interest Rate Master API response:', result);
+      console.log('payload sent to API:', payload);
       storeMasters([master, ...masters]);
       setDialog(null);
       setMessage({ type: result.configured ? 'success' : 'info', text: result.configured ? result.result?.message || 'Interest rate master saved successfully.' : 'Interest rate master saved in this browser. The API endpoint is not configured.' });

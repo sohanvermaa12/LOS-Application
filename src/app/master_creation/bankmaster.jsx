@@ -396,6 +396,7 @@ export default function BankMaster() {
     setNotice('');
     try {
       const response = await updateBankMaster(form);
+      console.log("Bank Master Submit payload:", form);
       setOriginalForm({ ...form, accounts: form.accounts.map((account) => ({ ...account })) });
       setNotice(response?.message || 'Bank details updated successfully.');
       setActiveStep(0);
