@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, Plus, Trash2, X } from 'lucide-react';
+import LeadDatePicker from './LeadDatePicker';
 import { createLead, updateLead } from '../services/lead_management';
 
 const steps = ['Entity Info', 'Loan Details', 'Income Profile', 'Referral Details'];
@@ -198,6 +199,17 @@ export default function CorporateLeadWizard({ open, initialData, onClose, onSave
     setFacilityValue(index, 'statementRequested', !facility.statementRequested);
   };
   const validateStep = (step) => {
+    const requiredDateField = step === 0
+      ? ['incorporationDate', 'Date of Incorporation']
+      : step === 3
+        ? ['referralDate', 'Date']
+        : null;
+    if (requiredDateField && !form[requiredDateField[0]]) {
+      setFormError(`${requiredDateField[1]} is required.`);
+      formRef.current?.querySelector(`[data-date-picker-trigger="${requiredDateField[0]}"]`)?.focus();
+      return false;
+    }
+
     if (step === 1 && numberValue(form.numberOfInstalments) > numberValue(form.tenure)) {
       setFormError('The number of instalments cannot exceed the loan tenure in months.');
       return false;
@@ -325,7 +337,18 @@ export default function CorporateLeadWizard({ open, initialData, onClose, onSave
   const field = (name, label, options = {}) => (
     <label className={`corp-field${options.wide ? ' wide' : ''}`} key={name}>
       <span>{label}{options.required ? <em className="corp-required"> *</em> : null}</span>
-      {options.options ? (
+      {options.type === 'date' ? (
+        <LeadDatePicker
+          id={`corporate-${name}`}
+          name={name}
+          label={label}
+          value={form[name] || ''}
+          onChange={(value) => setValue(name, value)}
+          min={options.min}
+          max={options.max}
+          required={options.required}
+        />
+      ) : options.options ? (
         <select
           name={name}
           value={form[name]}

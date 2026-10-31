@@ -1,8 +1,10 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Download, Eye, FileSpreadsheet, Pencil, Plus, Search, Upload, UserRound, X } from 'lucide-react';
+import Calendar from 'react-calendar';
 import AppShell from '../../components/AppShell';
 import { PermissionGate } from '../../components/AccessControl';
+import LeadDatePicker from '../../components/LeadDatePicker';
 import PageHeader from '../../components/PageHeader';
 import NewLead from '../../components/NewLead';
 import CorporateLeadWizard from '../../components/CorporateLeadWizard';
@@ -80,6 +82,14 @@ const toIsoDate = (date) => {
   const [day, month, year] = value.split('-');
   return year && month && day ? `${year}-${month}-${day}` : '';
 };
+
+const dateFromIso = (value) => value ? new Date(`${value}T00:00:00`) : null;
+const dateToIso = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+const formatFilterDate = (value) => dateFromIso(value)?.toLocaleDateString('en-IN', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+}) || 'Select date';
 
 const csvCell = (value) => {
   const text = value === null || value === undefined
@@ -162,13 +172,16 @@ const leadManagementStyles = `
 .lm-heading-copy p{margin:0;color:#748587;font-size:12px;line-height:1.5}
 .lm-add-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 15px;border:1px solid #177e7a;border-radius:5px;background:#177e7a;color:#fff;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
 .lm-add-button:hover{border-color:#0c6662;background:#0c6662}
-.lm-toolbar{display:grid;grid-template-columns:minmax(250px,1.5fr) minmax(155px,.75fr) repeat(2,minmax(145px,.7fr)) auto;align-items:end;gap:12px;margin-bottom:14px;padding:14px;border:1px solid #dfe8e6;border-radius:6px;background:#f8faf9}
+.lm-toolbar{display:grid;grid-template-columns:minmax(125px,.75fr) repeat(3,minmax(145px,1fr)) auto;align-items:end;gap:12px;margin-bottom:14px;padding:14px;border:1px solid #dfe8e6;border-radius:6px;background:#f8faf9}
 .lm-filter{display:grid;gap:6px;min-width:0;color:#52696b;font-size:10px;font-weight:700}
 .lm-search-box{display:flex;align-items:center;gap:8px;min-width:0;height:39px;padding:0 10px;border:1px solid #cbd9d7;border-radius:5px;background:#fff;color:#78898a}
 .lm-search-box:focus-within{border-color:#568e88;box-shadow:0 0 0 3px rgba(23,126,122,.1)}
 .lm-search-box input{width:100%;min-width:0;height:100%;border:0;outline:0;background:transparent;color:#203c42;font:inherit;font-size:12px}
-.lm-filter select,.lm-filter input{width:100%;min-width:0;height:39px;padding:0 10px;border:1px solid #cbd9d7;border-radius:5px;background:#fff;color:#30494b;font:inherit;font-size:12px;outline:none}
-.lm-filter select:focus,.lm-filter input:focus{border-color:#568e88;box-shadow:0 0 0 3px rgba(23,126,122,.1)}
+.lm-filter select,.lm-filter>input{width:100%;min-width:0;height:39px;padding:0 10px;border:1px solid #cbd9d7;border-radius:5px;background:#fff;color:#30494b;font:inherit;font-size:12px;outline:none}
+.lm-filter select:focus,.lm-filter>input:focus{border-color:#568e88;box-shadow:0 0 0 3px rgba(23,126,122,.1)}
+.lm-date-picker .dob-picker-trigger{width:100%;height:39px;padding:0 10px;border:1px solid #cbd9d7;border-radius:5px;background:#fff;color:#30494b;font:inherit;font-size:12px;font-weight:400;outline:none}
+.lm-date-picker .dob-picker-trigger:focus{border-color:#568e88;box-shadow:0 0 0 3px rgba(23,126,122,.1)}
+.lm-filter-date-to .dob-calendar-popover{left:auto;right:8px}
 .lm-reset{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:39px;padding:0 11px;border:1px solid #cfddda;border-radius:5px;background:#fff;color:#536a6c;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
 .lm-reset:hover{background:#eff6f4}
 .lm-results{overflow:hidden;border:1px solid #dfe8e6;border-radius:6px;background:#fff}
@@ -286,7 +299,26 @@ export function LeadManagementPage({ corporate = false }) {
   const [statusFilter, setStatusFilter] = useState('All');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [openDatePicker, setOpenDatePicker] = useState(null);
+  const fromDatePickerRef = useRef(null);
+  const toDatePickerRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    if (!openDatePicker) return undefined;
+
+    const handleOutsidePointerDown = (event) => {
+      if (
+        !fromDatePickerRef.current?.contains(event.target)
+        && !toDatePickerRef.current?.contains(event.target)
+      ) {
+        setOpenDatePicker(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handleOutsidePointerDown);
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown);
+  }, [openDatePicker]);
 
   useEffect(() => {
     let isActive = true;
@@ -587,6 +619,7 @@ export function LeadManagementPage({ corporate = false }) {
     setStatusFilter('All');
     setFromDate('');
     setToDate('');
+    setOpenDatePicker(null);
   };
 
   const activeLeads = corporate ? leads.filter((lead) => isCorporateLead(lead)) : leads;
@@ -645,8 +678,65 @@ export function LeadManagementPage({ corporate = false }) {
                 {['New', 'In Progress', 'Contacted', 'Qualified', 'On Hold', 'Rejected', 'Converted'].map((status) => <option key={status} value={status}>{status}</option>)}
               </select>
             </label>
-            <label className="lm-filter" htmlFor="lead-from-date">Lead date from<input id="lead-from-date" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
-            <label className="lm-filter" htmlFor="lead-to-date">Lead date to<input id="lead-to-date" type="date" min={fromDate || undefined} value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
+            <label className="lm-filter" htmlFor="lead-from-date">Lead date from
+              <div ref={fromDatePickerRef} className="lm-date-picker" style={{ position: 'relative' }}>
+                <button
+                  id="lead-from-date"
+                  type="button"
+                  className="dob-picker-trigger"
+                  aria-haspopup="dialog"
+                  aria-expanded={openDatePicker === 'from'}
+                  onClick={() => setOpenDatePicker((open) => open === 'from' ? null : 'from')}
+                >
+                  <span className={fromDate ? '' : 'dob-picker-placeholder'}>{formatFilterDate(fromDate)}</span>
+                  <CalendarDays size={16} aria-hidden="true" />
+                </button>
+                {openDatePicker === 'from' ? (
+                  <div className="dob-calendar-popover" role="dialog" aria-label="Choose lead start date">
+                    <Calendar
+                      className="loan-birth-calendar"
+                      value={dateFromIso(fromDate)}
+                      onChange={(date) => {
+                        setFromDate(dateToIso(date));
+                        setOpenDatePicker(null);
+                      }}
+                      defaultActiveStartDate={dateFromIso(fromDate) || new Date()}
+                      locale="en-IN"
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </label>
+            <label className="lm-filter lm-filter-date-to" htmlFor="lead-to-date">Lead date to
+              <div ref={toDatePickerRef} className="lm-date-picker" style={{ position: 'relative' }}>
+                <button
+                  id="lead-to-date"
+                  type="button"
+                  className="dob-picker-trigger"
+                  aria-haspopup="dialog"
+                  aria-expanded={openDatePicker === 'to'}
+                  onClick={() => setOpenDatePicker((open) => open === 'to' ? null : 'to')}
+                >
+                  <span className={toDate ? '' : 'dob-picker-placeholder'}>{formatFilterDate(toDate)}</span>
+                  <CalendarDays size={16} aria-hidden="true" />
+                </button>
+                {openDatePicker === 'to' ? (
+                  <div className="dob-calendar-popover" role="dialog" aria-label="Choose lead end date">
+                    <Calendar
+                      className="loan-birth-calendar"
+                      value={dateFromIso(toDate)}
+                      minDate={dateFromIso(fromDate) || undefined}
+                      onChange={(date) => {
+                        setToDate(dateToIso(date));
+                        setOpenDatePicker(null);
+                      }}
+                      defaultActiveStartDate={dateFromIso(toDate) || dateFromIso(fromDate) || new Date()}
+                      locale="en-IN"
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </label>
             {(searchInput || statusFilter !== 'All' || fromDate || toDate) && <button type="button" className="lm-reset" onClick={clearFilters}><X size={14} /> Clear filters</button>}
           </section>
 
@@ -754,10 +844,28 @@ export function LeadManagementPage({ corporate = false }) {
             {exportMode === 'date' ? (
               <div className="lm-export-dates">
                 <label htmlFor="lead-export-from">From
-                  <input id="lead-export-from" type="date" value={exportFromDate} max={exportToDate || undefined} onChange={(event) => setExportFromDate(event.target.value)} required />
+                  <LeadDatePicker
+                    id="lead-export-from"
+                    name="exportFromDate"
+                    label="export start date"
+                    value={exportFromDate}
+                    max={exportToDate}
+                    onChange={setExportFromDate}
+                    disabled={isExporting}
+                    required
+                  />
                 </label>
                 <label htmlFor="lead-export-to">To
-                  <input id="lead-export-to" type="date" value={exportToDate} min={exportFromDate || undefined} onChange={(event) => setExportToDate(event.target.value)} required />
+                  <LeadDatePicker
+                    id="lead-export-to"
+                    name="exportToDate"
+                    label="export end date"
+                    value={exportToDate}
+                    min={exportFromDate}
+                    onChange={setExportToDate}
+                    disabled={isExporting}
+                    required
+                  />
                 </label>
               </div>
             ) : null}

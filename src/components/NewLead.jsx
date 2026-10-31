@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { State } from 'country-state-city';
+import LeadDatePicker from './LeadDatePicker';
 import { getLoanProducts } from '../services/loanProducts';
 import { createLead } from '../services/lead_management';
 
@@ -453,6 +454,12 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       return false;
     }
 
+    if (activeStep === 0 && !form.dateOfBirth) {
+      setSubmissionError('Date of Birth is required.');
+      document.querySelector('[data-date-picker-trigger="dateOfBirth"]')?.focus();
+      return false;
+    }
+
     return true;
   };
 
@@ -564,7 +571,18 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
       <div className="lead-personal-demographics">
         <label className="lead-field">
           <span>Date of Birth <em>*</em></span>
-          <input type="date" name="dateOfBirth" value={form.dateOfBirth} onChange={handleChange} max={todayInputDate} required />
+          <LeadDatePicker
+            id="lead-date-of-birth"
+            name="dateOfBirth"
+            label="Date of Birth"
+            value={form.dateOfBirth}
+            onChange={(value) => {
+              handleChange({ target: { name: 'dateOfBirth', value } });
+              setSubmissionError('');
+            }}
+            max={todayInputDate}
+            required
+          />
         </label>
         <label className="lead-field">
           <span>Age</span>
@@ -646,7 +664,14 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <label className="lead-field">
         <span>Passport Expiry Date</span>
-        <input type="date" name="passportExpiryDate" value={form.passportExpiryDate} onChange={handleChange} min={todayInputDate} />
+        <LeadDatePicker
+          id="lead-passport-expiry-date"
+          name="passportExpiryDate"
+          label="Passport Expiry Date"
+          value={form.passportExpiryDate}
+          onChange={(value) => handleChange({ target: { name: 'passportExpiryDate', value } })}
+          min={todayInputDate}
+        />
       </label>
 
     </div>
@@ -845,7 +870,14 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
 
       <label className="lead-field lead-referral-date">
         <span>Date</span>
-        <input type="date" name="referralDate" value={form.referralDate} onChange={handleChange} disabled={!referralEnabled} />
+        <LeadDatePicker
+          id="lead-referral-date"
+          name="referralDate"
+          label="Referral Date"
+          value={form.referralDate}
+          onChange={(value) => handleChange({ target: { name: 'referralDate', value } })}
+          disabled={!referralEnabled}
+        />
       </label>
 
       <label className="lead-field lead-referral-partner-id">
@@ -907,6 +939,11 @@ export default function NewLead({ open, onClose, onCreate, onUpdate, initialData
     if (missing.length > 0) {
       const firstMissing = missing[0];
       firstMissing.focus();
+      window.alert('Please fill all mandatory fields before submitting the lead.');
+      return;
+    }
+    if (!form.dateOfBirth) {
+      document.querySelector('[data-date-picker-trigger="dateOfBirth"]')?.focus();
       window.alert('Please fill all mandatory fields before submitting the lead.');
       return;
     }
